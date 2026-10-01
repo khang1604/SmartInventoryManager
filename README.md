@@ -1,104 +1,103 @@
 # SMART INVENTORY MANAGER
 
-á»¨ng dá»¥ng desktop quáº£n lÃ½ kho dÃ nh cho doanh nghiá»‡p/cá»­a hÃ ng cÃ³ má»™t hoáº·c nhiá»u kho. Dá»± Ã¡n phá»¥c vá»¥ mÃ´n Láº­p trÃ¬nh Windows Forms, sá»­ dá»¥ng C#, .NET vÃ  SQL Server.
+Ứng dụng desktop quản lý kho dành cho doanh nghiệp/cửa hàng có một hoặc nhiều kho. Dự án phục vụ môn Lập trình Windows Forms, sử dụng C#, .NET và SQL Server.
 
-> TÃ i liá»‡u nÃ y mÃ´ táº£ cÃ¡ch tham gia vÃ  phÃ¡t triá»ƒn dá»± Ã¡n. Danh sÃ¡ch chá»©c nÄƒng lÃ  pháº¡m vi dá»± kiáº¿n, khÃ´ng pháº£i xÃ¡c nháº­n táº¥t cáº£ Ä‘Ã£ hoÃ n thiá»‡n. File hoáº·c mÃ n hÃ¬nh khung chÆ°a cÃ³ nghiá»‡p vá»¥ Ä‘Æ°á»£c xem lÃ  chÆ°a triá»ƒn khai.
+> Tài liệu này mô tả cách tham gia và phát triển dự án. Danh sách chức năng là phạm vi dự kiến, không phải xác nhận tất cả đã hoàn thiện. File hoặc màn hình khung chưa có nghiệp vụ được xem là chưa triển khai.
 
-## 1. CÃ´ng nghá»‡ sá»­ dá»¥ng
+## 1. Công nghệ sử dụng
 
-| ThÃ nh pháº§n | CÃ´ng nghá»‡ / quy Ä‘á»‹nh |
+| Thành phần | Công nghệ / quy định |
 |---|---|
-| Há»‡ Ä‘iá»u hÃ nh | Windows phÃ¹ há»£p yÃªu cáº§u há»— trá»£ cá»§a .NET vÃ  Visual Studio; Æ°u tiÃªn Windows 11 |
-| NgÃ´n ngá»¯ | C# |
-| Ná»n táº£ng máº·c Ä‘á»‹nh | **.NET 10**, khÃ´ng pháº£i â€œ.NET Framework 10â€ |
-| Giao diá»‡n | Windows Forms |
-| MÃ´i trÆ°á»ng phÃ¡t triá»ƒn máº·c Ä‘á»‹nh | Visual Studio 2026, workload `.NET desktop development` |
-| Database | Microsoft SQL Server; instance local phÃ¹ há»£p cho phÃ¡t triá»ƒn |
-| ORM | Entity Framework Core 10.x náº¿u solution dÃ¹ng .NET 10 |
-| Truy váº¥n | LINQ |
-| Truy cáº­p SQL bá»• sung | ADO.NET / Microsoft.Data.SqlClient |
-| Quáº£n lÃ½ thÆ° viá»‡n | NuGet, thÃ´ng qua Visual Studio hoáº·c dotnet CLI |
-| Quáº£n lÃ½ mÃ£ nguá»“n | Git / GitHub |
+| Hệ điều hành | Windows phù hợp yêu cầu hỗ trợ của .NET và Visual Studio; ưu tiên Windows 11 |
+| Ngôn ngữ | C# |
+| Nền tảng mặc định | **.NET 10**, không phải “.NET Framework 10” |
+| Giao diện | Windows Forms |
+| Môi trường phát triển mặc định | Visual Studio 2026, workload `.NET desktop development` |
+| Database | Microsoft SQL Server; instance local phù hợp cho phát triển |
+| ORM | Entity Framework Core 10.x nếu solution dùng .NET 10 |
+| Truy vấn | LINQ |
+| Truy cập SQL bổ sung | ADO.NET / Microsoft.Data.SqlClient |
+| Quản lý thư viện | NuGet, thông qua Visual Studio hoặc dotnet CLI |
+| Quản lý mã nguồn | Git / GitHub |
 
-PhiÃªn báº£n tháº­t Ä‘Æ°á»£c xÃ¡c Ä‘á»‹nh bá»Ÿi `.csproj`, `global.json` vÃ  `Directory.Packages.props` náº¿u cÃ³. Náº¿u repository Ä‘Ã£ dÃ¹ng .NET 8/EF Core 8.x, giá»¯ cáº¥u hÃ¬nh Ä‘Ã³ vÃ  dÃ¹ng Visual Studio tÆ°Æ¡ng thÃ­ch. KhÃ´ng tá»± nÃ¢ng phiÃªn báº£n hoáº·c trá»™n EF6 vá»›i EF Core.
+Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Directory.Packages.props` nếu có. Nếu repository đã dùng .NET 8/EF Core 8.x, giữ cấu hình đó và dùng Visual Studio tương thích. Không tự nâng phiên bản hoặc trộn EF6 với EF Core.
 
-- EF: CRUD thÃ´ng thÆ°á»ng.
-- LINQ: truy váº¥n, lá»c, tá»•ng há»£p vÃ  phÃ¢n tÃ­ch.
-- ADO.NET: Stored Procedure, truy váº¥n bÃ¡o cÃ¡o hoáº·c SQL phá»©c táº¡p khi cáº§n.
-- KhÃ´ng sá»­ dá»¥ng Next.js, Mantine, MongoDB, npm/yarn hoáº·c cÃ´ng nghá»‡ web trong dá»± Ã¡n nÃ y.
-- ThÃªm thÆ° viá»‡n má»›i, Ä‘á»•i cÃ´ng nghá»‡ hoáº·c nÃ¢ng phiÃªn báº£n lá»›n pháº£i Ä‘Æ°á»£c nhÃ³m thá»‘ng nháº¥t trÆ°á»›c.
+- EF: CRUD thông thường.
+- LINQ: truy vấn, lọc, tổng hợp và phân tích.
+- ADO.NET: Stored Procedure, truy vấn báo cáo hoặc SQL phức tạp khi cần.
+- Không sử dụng Next.js, Mantine, MongoDB, npm/yarn hoặc công nghệ web trong dự án này.
+- Thêm thư viện mới, đổi công nghệ hoặc nâng phiên bản lớn phải được nhóm thống nhất trước.
 
-## 2. Pháº¡m vi chá»©c nÄƒng
+## 2. Phạm vi chức năng
 
-- ÄÄƒng nháº­p vÃ  phÃ¢n quyá»n Admin / Quáº£n lÃ½ kho / NhÃ¢n viÃªn kho.
-- Quáº£n lÃ½ sáº£n pháº©m, danh má»¥c, nhÃ  cung cáº¥p, kho vÃ  vá»‹ trÃ­ kho.
-- Nháº­p kho, xuáº¥t kho, kiá»ƒm kÃª, Ä‘iá»u chá»‰nh vÃ  chuyá»ƒn kho.
-- Theo dÃµi tá»“n theo sáº£n pháº©m vÃ  tá»«ng kho; lÆ°u lá»‹ch sá»­ biáº¿n Ä‘á»™ng.
-- Cáº£nh bÃ¡o háº¿t hÃ ng, sáº¯p háº¿t hÃ ng vÃ  tá»“n vÆ°á»£t má»©c.
-- Dashboard, thá»‘ng kÃª, biá»ƒu Ä‘á»“, bÃ¡o cÃ¡o vÃ  phÃ¢n tÃ­ch theo tiÃªu chÃ­ Ä‘Ã£ thá»‘ng nháº¥t.
+- Đăng nhập và phân quyền Admin / Quản lý kho / Nhân viên kho.
+- Quản lý sản phẩm, danh mục, nhà cung cấp, kho và vị trí kho.
+- Nhập kho, xuất kho, kiểm kê, điều chỉnh và chuyển kho.
+- Theo dõi tồn theo sản phẩm và từng kho; lưu lịch sử biến động.
+- Cảnh báo hết hàng, sắp hết hàng và tồn vượt mức.
+- Dashboard, thống kê, biểu đồ, báo cáo và phân tích theo tiêu chí đã thống nhất.
 
-## 3. PhÃ¢n cÃ´ng vÃ  phá»‘i há»£p
+## 3. Phân công và phối hợp
 
-| ThÃ nh viÃªn | Phá»¥ trÃ¡ch chÃ­nh |
+| Thành viên | Phụ trách chính |
 |---|---|
-| **Báº£o Anh** | Database, ERD, Entity, DbContext, kiáº¿n trÃºc, SQL scripts; Repository/UnitOfWork khi cÃ³ giÃ¡ trá»‹ rÃµ rÃ ng |
-| **Khang** | Business Services, nháº­p/xuáº¥t, tá»“n kho, Ä‘iá»u chá»‰nh/chuyá»ƒn kho, backend cáº£nh bÃ¡o, kiá»ƒm tra vÃ  kiá»ƒm thá»­ nghiá»‡p vá»¥ |
-| **KhiÃªm** | Windows Forms UI, Dashboard, Analytics, biá»ƒu Ä‘á»“, bÃ¡o cÃ¡o vÃ  thÃ´ng bÃ¡o trÃªn giao diá»‡n |
+| **Bảo Anh** | Database, ERD, Entity, DbContext, kiến trúc, SQL scripts; Repository/UnitOfWork khi có giá trị rõ ràng |
+| **Khang** | Business Services, nhập/xuất, tồn kho, điều chỉnh/chuyển kho, backend cảnh báo, kiểm tra và kiểm thử nghiệp vụ |
+| **Khiêm** | Windows Forms UI, Dashboard, Analytics, biểu đồ, báo cáo và thông báo trên giao diện |
 
-- Má»—i ngÆ°á»i sá»­a pháº§n Ä‘Æ°á»£c giao. ÄÆ°á»£c Ä‘á»c code táº§ng khÃ¡c Ä‘á»ƒ hiá»ƒu cÃ¡ch káº¿t ná»‘i.
-- Náº¿u cáº§n sá»­a pháº§n ngÆ°á»i khÃ¡c, thá»‘ng nháº¥t thÃ nh pháº§n, má»¥c Ä‘Ã­ch vÃ  quyá»n sá»­a trÆ°á»›c.
-- Database, DTO, Interface, Common, Ä‘Äƒng nháº­p vÃ  cáº¥u hÃ¬nh solution lÃ  cÃ¡c Ä‘iá»ƒm cáº§n phá»‘i há»£p; khÃ´ng tá»± Ä‘á»•i há»£p Ä‘á»“ng chung.
-- Khi thay Ä‘á»•i liÃªn táº§ng, nÃªu rÃµ ai lÃ m pháº§n dá»¯ liá»‡u, ai lÃ m nghiá»‡p vá»¥, ai ná»‘i giao diá»‡n.
-- KhÃ´ng táº¡o Service/Repository thay tháº¿ hoáº·c SQL trá»±c tiáº¿p trÃªn Form Ä‘á»ƒ Ä‘i vÃ²ng qua pháº§n chÆ°a hoÃ n thiá»‡n.
+- Mỗi người sửa phần được giao. Được đọc code tầng khác để hiểu cách kết nối.
+- Nếu cần sửa phần người khác, thống nhất thành phần, mục đích và quyền sửa trước.
+- Database, DTO, Interface, Common, đăng nhập và cấu hình solution là các điểm cần phối hợp; không tự đổi hợp đồng chung.
+- Khi thay đổi liên tầng, nêu rõ ai làm phần dữ liệu, ai làm nghiệp vụ, ai nối giao diện.
+- Không tạo Service/Repository thay thế hoặc SQL trực tiếp trên Form để đi vòng qua phần chưa hoàn thiện.
 
-## 4. Cáº¥u trÃºc vÃ  kiáº¿n trÃºc
+## 4. Cấu trúc và kiến trúc
 
-| ÄÆ°á»ng dáº«n | Ná»™i dung |
+| Đường dẫn | Nội dung |
 |---|---|
-| `SmartInventoryManager.sln` hoáº·c `.slnx` | Solution cá»§a dá»± Ã¡n |
-| `SmartInventoryManager.UI/` | Forms, Controls, Components, Themes, Resources, Program.cs |
+| `SmartInventoryManager.sln` hoặc `.slnx` | Solution của dự án |
+| `SmartInventoryManager.UI/` | Forms, Controls, Components, Resources, Program.cs |
 | `SmartInventoryManager.Business/` | Services, Interfaces, DTOs, Validators, Events |
-| `SmartInventoryManager.Data/` | Context, Entities, Configurations, AdoNet, Queries, Repository náº¿u Ä‘Æ°á»£c dÃ¹ng |
-| `SmartInventoryManager.Common/` | Enums, Helpers, Security, Session |
-| `SmartInventoryManager.Tests/` | Khung kiá»ƒm thá»­; test framework chá»‰ Ä‘Æ°á»£c thÃªm khi nhÃ³m phÃª duyá»‡t |
-| `Database/` | Script táº¡o vÃ  cáº­p nháº­t database |
-| `Documentation/` | YÃªu cáº§u, thiáº¿t káº¿, bÃ¡o cÃ¡o vÃ  tÃ i liá»‡u tham kháº£o |
-| `.github/copilot-instructions.md` | Quy táº¯c AI Agent dÃ¹ng chung, Ä‘Æ°á»£c chia sáº» qua Git |
-| `.agent/RULE.md` | Báº£n quy táº¯c cÃ¡ nhÃ¢n, khÃ´ng commit |
+| `SmartInventoryManager.Data/` | Context, Entities, Configurations, Repository/UnitOfWork nếu được dùng |
+| `SmartInventoryManager.Common/` | Constants, Enums, Helpers, Session |
+| `Database/` | Script tạo và cập nhật database |
+| `Documentation/` | Yêu cầu, thiết kế, báo cáo và tài liệu tham khảo |
+| `.github/copilot-instructions.md` | Quy tắc AI Agent dùng chung, được chia sẻ qua Git |
+| `.agent/RULE.md` | Bản quy tắc cá nhân, không commit |
 
-Tham chiáº¿u máº·c Ä‘á»‹nh:
+Tham chiếu mặc định:
 
-- UI â†’ Business, Common.
-- Business â†’ Data, Common.
-- Data â†’ Common.
-- Common khÃ´ng phá»¥ thuá»™c ngÆ°á»£c cÃ¡c táº§ng khÃ¡c.
+- UI → Business, Common.
+- Business → Data, Common.
+- Data → Common.
+- Common không phụ thuộc ngược các tầng khác.
 
-UI hiá»ƒn thá»‹ vÃ  gá»i Service. Business xá»­ lÃ½ nghiá»‡p vá»¥. Data truy xuáº¥t/lÆ°u dá»¯ liá»‡u. KhÃ´ng Ä‘áº·t SQL, truy váº¥n DbContext hoáº·c cÃ´ng thá»©c tá»“n kho trong Form. UI chá»‰ tham chiáº¿u Data táº¡i Ä‘iá»ƒm khá»Ÿi táº¡o khi kiáº¿n trÃºc Ä‘Ã£ chá»n thá»±c sá»± cáº§n.
+UI hiển thị và gọi Service. Business xử lý nghiệp vụ. Data truy xuất/lưu dữ liệu. Không đặt SQL, truy vấn DbContext hoặc công thức tồn kho trong Form. UI chỉ tham chiếu Data tại điểm khởi tạo khi kiến trúc đã chọn thực sự cần.
 
-## 5. Chuáº©n bá»‹ mÃ´i trÆ°á»ng
+## 5. Chuẩn bị môi trường
 
-Má»—i thÃ nh viÃªn chuáº©n bá»‹:
+Mỗi thành viên chuẩn bị:
 
-1. Visual Studio tÆ°Æ¡ng thÃ­ch framework cá»§a repository; cÃ i workload `.NET desktop development` vÃ  SDK tÆ°Æ¡ng á»©ng.
+1. Visual Studio tương thích framework của repository; cài workload `.NET desktop development` và SDK tương ứng.
 2. Git.
-3. SQL Server instance dÃ¹ng cho phÃ¡t triá»ƒn. CÃ³ thá»ƒ dÃ¹ng LocalDB trÃªn tá»«ng mÃ¡y náº¿u phÃ¹ há»£p cáº¥u hÃ¬nh nhÃ³m, hoáº·c SQL Server Express/Developer phÃ¹ há»£p má»¥c Ä‘Ã­ch sá»­ dá»¥ng.
-4. SSMS náº¿u cáº§n quáº£n lÃ½ vÃ  cháº¡y SQL script. SSMS lÃ  cÃ´ng cá»¥ quáº£n lÃ½, khÃ´ng pháº£i SQL Server vÃ  khÃ´ng pháº£i gÃ³i NuGet.
-5. GitHub Copilot trong Visual Studio náº¿u sá»­ dá»¥ng AI Agent; Ä‘Ã¢y lÃ  tÃ¹y chá»n, khÃ´ng báº¯t buá»™c Ä‘á»ƒ build/cháº¡y á»©ng dá»¥ng.
+3. SQL Server instance dùng cho phát triển. Có thể dùng LocalDB trên từng máy nếu phù hợp cấu hình nhóm, hoặc SQL Server Express/Developer phù hợp mục đích sử dụng.
+4. SSMS nếu cần quản lý và chạy SQL script. SSMS là công cụ quản lý, không phải SQL Server và không phải gói NuGet.
+5. GitHub Copilot trong Visual Studio nếu sử dụng AI Agent; đây là tùy chọn, không bắt buộc để build/chạy ứng dụng.
 
-Trong Developer PowerShell kiá»ƒm tra:
+Trong Developer PowerShell kiểm tra:
 
 ```powershell
 dotnet --list-sdks
 git --version
 ```
 
-`dotnet restore` chá»‰ táº£i thÆ° viá»‡n cá»§a dá»± Ã¡n; khÃ´ng cÃ i SQL Server, SDK hoáº·c workload Visual Studio.
+`dotnet restore` chỉ tải thư viện của dự án; không cài SQL Server, SDK hoặc workload Visual Studio.
 
-## 6. Láº¥y mÃ£ nguá»“n vÃ  cháº¡y láº§n Ä‘áº§u
+## 6. Lấy mã nguồn và chạy lần đầu
 
 ### 6.1. Clone repository
 
-Láº¥y URL tháº­t táº¡i GitHub â†’ Code. Thay `<URL_REPOSITORY>` vÃ  `<THU_MUC_REPOSITORY>` trong vÃ­ dá»¥ sau báº±ng thÃ´ng tin thá»±c táº¿:
+Lấy URL thật tại GitHub → Code. Thay `<URL_REPOSITORY>` và `<THU_MUC_REPOSITORY>` trong ví dụ sau bằng thông tin thực tế:
 
 ```powershell
 git clone <URL_REPOSITORY>
@@ -106,312 +105,309 @@ cd <THU_MUC_REPOSITORY>
 git branch -a
 ```
 
-Náº¿u nhÃ³m sá»­ dá»¥ng nhÃ¡nh `develop` vÃ  nhÃ¡nh Ä‘Ã£ tá»“n táº¡i trÃªn remote:
+Nhánh chính của dự án là `develop`. Chuyển sang nhánh này để lấy code chung:
 
 ```powershell
 git switch develop
 git pull --ff-only origin develop
 ```
 
-Trong repository này, `develop` là nhánh chính và m?c d?nh.
+Nếu nhánh chỉ có trên remote, chạy `git fetch origin` rồi `git switch --track origin/develop`. Nếu chưa thấy `origin/develop`, báo người quản lý repository.
 
-### 6.2. Má»Ÿ solution
+### 6.2. Mở solution
 
-- Má»Ÿ `.sln` hoáº·c `.slnx` hiá»‡n cÃ³ trong Visual Studio.
-- KhÃ´ng táº¡o project/solution má»›i sau khi clone.
-- Chá»n project UI lÃ m Startup Project: chuá»™t pháº£i project UI â†’ **Set as Startup Project**.
+- Mở `.sln` hoặc `.slnx` hiện có trong Visual Studio.
+- Không tạo project/solution mới sau khi clone.
+- Chọn project UI làm Startup Project: chuột phải project UI → **Set as Startup Project**.
 
-### 6.3. Restore vÃ  build
+### 6.3. Restore và build
 
-Cháº¡y táº¡i thÆ° má»¥c chá»©a solution. Náº¿u solution náº±m trong thÆ° má»¥c con cá»§a repository, chuyá»ƒn vÃ o thÆ° má»¥c Ä‘Ã³ trÆ°á»›c:
+Chạy tại thư mục chứa solution. Nếu solution nằm trong thư mục con của repository, chuyển vào thư mục đó trước:
 
 ```powershell
 dotnet restore
 dotnet build --no-restore
 ```
 
-Náº¿u bÃ¡o thiáº¿u SDK hoáº·c package khÃ´ng tÆ°Æ¡ng thÃ­ch, kiá»ƒm tra cáº¥u hÃ¬nh repository; khÃ´ng tá»± nÃ¢ng framework Ä‘á»ƒ bá» qua lá»—i.
+Nếu báo thiếu SDK hoặc package không tương thích, kiểm tra cấu hình repository; không tự nâng framework để bỏ qua lỗi.
 
-### 6.4. Thiáº¿t láº­p database
+### 6.4. Thiết lập database
 
-1. Láº¥y báº£n SQL script/schema Ä‘Æ°á»£c Báº£o Anh xÃ¡c nháº­n Ä‘Ã£ hoÃ n thiá»‡n.
-2. Káº¿t ná»‘i Ä‘Ãºng SQL Server instance trÃªn mÃ¡y báº±ng SSMS hoáº·c cÃ´ng cá»¥ nhÃ³m Ä‘ang dÃ¹ng.
-3. Cháº¡y script theo thá»© tá»± vÃ  hÆ°á»›ng dáº«n cá»§a báº£n schema Ä‘Ã³. CÃ¡c file Ä‘Æ°á»£c Ä‘Ã¡nh sá»‘ `01` Ä‘áº¿n `08` trong `Database/` lÃ  cáº¥u trÃºc dá»± kiáº¿n; file chá»‰ cÃ³ comment chÆ°a pháº£i script hoáº¡t Ä‘á»™ng.
-4. Seed data chá»‰ cháº¡y khi Ä‘Ã£ Ä‘Æ°á»£c nhÃ³m duyá»‡t. KhÃ´ng tá»± táº¡o tÃ i khoáº£n/máº­t kháº©u chung hoáº·c cháº¡y seed nhiá»u láº§n gÃ¢y trÃ¹ng dá»¯ liá»‡u.
-5. Cáº¥u hÃ¬nh connection string báº±ng cÆ¡ cháº¿ á»©ng dá»¥ng Ä‘Ã£ triá»ƒn khai. Náº¿u chÆ°a cÃ³ cÆ¡ cháº¿ Ä‘á»c cáº¥u hÃ¬nh, cáº§n hoÃ n thiá»‡n vá»›i ngÆ°á»i phá»¥ trÃ¡ch; khÃ´ng tá»± táº¡o `appsettings.json` hoáº·c máº·c Ä‘á»‹nh `App.config` sáº½ Ä‘Æ°á»£c Ä‘á»c.
-6. KhÃ´ng tá»± cháº¡y `Update-Database`, migration vÃ  script táº¡o schema cÃ¹ng lÃºc. NhÃ³m chá»n má»™t nguá»“n quáº£n lÃ½ schema rÃµ rÃ ng.
+1. Lấy bản SQL script/schema được Bảo Anh xác nhận đã hoàn thiện.
+2. Kết nối đúng SQL Server instance trên máy bằng SSMS hoặc công cụ nhóm đang dùng.
+3. Chạy script theo thứ tự và hướng dẫn của bản schema đó. Các file được đánh số `01` đến `08` trong `Database/` là cấu trúc dự kiến; file chỉ có comment chưa phải script hoạt động.
+4. Seed data chỉ chạy khi đã được nhóm duyệt. Không tự tạo tài khoản/mật khẩu chung hoặc chạy seed nhiều lần gây trùng dữ liệu.
+5. Cấu hình connection string bằng cơ chế ứng dụng đã triển khai. Nếu chưa có cơ chế đọc cấu hình, cần hoàn thiện với người phụ trách; không tự tạo `appsettings.json` hoặc mặc định `App.config` sẽ được đọc.
+6. Không tự chạy `Update-Database`, migration và script tạo schema cùng lúc. Nhóm chọn một nguồn quản lý schema rõ ràng.
 
-VÃ­ dá»¥ connection string local, thay database/instance báº±ng tÃªn tháº­t Ä‘Ã£ thá»‘ng nháº¥t:
+Ví dụ connection string local, thay database/instance bằng tên thật đã thống nhất:
 
 ```text
 Server=(localdb)\MSSQLLocalDB;Database=SmartInventoryDb;Integrated Security=True;
 ```
 
-Hoáº·c náº¿u mÃ¡y Ä‘Ã£ cÃ³ instance SQL Server Express tÃªn `SQLEXPRESS`:
+Hoặc nếu máy đã có instance SQL Server Express tên `SQLEXPRESS`:
 
 ```text
 Server=.\SQLEXPRESS;Database=SmartInventoryDb;Integrated Security=True;
 ```
 
-ÄÃ¢y lÃ  vÃ­ dá»¥ káº¿t ná»‘i, khÃ´ng kháº³ng Ä‘á»‹nh database hoáº·c instance nÃ y Ä‘Ã£ cÃ³ trÃªn mÃ¡y. ThÃ´ng tin Ä‘Äƒng nháº­p vÃ  cáº¥u hÃ¬nh chá»©a bÃ­ máº­t pháº£i Ä‘Æ°á»£c lÆ°u theo cÆ¡ cháº¿ local cá»§a nhÃ³m, khÃ´ng commit.
+Đây là ví dụ kết nối, không khẳng định database hoặc instance này đã có trên máy. Thông tin đăng nhập và cấu hình chứa bí mật phải được lưu theo cơ chế local của nhóm, không commit.
 
-### 6.5. Cháº¡y á»©ng dá»¥ng
+### 6.5. Chạy ứng dụng
 
-Nháº¥n **F5** trong Visual Studio, hoáº·c náº¿u project cÃ³ Ä‘Ãºng tÃªn/Ä‘Æ°á»ng dáº«n bÃªn dÆ°á»›i:
+Nhấn **F5** trong Visual Studio, hoặc nếu project có đúng tên/đường dẫn bên dưới:
 
 ```powershell
 dotnet run --project SmartInventoryManager.UI/SmartInventoryManager.UI.csproj
 ```
 
-Náº¿u project UI Ä‘ang cÃ³ tÃªn khÃ¡c, dÃ¹ng Ä‘Æ°á»ng dáº«n `.csproj` thá»±c táº¿. TÃ i khoáº£n demo do nhÃ³m cung cáº¥p sau khi pháº§n Ä‘Äƒng nháº­p vÃ  seed Ä‘Ã£ hoÃ n thiá»‡n. MÃ n hÃ¬nh khung cháº¡y Ä‘Æ°á»£c chÆ°a chá»©ng minh chá»©c nÄƒng nghiá»‡p vá»¥ Ä‘Ã£ hoÃ n thÃ nh.
+Nếu project UI đang có tên khác, dùng đường dẫn `.csproj` thực tế. Tài khoản demo do nhóm cung cấp sau khi phần đăng nhập và seed đã hoàn thiện. Màn hình khung chạy được chưa chứng minh chức năng nghiệp vụ đã hoàn thành.
 
-## 7. Quy táº¯c nghiá»‡p vá»¥ quan trá»ng
+## 7. Quy tắc nghiệp vụ quan trọng
 
-- Tá»“n kho theo sáº£n pháº©m + kho, khÃ´ng chá»‰ theo sáº£n pháº©m.
-- Business Service lÃ  nÆ¡i Ä‘iá»u phá»‘i cáº­p nháº­t tá»“n. KhÃ´ng dÃ¹ng Trigger tá»± tÄƒng/giáº£m Inventory.
-- Phiáº¿u, chi tiáº¿t, tá»“n vÃ  lá»‹ch sá»­ pháº£i nháº¥t quÃ¡n trong transaction.
-- Má»™t phiáº¿u chá»‰ tÃ¡c Ä‘á»™ng tá»“n má»™t láº§n; chá»‘ng gá»­i láº¡i vÃ  thao tÃ¡c Ä‘á»“ng thá»i.
-- KhÃ´ng xuáº¥t vÆ°á»£t tá»“n hoáº·c cho tá»“n Ã¢m khi chÆ°a cÃ³ nghiá»‡p vá»¥ cho phÃ©p.
-- Sá»± kiá»‡n cáº­p nháº­t UI/cáº£nh bÃ¡o phÃ¡t sau commit thÃ nh cÃ´ng.
-- Äiá»u chá»‰nh pháº£i cÃ³ lÃ½ do, ngÆ°á»i thá»±c hiá»‡n vÃ  sá»‘ lÆ°á»£ng trÆ°á»›c/sau.
+- Tồn kho theo sản phẩm + kho, không chỉ theo sản phẩm.
+- Business Service là nơi điều phối cập nhật tồn. Không dùng Trigger tự tăng/giảm Inventory.
+- Phiếu, chi tiết, tồn và lịch sử phải nhất quán trong transaction.
+- Một phiếu chỉ tác động tồn một lần; chống gửi lại và thao tác đồng thời.
+- Không xuất vượt tồn hoặc cho tồn âm khi chưa có nghiệp vụ cho phép.
+- Sự kiện cập nhật UI/cảnh báo phát sau commit thành công.
+- Điều chỉnh phải có lý do, người thực hiện và số lượng trước/sau.
 
-NgÆ°á»¡ng cáº¥u hÃ¬nh há»£p lá»‡: `0 <= ReorderPoint < MaximumStock`.
+Ngưỡng cấu hình hợp lệ: `0 <= ReorderPoint < MaximumStock`.
 
-| Äiá»u kiá»‡n | Tráº¡ng thÃ¡i |
+| Điều kiện | Trạng thái |
 |---|---|
 | `Quantity = 0` | `OUT_OF_STOCK` |
 | `0 < Quantity <= ReorderPoint` | `LOW_STOCK` |
 | `ReorderPoint < Quantity <= MaximumStock` | `NORMAL` |
 | `Quantity > MaximumStock` | `OVERSTOCK` |
 
-TÃ­nh tráº¡ng thÃ¡i táº¡i Business; UI hiá»ƒn thá»‹ káº¿t quáº£ báº±ng tiáº¿ng Viá»‡t. KhÃ´ng hard-code ngÆ°á»¡ng demo hoáº·c tÃ­nh láº¡i cÃ´ng thá»©c khÃ¡c á»Ÿ biá»ƒu Ä‘á»“.
+Tính trạng thái tại Business; UI hiển thị kết quả bằng tiếng Việt. Không hard-code ngưỡng demo hoặc tính lại công thức khác ở biểu đồ.
 
-## 8. Quy trÃ¬nh Git cá»§a nhÃ³m
+## 8. Quy trình Git của nhóm
 
-`develop` là nhánh chính và m?c d?nh. Thành viên t?o `feature/*`, `fix/*` ho?c `chore/*` t? `develop`, push nhánh nhi?m v? và t?o Pull Request v? `develop`. C?n ít nh?t m?t thành viên khác ki?m tra tru?c khi merge. Không commit ho?c push tr?c ti?p vào `develop` trong công vi?c thông thu?ng.
+| Nhánh | Mục đích | Cách sử dụng |
+|---|---|---|
+| `develop` | Nhánh chính chứa code chung của nhóm | Lấy code mới và nhận Pull Request đã được kiểm tra; không commit/push trực tiếp |
+| `feature/<ten-viec>` | Thêm chức năng | Tạo từ `develop`, làm việc rồi gửi Pull Request về `develop` |
+| `fix/<ten-loi>` | Sửa lỗi | Tạo từ `develop`, sửa rồi gửi Pull Request về `develop` |
+| `chore/<ten-viec>` | Bảo trì, cấu hình | Tạo từ `develop`, sửa rồi gửi Pull Request về `develop` |
 
-### 8.1. Báº¯t Ä‘áº§u nhiá»‡m vá»¥
+Mỗi nhánh dành cho một nhiệm vụ. Tên nhánh ngắn, không dấu, không khoảng trắng. Nhóm không dùng quy trình gộp `develop` sang `main`.
 
-TrÆ°á»›c khi chuyá»ƒn nhÃ¡nh, cháº¡y `git status` vÃ  lÆ°u/commit cÃ´ng viá»‡c hiá»‡n táº¡i. KhÃ´ng pull khi cÃ²n thay Ä‘á»•i chÆ°a xá»­ lÃ½.
+### 8.1. Bắt đầu nhiệm vụ
+
+Chạy tại thư mục gốc repository. Commit hoặc bảo quản công việc hiện tại trước khi đổi nhánh:
 
 ```powershell
 git status
 git switch develop
 git pull --ff-only origin develop
-git switch -c feature/khang-import
+git switch -c feature/import-receipt
 ```
 
-VÃ­ dá»¥ nhÃ¡nh:
+Thay `feature/import-receipt` bằng tên nhiệm vụ, ví dụ `feature/dashboard` hoặc `fix/export-stock`. Nếu pull không thành công vì lịch sử khác nhau, kiểm tra và phối hợp xử lý; không reset hoặc force push.
 
-- `feature/baoanh-database`
-- `feature/baoanh-architecture`
-- `feature/khang-import`
-- `feature/khang-export`
-- `feature/khang-inventory`
-- `feature/khiem-ui`
-- `feature/khiem-dashboard`
-- `fix/export-stock-validation`
+### 8.2. Lưu thay đổi
 
-Không code tr?c ti?p trên `develop`. Không s?a nhánh dang du?c thành viên khác dùng.
-
-### 8.2. PhÃ¡t triá»ƒn vÃ  commit
-
-- LÃ m Ä‘Ãºng pháº¡m vi, commit theo tá»«ng thay Ä‘á»•i cÃ³ Ã½ nghÄ©a.
-- Build vÃ  cháº¡y test liÃªn quan trÆ°á»›c khi push.
-- Xem `git diff`; chá»‰ stage file thuá»™c nhiá»‡m vá»¥. TrÃ¡nh `git add .` khi repository cÃ²n thay Ä‘á»•i khÃ´ng liÃªn quan hoáº·c cáº¥u hÃ¬nh cÃ¡ nhÃ¢n.
-
-VÃ­ dá»¥, thay Ä‘Æ°á»ng dáº«n báº±ng file thá»±c táº¿ Ä‘Ã£ sá»­a:
+Làm đúng phần việc được giao. Kiểm tra thay đổi và chỉ thêm file thuộc nhiệm vụ vào commit. Thay đường dẫn ví dụ bằng file thực tế:
 
 ```powershell
-git status
 git diff
 git add SmartInventoryManager.Business/Services/ImportService.cs
 git commit -m "feat(import): implement stock import workflow"
 ```
 
-### 8.3. Cáº­p nháº­t tá»« nhÃ¡nh tÃ­ch há»£p
+### 8.3. Cập nhật code chung và kiểm tra
 
-Sau khi lÆ°u/commit cÃ´ng viá»‡c vÃ  working tree sáº¡ch:
+Khi công việc đã được lưu và không còn thay đổi chưa commit:
 
 ```powershell
 git fetch origin
 git merge origin/develop
+dotnet restore
+dotnet build --no-restore
 ```
 
-Náº¿u cÃ³ conflict:
+Nếu có xung đột, xử lý từng file, phối hợp người phụ trách, stage và commit kết quả gộp rồi build lại. Không chọn bỏ toàn bộ code của đồng đội để hết xung đột. Chạy các kiểm thử liên quan theo mục 11 trước khi push.
 
-1. Kiá»ƒm tra cÃ¡c file xung Ä‘á»™t; phá»‘i há»£p ngÆ°á»i phá»¥ trÃ¡ch khi cáº§n.
-2. Sá»­a theo logic Ä‘Ãºng, khÃ´ng chá»n toÃ n bá»™ má»™t phÃ­a chá»‰ Ä‘á»ƒ háº¿t conflict.
-3. Stage file Ä‘Ã£ xá»­ lÃ½ vÃ  hoÃ n táº¥t merge.
-4. Build/test láº¡i.
-
-KhÃ´ng dÃ¹ng `reset --hard` hoáº·c force push Ä‘á»ƒ giáº£i quyáº¿t conflict. HÆ°á»›ng dáº«n nÃ y dÃ¹ng merge; náº¿u nhÃ³m chá»n rebase thÃ¬ thá»‘ng nháº¥t trÆ°á»›c.
-
-### 8.4. Push vÃ  táº¡o Pull Request
+### 8.4. Push và gửi Pull Request
 
 ```powershell
-git push -u origin feature/khang-import
+git push -u origin feature/import-receipt
 ```
 
-Táº¡o PR trÃªn GitHub:
+Trên GitHub, tạo Pull Request:
 
 - **Base:** `develop`.
-- **Compare:** nhÃ¡nh feature/fix Ä‘ang lÃ m.
-- MÃ´ táº£ váº¥n Ä‘á», thay Ä‘á»•i, cÃ¡ch kiá»ƒm tra vÃ  pháº§n chÆ°a hoÃ n thÃ nh.
-- Nhá» Ã­t nháº¥t má»™t thÃ nh viÃªn review; thay Ä‘á»•i liÃªn táº§ng cáº§n ngÆ°á»i phá»¥ trÃ¡ch liÃªn quan xem.
-- Merge khi Ä‘Ã£ xá»­ lÃ½ Ã½ kiáº¿n vÃ  cÃ¡c kiá»ƒm tra yÃªu cáº§u Ä‘áº¡t.
-- XÃ³a nhÃ¡nh feature sau merge khi nhÃ³m khÃ´ng cÃ²n cáº§n; khÃ´ng xÃ³a nhÃ¡nh cá»§a ngÆ°á»i khÃ¡c.
+- **Compare:** nhánh nhiệm vụ của bạn, ví dụ `feature/import-receipt`.
+- Ghi ngắn gọn nội dung thay đổi và kết quả kiểm tra.
+- Cần ít nhất một thành viên khác kiểm tra và chấp thuận trước khi merge. Thay đổi liên tầng cần người phụ trách liên quan xem.
+- Merge vào `develop` sau khi xử lý ý kiến và các kiểm tra đã đạt.
 
-Không hu?ng d?n g?p `develop` sang `main` ho?c `master`.
+### 8.5. Sau khi Pull Request được merge
 
-## 9. Quy Æ°á»›c commit
+Khi không còn thay đổi chưa commit:
 
-| Prefix | Khi sá»­ dá»¥ng | VÃ­ dá»¥ Ä‘Ãºng vá»›i dá»± Ã¡n |
+```powershell
+git switch develop
+git pull --ff-only origin develop
+git branch -d feature/import-receipt
+```
+
+Có thể xóa nhánh nhiệm vụ trên GitHub sau khi merge nếu không còn dùng. Nếu Git từ chối xóa nhánh cục bộ sau squash merge, giữ nhánh để kiểm tra lại; không tự dùng `-D`.
+
+Không force push `develop` hoặc viết lại lịch sử trong công việc hằng ngày.
+
+## 9. Quy ước commit
+
+| Prefix | Khi sử dụng | Ví dụ đúng với dự án |
 |---|---|---|
-| `feat` | ThÃªm chá»©c nÄƒng | `feat(export): validate available stock` |
-| `fix` | Sá»­a lá»—i | `fix(inventory): prevent duplicate stock updates` |
-| `docs` | Sá»­a tÃ i liá»‡u | `docs: update team setup guide` |
-| `style` | Äá»‹nh dáº¡ng, khÃ´ng Ä‘á»•i logic | `style: format C# source files` |
-| `refactor` | TÃ¡i cáº¥u trÃºc, khÃ´ng Ä‘á»•i hÃ nh vi | `refactor(product): simplify product validation` |
-| `perf` | Cáº£i thiá»‡n hiá»‡u nÄƒng | `perf(report): optimize inventory query` |
-| `test` | ThÃªm/sá»­a kiá»ƒm thá»­ | `test(export): cover insufficient stock` |
-| `chore` | Cáº¥u hÃ¬nh, dependency, báº£o trÃ¬ | `chore(agent): add shared project instructions` |
+| `feat` | Thêm chức năng | `feat(export): validate available stock` |
+| `fix` | Sửa lỗi | `fix(inventory): prevent duplicate stock updates` |
+| `docs` | Sửa tài liệu | `docs: update team setup guide` |
+| `style` | Định dạng, không đổi logic | `style: format C# source files` |
+| `refactor` | Tái cấu trúc, không đổi hành vi | `refactor(product): simplify product validation` |
+| `perf` | Cải thiện hiệu năng | `perf(report): optimize inventory query` |
+| `test` | Thêm/sửa kiểm thử | `test(export): cover insufficient stock` |
+| `chore` | Cấu hình, dependency, bảo trì | `chore(agent): add shared project instructions` |
 
-KhÃ´ng ghi thÃ´ng Ä‘iá»‡p chung chung nhÆ° `update`, `fix all`, `done`. KhÃ´ng Ä‘Æ°a máº­t kháº©u hoáº·c dá»¯ liá»‡u nháº¡y cáº£m vÃ o commit/PR.
+Không ghi thông điệp chung chung như `update`, `fix all`, `done`. Không đưa mật khẩu hoặc dữ liệu nhạy cảm vào commit/PR.
 
-## 10. HÆ°á»›ng dáº«n sá»­ dá»¥ng Copilot / AI Agent
+## 10. Hướng dẫn sử dụng Copilot / AI Agent
 
-### 10.1. Báº­t quy táº¯c dÃ¹ng chung
+### 10.1. Bật quy tắc dùng chung
 
-File `.github/copilot-instructions.md` Ä‘Æ°á»£c commit cÃ¹ng repository. Sau khi pull, má»—i thÃ nh viÃªn tá»± báº­t trÃªn Visual Studio cá»§a mÃ¬nh:
+File `.github/copilot-instructions.md` được commit cùng repository. Sau khi pull, mỗi thành viên tự bật trên Visual Studio của mình:
 
-1. VÃ o **Tools â†’ Options**.
-2. TÃ¬m **GitHub â†’ Copilot â†’ Copilot Chat**; giao diá»‡n má»›i cÃ³ thá»ƒ náº±m trong **All Settings**.
-3. Báº­t **Enable custom instructions** hoáº·c tÃ¹y chá»n Ä‘á»c `.github/copilot-instructions.md` tÆ°Æ¡ng á»©ng.
-4. Má»Ÿ cuá»™c trÃ² chuyá»‡n má»›i.
-5. Kiá»ƒm tra **References** trong cÃ¢u tráº£ lá»i cÃ³ file hÆ°á»›ng dáº«n.
+1. Vào **Tools → Options**.
+2. Tìm **GitHub → Copilot → Copilot Chat**; giao diện mới có thể nằm trong **All Settings**.
+3. Bật **Enable custom instructions** hoặc tùy chọn đọc `.github/copilot-instructions.md` tương ứng.
+4. Mở cuộc trò chuyện mới.
+5. Kiểm tra **References** trong câu trả lời có file hướng dẫn.
 
-`.agent/RULE.md` lÃ  báº£n cÃ¡ nhÃ¢n, khÃ´ng tá»± thay tháº¿ file Copilot Ä‘á»c. Khi sá»­a quy táº¯c dÃ¹ng chung, táº¡o PR Ä‘á»ƒ nhÃ³m review; Ä‘á»“ng bá»™ báº£n cÃ¡ nhÃ¢n náº¿u Ä‘ang giá»¯. Báº£n dá»‹ch tiáº¿ng Viá»‡t trong Documentation cÃ³ thá»ƒ lÆ°u cÃ¹ng repo Ä‘á»ƒ tham kháº£o.
+`.agent/RULE.md` là bản cá nhân, không tự thay thế file Copilot đọc. Khi sửa quy tắc dùng chung, tạo PR để nhóm review; đồng bộ bản cá nhân nếu đang giữ. Bản dịch tiếng Việt trong Documentation có thể lưu cùng repo để tham khảo.
 
-### 10.2. CÃ¡ch giao viá»‡c
+### 10.2. Cách giao việc
 
-Má»—i prompt cáº§n cÃ³:
+Mỗi prompt cần có:
 
-- **NgÆ°á»i/pháº¡m vi:** lÃ m theo pháº§n cá»§a ai.
-- **Má»¥c tiÃªu:** chá»©c nÄƒng cá»¥ thá»ƒ cáº§n hoÃ n thÃ nh.
-- **File/contract:** file liÃªn quan, Ä‘áº§u vÃ o/Ä‘áº§u ra, máº«u Ä‘ang dÃ¹ng.
-- **RÃ ng buá»™c:** giá»¯ cÃ´ng nghá»‡, quyá»n sá»­a, quy táº¯c nghiá»‡p vá»¥.
-- **Kiá»ƒm tra:** build, test vÃ  tiÃªu chÃ­ Ä‘áº¡t.
+- **Người/phạm vi:** làm theo phần của ai.
+- **Mục tiêu:** chức năng cụ thể cần hoàn thành.
+- **File/contract:** file liên quan, đầu vào/đầu ra, mẫu đang dùng.
+- **Ràng buộc:** giữ công nghệ, quyền sửa, quy tắc nghiệp vụ.
+- **Kiểm tra:** build, test và tiêu chí đạt.
 
-Agent Ä‘Æ°á»£c Ä‘á»c táº§ng khÃ¡c Ä‘á»ƒ hiá»ƒu há»£p Ä‘á»“ng. Sá»­a sang pháº§n khÃ¡c hoáº·c thÃªm gÃ³i chÆ°a Ä‘Æ°á»£c duyá»‡t pháº£i Ä‘Æ°á»£c cho phÃ©p rÃµ rÃ ng. KhÃ´ng báº­t quyá»n rá»™ng chá»‰ Ä‘á»ƒ agent vÆ°á»£t qua quy táº¯c cá»§a nhÃ³m.
+Agent được đọc tầng khác để hiểu hợp đồng. Sửa sang phần khác hoặc thêm gói chưa được duyệt phải được cho phép rõ ràng. Không bật quyền rộng chỉ để agent vượt qua quy tắc của nhóm.
 
 ### 10.3. Prompt cho Khang
 
 ```text
-LÃ m theo pháº¡m vi cá»§a Khang: Backend + Warehouse Operations.
-Äá»c .github/copilot-instructions.md trÆ°á»›c khi sá»­a.
+Làm theo phạm vi của Khang: Backend + Warehouse Operations.
+Đọc .github/copilot-instructions.md trước khi sửa.
 
-Má»¥c tiÃªu: triá»ƒn khai ExportService theo há»£p Ä‘á»“ng vÃ  mÃ´ hÃ¬nh Ä‘Ã£ cÃ³.
-Chá»‰ sá»­a pháº§n Business vÃ  cÃ¡c test nghiá»‡p vá»¥ Ä‘Æ°á»£c giao.
+Mục tiêu: triển khai ExportService theo hợp đồng và mô hình đã có.
+Chỉ sửa phần Business và các test nghiệp vụ được giao.
 
-YÃªu cáº§u:
-- Kiá»ƒm tra sá»‘ lÆ°á»£ng há»£p lá»‡ vÃ  Ä‘á»§ tá»“n táº¡i Ä‘Ãºng kho.
-- Má»—i phiáº¿u chá»‰ giáº£m tá»“n má»™t láº§n.
-- Phiáº¿u, tá»“n vÃ  lá»‹ch sá»­ Ä‘Æ°á»£c lÆ°u nháº¥t quÃ¡n.
-- PhÃ¡t sá»± kiá»‡n sau commit; UI refresh lá»—i khÃ´ng Ä‘Æ°á»£c xuáº¥t láº¡i.
-- KhÃ´ng tá»± sá»­a Data, UI hoáº·c thÃªm thÆ° viá»‡n.
+Yêu cầu:
+- Kiểm tra số lượng hợp lệ và đủ tồn tại đúng kho.
+- Mỗi phiếu chỉ giảm tồn một lần.
+- Phiếu, tồn và lịch sử được lưu nhất quán.
+- Phát sự kiện sau commit; UI refresh lỗi không được xuất lại.
+- Không tự sửa Data, UI hoặc thêm thư viện.
 
-Kiá»ƒm tra: xuáº¥t 50 khi chá»‰ cÃ³ 20 pháº£i bá»‹ tá»« chá»‘i, khÃ´ng Ä‘á»•i tá»“n.
-TrÆ°á»›c khi sá»­a, liá»‡t kÃª file dá»± kiáº¿n thay Ä‘á»•i rá»“i thá»±c hiá»‡n.
-Náº¿u cáº§n thay Ä‘á»•i ngoÃ i pháº¡m vi, bÃ¡o há»£p Ä‘á»“ng cáº§n bá»• sung.
-Sau cÃ¹ng, build/test phÃ¹ há»£p vÃ  bÃ¡o káº¿t quáº£ thá»±c táº¿.
+Kiểm tra: xuất 50 khi chỉ có 20 phải bị từ chối, không đổi tồn.
+Trước khi sửa, liệt kê file dự kiến thay đổi rồi thực hiện.
+Nếu cần thay đổi ngoài phạm vi, báo hợp đồng cần bổ sung.
+Sau cùng, build/test phù hợp và báo kết quả thực tế.
 ```
 
-### 10.4. Prompt cho Báº£o Anh
+### 10.4. Prompt cho Bảo Anh
 
 ```text
-LÃ m theo pháº¡m vi cá»§a Báº£o Anh: Database + Architecture.
-Äá»c .github/copilot-instructions.md trÆ°á»›c khi sá»­a.
+Làm theo phạm vi của Bảo Anh: Database + Architecture.
+Đọc .github/copilot-instructions.md trước khi sửa.
 
-Má»¥c tiÃªu: hoÃ n thiá»‡n mÃ´ hÃ¬nh tá»“n theo sáº£n pháº©m vÃ  kho dá»±a trÃªn
-schema vÃ  há»£p Ä‘á»“ng Ä‘Ã£ Ä‘Æ°á»£c nhÃ³m thá»‘ng nháº¥t.
+Mục tiêu: hoàn thiện mô hình tồn theo sản phẩm và kho dựa trên
+schema và hợp đồng đã được nhóm thống nhất.
 
-Chá»‰ sá»­a Data vÃ  SQL script liÃªn quan. Báº£o Ä‘áº£m khÃ³a, FK,
-constraint vÃ  cÆ¡ cháº¿ concurrency phÃ¹ há»£p. KhÃ´ng táº¡o Trigger
-tá»± tÄƒng/giáº£m Inventory, khÃ´ng sá»­a Business/UI hoáº·c tá»± cháº¡y
-script lÃ m thay Ä‘á»•i database tháº­t.
+Chỉ sửa Data và SQL script liên quan. Bảo đảm khóa, FK,
+constraint và cơ chế concurrency phù hợp. Không tạo Trigger
+tự tăng/giảm Inventory, không sửa Business/UI hoặc tự chạy
+script làm thay đổi database thật.
 
-Náº¿u há»£p Ä‘á»“ng chung cáº§n Ä‘á»•i, nÃªu áº£nh hÆ°á»Ÿng Ä‘á»ƒ phá»‘i há»£p.
-Build vÃ  kiá»ƒm tra phÃ¹ há»£p; bÃ¡o pháº§n chÆ°a kiá»ƒm chá»©ng.
+Nếu hợp đồng chung cần đổi, nêu ảnh hưởng để phối hợp.
+Build và kiểm tra phù hợp; báo phần chưa kiểm chứng.
 ```
 
-### 10.5. Prompt cho KhiÃªm
+### 10.5. Prompt cho Khiêm
 
 ```text
-LÃ m theo pháº¡m vi cá»§a KhiÃªm: UI + Dashboard + Analytics.
-Äá»c .github/copilot-instructions.md trÆ°á»›c khi sá»­a.
+Làm theo phạm vi của Khiêm: UI + Dashboard + Analytics.
+Đọc .github/copilot-instructions.md trước khi sửa.
 
-Má»¥c tiÃªu: hoÃ n thiá»‡n mÃ n hÃ¬nh tá»“n kho, dÃ¹ng Service/DTO Ä‘Ã£ cÃ³.
-Chá»‰ sá»­a UI vÃ  pháº§n kiá»ƒm thá»­ giao diá»‡n liÃªn quan.
+Mục tiêu: hoàn thiện màn hình tồn kho, dùng Service/DTO đã có.
+Chỉ sửa UI và phần kiểm thử giao diện liên quan.
 
-Hiá»ƒn thá»‹ sáº£n pháº©m, kho, sá»‘ lÆ°á»£ng, Ä‘Æ¡n vá»‹ vÃ  tráº¡ng thÃ¡i tráº£ vá»
-tá»« Business. DÃ¹ng control WinForms/thÆ° viá»‡n Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t.
-UI tiáº¿ng Viá»‡t, cÃ³ tÃ¬m kiáº¿m/lá»c phÃ¹ há»£p, tráº¡ng thÃ¡i táº£i/rá»—ng/lá»—i,
-TabIndex há»£p lÃ½ vÃ  layout khÃ´ng cáº¯t chá»¯ khi Ä‘á»•i DPI.
+Hiển thị sản phẩm, kho, số lượng, đơn vị và trạng thái trả về
+từ Business. Dùng control WinForms/thư viện đã được duyệt.
+UI tiếng Việt, có tìm kiếm/lọc phù hợp, trạng thái tải/rỗng/lỗi,
+TabIndex hợp lý và layout không cắt chữ khi đổi DPI.
 
-KhÃ´ng truy váº¥n DbContext trá»±c tiáº¿p tá»« Form, khÃ´ng tÃ­nh láº¡i
-StockStatus, khÃ´ng tá»± sá»­a Business/Data hoáº·c cÃ i gÃ³i UI má»›i.
-Náº¿u Service cÃ²n thiáº¿u, bÃ¡o há»£p Ä‘á»“ng cáº§n cÃ³, khÃ´ng dÃ¹ng dá»¯ liá»‡u
-giáº£ Ä‘á»ƒ tuyÃªn bá»‘ chá»©c nÄƒng Ä‘Ã£ hoÃ n thÃ nh.
+Không truy vấn DbContext trực tiếp từ Form, không tính lại
+StockStatus, không tự sửa Business/Data hoặc cài gói UI mới.
+Nếu Service còn thiếu, báo hợp đồng cần có, không dùng dữ liệu
+giả để tuyên bố chức năng đã hoàn thành.
 
-Build, kiá»ƒm tra Designer vÃ  cháº¡y UI náº¿u cÃ³ mÃ´i trÆ°á»ng.
+Build, kiểm tra Designer và chạy UI nếu có môi trường.
 ```
 
-### 10.6. Kiá»ƒm tra code do AI táº¡o
+### 10.6. Kiểm tra code do AI tạo
 
-- Xem danh sÃ¡ch file Ä‘á»•i vÃ  `git diff` trÆ°á»›c khi commit.
-- Kiá»ƒm tra khÃ´ng sá»­a ngoÃ i phÃ¢n cÃ´ng hoáº·c cÃ i gÃ³i khÃ´ng Ä‘Æ°á»£c duyá»‡t.
-- Kiá»ƒm tra khÃ´ng cÃ³ code giáº£, lá»—i bá»‹ nuá»‘t, máº­t kháº©u hard-code hoáº·c dá»¯ liá»‡u máº¥t khi tháº¥t báº¡i.
-- Äá»‘i chiáº¿u Ä‘iá»u kiá»‡n tá»“n vÃ  transaction báº±ng test phÃ¹ há»£p.
-- Build thÃ nh cÃ´ng khÃ´ng thay tháº¿ review nghiá»‡p vá»¥ hoáº·c kiá»ƒm tra giao diá»‡n.
-- Náº¿u agent chÆ°a cháº¡y Ä‘Æ°á»£c kiá»ƒm tra, PR pháº£i nÃªu rÃµ giá»›i háº¡n Ä‘Ã³.
+- Xem danh sách file đổi và `git diff` trước khi commit.
+- Kiểm tra không sửa ngoài phân công hoặc cài gói không được duyệt.
+- Kiểm tra không có code giả, lỗi bị nuốt, mật khẩu hard-code hoặc dữ liệu mất khi thất bại.
+- Đối chiếu điều kiện tồn và transaction bằng test phù hợp.
+- Build thành công không thay thế review nghiệp vụ hoặc kiểm tra giao diện.
+- Nếu agent chưa chạy được kiểm tra, PR phải nêu rõ giới hạn đó.
 
-## 11. Kiá»ƒm thá»­ vÃ  Ä‘iá»u kiá»‡n trÆ°á»›c PR
+## 11. Kiểm thử và điều kiện trước PR
 
-Cháº¡y táº¡i thÆ° má»¥c solution:
+Chạy tại thư mục solution:
 
 ```powershell
 dotnet restore
 dotnet build --no-restore
 ```
 
-Khi Ä‘Ã£ cÃ³ project test Ä‘Æ°á»£c build vÃ  framework test Ä‘Æ°á»£c duyá»‡t:
+Khi đã có project test được build và framework test được duyệt:
 
 ```powershell
 dotnet test --no-build
 ```
 
-Náº¿u chÆ°a cÃ³ test, khÃ´ng coi viá»‡c lá»‡nh cháº¡y khÃ´ng lá»—i lÃ  báº±ng chá»©ng nghiá»‡p vá»¥ Ä‘Æ°á»£c kiá»ƒm thá»­. DÃ¹ng analyzer vÃ  `.editorconfig` cá»§a repository; chá»‰ cháº¡y kiá»ƒm tra Ä‘á»‹nh dáº¡ng khi SDK/cáº¥u hÃ¬nh há»— trá»£, khÃ´ng tá»± format toÃ n bá»™ code cá»§a Ä‘á»“ng Ä‘á»™i.
+Nếu chưa có test, không coi việc lệnh chạy không lỗi là bằng chứng nghiệp vụ được kiểm thử. Dùng analyzer và `.editorconfig` của repository; chỉ chạy kiểm tra định dạng khi SDK/cấu hình hỗ trợ, không tự format toàn bộ code của đồng đội.
 
-- Unit test: Business, validation, tÃ­nh tá»“n/tráº¡ng thÃ¡i, cáº£nh bÃ¡o, phÃ¢n quyá»n khi cÃ³ thá»ƒ kiá»ƒm tra Ä‘á»™c láº­p.
-- Integration test: dÃ¹ng database test riÃªng cho truy váº¥n, lÆ°u dá»¯ liá»‡u, constraint, transaction vÃ  concurrency.
-- KhÃ´ng dÃ¹ng EF InMemory Ä‘á»ƒ káº¿t luáº­n hÃ nh vi SQL Server Ä‘Ã£ Ä‘Ãºng.
-- KhÃ´ng cháº¡y test ghi dá»¯ liá»‡u trÃªn database tháº­t.
-- UI: kiá»ƒm tra má»Ÿ Designer, cháº¡y tÃ¡c vá»¥ bá»‹ áº£nh hÆ°á»Ÿng, bÃ n phÃ­m, tiáº¿ng Viá»‡t dÃ i, resize vÃ  scaling 100/125/150/200% khi cÃ³ mÃ´i trÆ°á»ng.
+- Unit test: Business, validation, tính tồn/trạng thái, cảnh báo, phân quyền khi có thể kiểm tra độc lập.
+- Integration test: dùng database test riêng cho truy vấn, lưu dữ liệu, constraint, transaction và concurrency.
+- Không dùng EF InMemory để kết luận hành vi SQL Server đã đúng.
+- Không chạy test ghi dữ liệu trên database thật.
+- UI: kiểm tra mở Designer, chạy tác vụ bị ảnh hưởng, bàn phím, tiếng Việt dài, resize và scaling 100/125/150/200% khi có môi trường.
 
-Checklist trÆ°á»›c PR:
+Checklist trước PR:
 
-- [ ] ÄÃºng pháº¡m vi; thay Ä‘á»•i liÃªn táº§ng Ä‘Ã£ Ä‘Æ°á»£c thá»‘ng nháº¥t.
-- [ ] KhÃ´ng thÃªm cÃ´ng nghá»‡/dependency chÆ°a Ä‘Æ°á»£c duyá»‡t.
-- [ ] Build Ä‘áº¡t; test liÃªn quan Ä‘áº¡t hoáº·c nÃªu rÃµ chÆ°a cháº¡y.
-- [ ] KhÃ´ng cÃ³ lá»—i/cáº£nh bÃ¡o má»›i do thay Ä‘á»•i; lá»—i cÅ© Ä‘Æ°á»£c ghi rÃµ.
-- [ ] KhÃ´ng commit bÃ­ máº­t, file mÃ¡y cÃ¡ nhÃ¢n hoáº·c tráº¡ng thÃ¡i agent.
-- [ ] UI dÃ¹ng tiáº¿ng Viá»‡t; chÃº thÃ­ch `[COLOR CONFIG]` Ä‘Æ°á»£c giá»¯ náº¿u sá»­a mÃ u.
-- [ ] PR mÃ´ táº£ hÃ nh vi thá»±c táº¿, khÃ´ng bÃ¡o chá»©c nÄƒng khung lÃ  hoÃ n thiá»‡n.
+- [ ] Đúng phạm vi; thay đổi liên tầng đã được thống nhất.
+- [ ] Không thêm công nghệ/dependency chưa được duyệt.
+- [ ] Build đạt; test liên quan đạt hoặc nêu rõ chưa chạy.
+- [ ] Không có lỗi/cảnh báo mới do thay đổi; lỗi cũ được ghi rõ.
+- [ ] Không commit bí mật, file máy cá nhân hoặc trạng thái agent.
+- [ ] UI dùng tiếng Việt; chú thích `[COLOR CONFIG]` được giữ nếu sửa màu.
+- [ ] PR mô tả hành vi thực tế, không báo chức năng khung là hoàn thiện.
 
-## 12. File khÃ´ng commit vÃ  cáº¥u hÃ¬nh cÃ¡ nhÃ¢n
+## 12. File không commit và cấu hình cá nhân
 
-`.gitignore` tá»‘i thiá»ƒu cáº§n phÃ¹ há»£p cáº¥u trÃºc hiá»‡n cÃ³:
+`.gitignore` tối thiểu cần phù hợp cấu trúc hiện có:
 
 ```gitignore
 .vs/
@@ -424,27 +420,27 @@ Checklist trÆ°á»›c PR:
 *.ldf
 ```
 
-CÃ¡c file cáº¥u hÃ¬nh local chá»©a bÃ­ máº­t pháº£i Ä‘Æ°á»£c bá» qua theo tÃªn tháº­t nhÃ³m chá»n. KhÃ´ng bá» qua toÃ n bá»™ `.github/`: nhÃ³m cáº§n chia sáº» `.github/copilot-instructions.md` vÃ  cáº¥u hÃ¬nh cá»™ng tÃ¡c.
+Các file cấu hình local chứa bí mật phải được bỏ qua theo tên thật nhóm chọn. Không bỏ qua toàn bộ `.github/`: nhóm cần chia sẻ `.github/copilot-instructions.md` và cấu hình cộng tác.
 
-Náº¿u trÆ°á»›c Ä‘Ã¢y Ä‘Ã£ bá» qua file Copilot trong `.git/info/exclude`, bá» dÃ²ng Ä‘Ã³ khi nhÃ³m quyáº¿t Ä‘á»‹nh chia sáº» file qua Git. Ignore khÃ´ng tá»± ngá»«ng theo dÃµi file Ä‘Ã£ commit; xá»­ lÃ½ vá»›i ngÆ°á»i phá»¥ trÃ¡ch repository náº¿u cáº§n.
+Nếu trước đây đã bỏ qua file Copilot trong `.git/info/exclude`, bỏ dòng đó khi nhóm quyết định chia sẻ file qua Git. Ignore không tự ngừng theo dõi file đã commit; xử lý với người phụ trách repository nếu cần.
 
-## 13. Má»™t sá»‘ lá»—i thÆ°á»ng gáº·p
+## 13. Một số lỗi thường gặp
 
-| Váº¥n Ä‘á» | CÃ¡ch kiá»ƒm tra |
+| Vấn đề | Cách kiểm tra |
 |---|---|
-| KhÃ´ng tÃ¬m tháº¥y SDK / NETSDK1045 | Kiá»ƒm tra `dotnet --list-sdks`, target framework vÃ  global.json; cÃ i SDK Ä‘Ãºng |
-| Restore tháº¥t báº¡i | Kiá»ƒm tra máº¡ng, nguá»“n NuGet vÃ  phiÃªn báº£n gÃ³i; khÃ´ng tá»± Ä‘á»•i stack |
-| GÃ³i EF khÃ´ng tÆ°Æ¡ng thÃ­ch | Äá»‘i chiáº¿u target framework; cÃ¡c gÃ³i EF dÃ¹ng cÃ¹ng phiÃªn báº£n cá»¥ thá»ƒ |
-| KhÃ´ng káº¿t ná»‘i SQL Server | Kiá»ƒm tra dá»‹ch vá»¥/instance, database, cÃ¡ch xÃ¡c thá»±c vÃ  cáº¥u hÃ¬nh á»©ng dá»¥ng |
-| Thiáº¿u báº£ng hoáº·c cá»™t | Kiá»ƒm tra database/schema Ä‘Ã£ táº¡o Ä‘Ãºng báº£n, khÃ´ng tá»± cháº¡y migration chá»“ng script |
-| Copilot chÆ°a tháº¥y quy táº¯c | Kiá»ƒm tra file á»Ÿ gá»‘c repository, tÃªn .md, báº­t custom instructions vÃ  má»Ÿ chat má»›i |
-| Form Designer bÃ¡o lá»—i | Kiá»ƒm tra build, constructor vÃ  file Designer; khÃ´ng gá»i database trong luá»“ng thiáº¿t káº¿ Form |
-| Git pull khÃ´ng fast-forward | Dá»«ng, kiá»ƒm tra nhÃ¡nh/lá»‹ch sá»­ vÃ  phá»‘i há»£p nhÃ³m; khÃ´ng force/reset Ä‘á»ƒ bá» lá»—i |
+| Không tìm thấy SDK / NETSDK1045 | Kiểm tra `dotnet --list-sdks`, target framework và global.json; cài SDK đúng |
+| Restore thất bại | Kiểm tra mạng, nguồn NuGet và phiên bản gói; không tự đổi stack |
+| Gói EF không tương thích | Đối chiếu target framework; các gói EF dùng cùng phiên bản cụ thể |
+| Không kết nối SQL Server | Kiểm tra dịch vụ/instance, database, cách xác thực và cấu hình ứng dụng |
+| Thiếu bảng hoặc cột | Kiểm tra database/schema đã tạo đúng bản, không tự chạy migration chồng script |
+| Copilot chưa thấy quy tắc | Kiểm tra file ở gốc repository, tên .md, bật custom instructions và mở chat mới |
+| Form Designer báo lỗi | Kiểm tra build, constructor và file Designer; không gọi database trong luồng thiết kế Form |
+| Git pull không fast-forward | Dừng, kiểm tra nhánh/lịch sử và phối hợp nhóm; không force/reset để bỏ lỗi |
 
-## 14. TÃ i liá»‡u tham kháº£o
+## 14. Tài liệu tham khảo
 
-- [Táº¡o á»©ng dá»¥ng Windows Forms vá»›i .NET](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/get-started/create-app-visual-studio)
-- [CÃ i Ä‘áº·t Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/get-started/overview/install)
-- [TÃ¹y chá»‰nh Copilot Chat trong Visual Studio](https://learn.microsoft.com/en-us/visualstudio/ide/copilot-chat-context?view=visualstudio)
+- [Tạo ứng dụng Windows Forms với .NET](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/get-started/create-app-visual-studio)
+- [Cài đặt Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/get-started/overview/install)
+- [Tùy chỉnh Copilot Chat trong Visual Studio](https://learn.microsoft.com/en-us/visualstudio/ide/copilot-chat-context?view=visualstudio)
 
-Má»i thay Ä‘á»•i vá» cÃ´ng nghá»‡, nghiá»‡p vá»¥ vÃ  phÃ¢n cÃ´ng dÃ¹ng chung cáº§n Ä‘Æ°á»£c cáº­p nháº­t trong tÃ i liá»‡u/quy táº¯c qua PR, trÃ¡nh Ä‘á»ƒ má»—i thÃ nh viÃªn Ã¡p dá»¥ng má»™t phiÃªn báº£n khÃ¡c nhau.
+Mọi thay đổi về công nghệ, nghiệp vụ và phân công dùng chung cần được cập nhật trong tài liệu/quy tắc qua PR, tránh để mỗi thành viên áp dụng một phiên bản khác nhau.
