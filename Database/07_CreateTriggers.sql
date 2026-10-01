@@ -1,0 +1,3 @@
+-- SmartInventoryManager database script skeleton: CreateTriggers
+-- Status: not implemented. Do not execute or use this file to create a database.
+-- Inventory quantity changes must be coordinated by Business Services; do not implement auto-increment/decrement triggers.

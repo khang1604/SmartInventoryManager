@@ -1,0 +1,2 @@
+-- SmartInventoryManager database script skeleton: CreateTables
+-- Status: not implemented. Do not execute or use this file to create a database.

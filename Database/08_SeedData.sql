@@ -1,0 +1,2 @@
+-- SmartInventoryManager database script skeleton: SeedData
+-- Status: not implemented. Do not execute or use this file to create a database.

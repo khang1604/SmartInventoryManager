@@ -1,0 +1,2 @@
+-- SmartInventoryManager database script skeleton: CreateIndexes
+-- Status: not implemented. Do not execute or use this file to create a database.

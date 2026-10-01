@@ -1,0 +1,10 @@
+# Agent state
+.agent/
+
+# Visual Studio
+.vs/
+*.csproj.user
+
+# Build output
+bin/
+obj/
