@@ -7,10 +7,11 @@ RULE.md and copilot-instructions.md must contain identical English instructions.
 - Build a multi-warehouse desktop application with C#, Windows Forms, Visual Studio, SQL Server, Entity Framework, ADO.NET, and LINQ.
 - Inspect the solution, relevant code, .csproj, global.json, Directory.Build.props, and Directory.Packages.props when present before editing. Repository configuration determines actual versions.
 - New solution default: Visual Studio 2026, .NET 10, EF Core 10.x. Preserve existing .NET 8/EF Core 8.x or .NET Framework/EF6 configurations. Do not mix EF6 and EF Core or migrate frameworks without a request.
-- Keep Microsoft.EntityFrameworkCore.* packages at the same exact compatible stable version; do not automatically upgrade major versions.
+- Keep Microsoft.EntityFrameworkCore.\* packages at the same exact compatible stable version; do not automatically upgrade major versions.
 - Do not introduce web stacks, web APIs, or a different UI framework without a requirement.
 
 ### Technology authorization
+
 - Approved core technologies: C#, the repository's current .NET target, Windows Forms, SQL Server, Entity Framework, LINQ, and ADO.NET. Reading documentation does not authorize adopting a new technology.
 - Follow the repository's pinned versions and tools. Do not independently change framework, database, UI toolkit, architecture, package manager, or major dependency versions.
 - A new library, service, hosted platform, alternative ORM, commercial UI toolkit, chart/export package, test framework, or AI integration requires explicit user/team authorization before installation or implementation. Do not introduce it indirectly through a helper or transitive integration.
@@ -19,7 +20,9 @@ RULE.md and copilot-instructions.md must contain identical English instructions.
 - Course requirements are not permission to replace the stack. Do not add a library just to make the project look more modern.
 
 ### Seven-step YAGNI workflow
+
 Before coding, follow this order and stop at the first sufficient solution:
+
 1. Needed for the current requirement? If not, skip it.
 2. Already in the codebase? Reuse or extend it.
 3. Solved by the .NET standard library? Use it.
@@ -27,16 +30,19 @@ Before coding, follow this order and stop at the first sufficient solution:
 5. Solved by an installed dependency? Reuse that dependency.
 6. Solved by one readable statement? Keep it short without sacrificing clarity or error handling.
 7. Only then write the minimum necessary custom code.
+
 - Do not add speculative microservices, CQRS, event buses, generic frameworks, abstractions, empty files, or fake functionality.
 
 ## 2. Team Ownership
 
 ### Ownership map
+
 - **Bảo Anh — Database + Architecture:** database, ERD, Entity models, EF DbContext, repositories/UnitOfWork when justified, architecture, SQL scripts, constraints, indexes, views, and supporting stored procedures.
 - **Khang — Backend + Warehouse Operations:** Business Services, warehouse operations, imports, exports, inventory, stock-alert backend, business validation, receipt workflows, stock updates, and Business tests.
 - **Khiêm — UI + Dashboard + Analytics:** Windows Forms UI, Dashboard, Analytics, charts, reports, notification UI, UI interactions, and related presentation/query logic within agreed contracts.
 
 ### Active scope enforcement
+
 - Before edits, identify the active owner, requested feature, allowed components/files, and shared contracts. Use explicit task instructions or documented assignment; never infer ownership merely from a login name, file author, or branch name.
 - If the task does not establish an owner/scope, perform read-only inspection and ask for the missing scope before implementation. When the user assigns a clear feature, map it to the ownership above without asking redundantly.
 - Default write scope is limited to the active owner's requested feature. Read other layers as needed to understand contracts; do not modify another owner's code, tests, configuration, or dependencies just to complete your part.
@@ -119,6 +125,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 ## 9. WinForms UI/UX
 
 ### Vietnamese UI and WinForms implementation
+
 - User-facing labels, notifications, dialogs, alerts, and instructions must use natural, clear Vietnamese.
 - Never expose SQL, DbContext, schemas, stack traces, raw exceptions, or internal implementation details to end users. Developer discussions may use technical terms when useful; summaries should remain understandable.
 - Keep long operations responsive, show busy state, and prevent repeated Save actions.
@@ -127,6 +134,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 - Unsubscribe disposed Forms from events whose publishers outlive them.
 
 ### Colors and annotations
+
 - Palette: primary #228be6; confirm/approve #40c057; cancel/delete/danger #ff6b6b; primary action/download #1c7ed6.
 - Color never conveys meaning alone; add labels/icons. Check actual contrast and adjust text colors/shades as needed.
 - Every hand-written foreground/background/border color configuration needs an adjacent comment: // [COLOR CONFIG]: description, color, purpose. This includes direct BackColor/ForeColor/custom border assignments.
@@ -136,6 +144,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 These are project choices informed by current Windows/Fluent guidance, not a formal standard called UI/UX 2026. Apply them in WinForms; do not migrate frameworks or buy controls without a requirement.
 
 ### 9.1. Principles and layout
+
 - Prioritize fast data reading, few steps, and error prevention. Modern appearance must serve inventory work.
 - Use consistent navigation, titles, action/search areas, content, and necessary status information; one prominent primary action per screen.
 - Suggested sections: Overview, Products, Categories, Suppliers, Warehouses, Imports, Exports, Inventory, Alerts, Reports; actual labels are Vietnamese and respect permissions.
@@ -143,12 +152,14 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - Use surfaces/subtle borders for hierarchy; limit shadows, gradients, glass, bright colors, and decorative motion. Reuse existing layouts/components without an oversized design system.
 
 ### 9.2. Typography, spacing, and sizing
+
 - Use system fonts or Segoe UI with suitable fallback/full Vietnamese support; no decorative fonts for data/forms.
 - Suggested 100% baseline: body 10-11 pt, section titles 12-14 pt, page titles 16-20 pt; test and adjust. Points are not pixels. Avoid excessive uppercase/bold text.
 - Suggested 96-DPI spacing: 4/8/12/16/24 units; content padding 16-24; typical button height 32-40. Scale with DPI; enlarge touch targets if needed; never force dimensions that clip text.
 - Use consistent Vietnamese number/date formatting and explicit units/currency; avoid machine-dependent parsing.
 
 ### 9.3. Color and accessibility
+
 - Stock states need text and optionally icons, not just color. Target contrast of 4.5:1 for normal text, 3:1 for large text; distinguish focus and interactive components from backgrounds.
 - Bright red/green may not support white text: verify actual pairs and use dark text/adjusted shades.
 - Respect SystemInformation.HighContrast using SystemColors/recognizable standard controls. Brand colors must not hide text, focus, or selection.
@@ -156,12 +167,14 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - Dark mode is optional and requirement-driven; if implemented, test inputs, tables, menus, dialogs, disabled states, and focus, not only Form backgrounds.
 
 ### 9.4. Keyboard and interaction
+
 - Essential flows support logical Tab/Shift+Tab, sensible Enter, and Escape for cancellable interactions.
 - Configure AcceptButton/CancelButton by context. Enter while editing a cell must not unexpectedly post/delete receipts.
 - Follow/show Windows shortcuts without hijacking standard shortcuts. Icon-only buttons need tooltips/accessibility names; important actions should have text.
 - Separate destructive actions from primary actions; no default focus on destructive confirmations.
 
 ### 9.5. Tables and search
+
 - Clear DataGridView headers/widths; codes/names left-aligned, quantities/money right-aligned, explicit units.
 - Lists are read-only unless inline editing is required with clear validation/save/cancel. Show sort column/direction; do not make row numbers look like identifiers.
 - Consistent search/filter placement, Clear filters, and result counts. Add debounce/cancellation only when needed.
@@ -169,6 +182,7 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - Distinguish no data from no matches and offer a relevant next action.
 
 ### 9.6. Forms and error prevention
+
 - Visible labels, required indicators, and units; placeholders/tooltips are not label replacements. Use appropriate standard numeric/date/selection controls.
 - Field-level ErrorProvider/clear text, not color alone; focus first invalid field. Preserve values/receipt lines after failures.
 - Show warehouse, products, quantities, units, relevant totals, receipt state, and available stock where useful.
@@ -176,6 +190,7 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - Never present unimplemented controls as working or report success before saving.
 
 ### 9.7. System states and feedback
+
 - Provide loading, empty, success, error, and permission states; never leave a blank screen during slow queries.
 - Show busy feedback, prevent duplicate actions, remain responsive, and never fabricate progress percentages.
 - Success only after commit. If refresh fails afterward, explain saving succeeded and offer refresh, not duplicate save.
@@ -183,11 +198,13 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - Important errors/results must not exist only in disappearing notifications; stock alerts remain accessible in their list.
 
 ### 9.8. Dashboard and charts
+
 - KPIs show scope/warehouse/time period, units, and update time when useful. Prioritize quantity/value/low-stock/out-of-stock metrics; link to relevant lists when implemented.
 - Charts have titles, axes, units, necessary legends; avoid 3D, excessive colors, and misleading scales. Quantitative bars normally start at zero; clearly indicate alternatives.
 - Offer exact values/tables when needed. Explain reorder criteria/data; do not label simple formulas as AI.
 
 ### 9.9. DPI, performance, and UI acceptance
+
 - Use appropriate Dock/Anchor/TableLayoutPanel rather than fixed coordinates everywhere; keep AutoScaleMode consistent with framework guidance.
 - Configure DPI awareness for the target framework; do not blindly copy .NET Framework app.config into modern .NET.
 - Test 100/125/150/200% scaling, resize, and mixed-DPI monitors when available; no clipped text, overlapping controls, or inaccessible primary actions.
@@ -196,6 +213,7 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - Test mouse/keyboard workflows with long Vietnamese text, large numbers, and error states. Build/check Designer/runtime; report unverified visuals/DPI. Passing build alone does not prove UI quality.
 
 References:
+
 - https://learn.microsoft.com/en-us/windows/apps/design/guidelines-overview
 - https://learn.microsoft.com/en-us/windows/apps/develop/accessibility
 - https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/typography
@@ -204,6 +222,7 @@ References:
 ## 10. Database & Dependencies
 
 ### Database responsibilities
+
 - Preserve multi-warehouse keys, foreign keys, constraints, indexes, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
 - Repository and UnitOfWork are optional: use them only when they add clear value or are established project contracts. Do not build wrappers just to fill folders; EF already provides related capabilities. Do not remove established contracts without authorization.
 - Business Services are the authoritative stock-update path. No triggers may automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
@@ -211,6 +230,7 @@ References:
 - Schema changes, SQL scripts, Entity/DbContext mappings, and supporting query contracts remain in the database owner's scope; cross-owner edits require authorization.
 
 ### Dependencies and cleanup
+
 - Use NuGet through dotnet CLI or Visual Studio, not yarn/npm. Check standard libraries and installed packages before adding explicitly authorized compatible stable dependencies to the correct project. New packages require approval under Section 1; restoring declared approved packages is permitted.
 - EF Core SQL Server/SqlClient belong in Data, UI packages in UI, test packages in test projects. Install Tools/Design only for the chosen tooling workflow; Design may also be needed in the startup project.
 - Before removing packages, check source, .resx, Designer, configuration, reflection, and transitive dependencies. Missing using directives do not prove a package is unused.
@@ -235,15 +255,65 @@ References:
 
 ## 12. Git & Verification
 
-### Git and privacy
-- Keep .agent/ in .gitignore; never commit its RULE.md or internal agent state.
-- For personal Copilot instructions, add /.github/copilot-instructions.md to .git/info/exclude. Share that file only when intended and after removing private content.
-- Exclude bin/, obj/, .vs/, secrets, and personal databases according to repository conventions.
-- Do not overwrite uncommitted work, reset --hard, force push, or change shared architecture outside scope.
-- Follow repository branch/integration conventions. Prefer feat(...), fix(...), refactor(...), chore(...) commits; preserve established alternatives until a change is agreed.
-- Do not commit/push without a request or an authorized established workflow.
+### Branch rules
 
-### Build, formatting, and completion
+- `develop` is the main shared branch and the base and target of all regular team work.
+- Work on a task branch: `feature/<task>` for features, `fix/<issue>` for fixes, or `chore/<task>` for maintenance. Use short names without spaces or Vietnamese diacritics, such as `feature/import-receipt`.
+- One branch covers one task within the assigned scope. Branch names do not grant ownership or permission to edit another member's work.
+- Do not commit or push directly to `develop`. Push the task branch and open a Pull Request with **base = develop** and **compare = the task branch**.
+- Before requesting review, merge the latest `origin/develop` into the task branch, resolve conflicts without discarding teammates' changes, and build/test the result.
+- At least one other member reviews and approves the Pull Request before merging into `develop`. Delete the task branch after merging when it is no longer needed.
+- Never force-push shared branches or rewrite history during regular work. A separately authorized repository migration is an exception: back up the old remote commit first and use `--force-with-lease` tied to the observed commit when rewriting is necessary. Do not bypass branch protection.
+- Agents may commit, push, or open Pull Requests only when the current task or an explicitly authorized workflow permits those actions. Do not ask again for permission already granted for the same action and scope.
+
+### Team commands
+
+Run from the repository root. Start with a clean working tree; commit or preserve existing work before switching branches. Replace the example branch and file names with the actual task.
+
+Start a task:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/import-receipt
+```
+
+If `develop` exists only on the remote, run `git fetch origin` followed by `git switch --track origin/develop` instead of the first command. If a pull cannot fast-forward, inspect the divergence; do not reset or force-push to hide it.
+
+Save, update, verify, and push the task:
+
+```bash
+git add <changed-file-paths>
+git commit -m "feat(import): add import receipt"
+git fetch origin
+git merge origin/develop
+dotnet restore
+dotnet build --no-restore
+git push -u origin feature/import-receipt
+```
+
+Resolve and commit any merge conflicts, then rerun verification before pushing. Run existing relevant tests as described in Section 11. Open the Pull Request targeting `develop` only after checks pass.
+
+After the Pull Request is merged, with a clean working tree:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git branch -d feature/import-receipt
+```
+
+If Git refuses deletion after a squash merge, leave the local branch until its work is verified on `develop`; do not automatically use `-D`.
+
+### Git and privacy
+
+- Keep `.agent/` in `.gitignore`; never commit its RULE.md or internal agent state.
+- Track `.github/copilot-instructions.md` as the shared team instruction file. Do not exclude it in `.gitignore` or `.git/info/exclude`. Remove secrets and personal content before committing it.
+- Exclude bin/, obj/, .vs/, secrets, and personal databases according to repository conventions.
+- Never overwrite uncommitted work or use `reset --hard`/`clean -fd` to discard it.
+- Use Conventional Commits: `feat(...)`, `fix(...)`, `docs(...)`, `refactor(...)`, `test(...)`, or `chore(...)`, followed by a short description.
+
+### Completion
+
 - Inspect relevant code -> apply YAGNI -> make the minimum complete change -> verify -> report.
-- Implement requested scope only. Do not ask again about small reversible decisions supported by code/requirements; ask when missing business rules materially affect data/results.
-- Report changes, executed checks/results, and remaining limitations briefly. Instruction files guide behavior; they do not replace authorization, tests, or tool limitations.
+- Implement requested scope only. Ask only when missing decisions materially affect correctness or scope.
+- Report changes, actual check results, the working branch, and commit/push/PR status when applicable. Never claim a Git action or check succeeded without verification.
