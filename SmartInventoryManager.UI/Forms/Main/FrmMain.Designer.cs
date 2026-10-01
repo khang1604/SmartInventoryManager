@@ -1,6 +1,6 @@
-﻿namespace SmartInventoryManager
+﻿namespace SmartInventoryManager.UI.Forms.Main
 {
-    partial class Form1
+    partial class FrmMain
     {
         /// <summary>
         ///  Required designer variable.
@@ -31,7 +31,7 @@
             components = new System.ComponentModel.Container();
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Text = "Form1";
+            Text = "Smart Inventory Manager";
         }
 
         #endregion
