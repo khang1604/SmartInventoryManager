@@ -53,6 +53,13 @@ Before coding, follow this order and stop at the first sufficient solution:
 - When a feature needs both a backend endpoint/service and UI integration, split changes by owner and state which part is implemented. Do not claim the whole feature is finished if another part remains.
 - New roles, thresholds, state transitions, and analytics formulas require agreed business rules; never decide them solely to avoid coordination.
 
+### Session-start synchronization
+
+- At the beginning of every work session, before editing or implementing code, read the newly added or changed features from other team members that affect the current task.
+- Inspect the related contracts, data models, DTOs, interfaces, service methods, and variable/property names so the work uses the names and shapes already established by the team.
+- Use the current `develop` history and relevant task branches or diffs as the source of truth when checking recent cross-owner changes; do not rely on memory or recreate equivalent contracts.
+- If a recent change is incomplete, conflicting, or missing a required decision, stop implementation of the dependent part and report the exact contract or naming issue to the responsible owner.
+
 ## 3. Architecture
 
 - UI: Forms, Controls, Components, Resources. Display data and call Services. No SQL, DbContext queries, or inventory business calculations in Forms.
