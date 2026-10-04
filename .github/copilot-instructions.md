@@ -324,3 +324,43 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Inspect relevant code -> apply YAGNI -> make the minimum complete change -> verify -> report.
 - Implement requested scope only. Ask only when missing decisions materially affect correctness or scope.
 - Report changes, actual check results, the working branch, and commit/push/PR status when applicable. Never claim a Git action or check succeeded without verification.
+
+## File Safety & Destructive Operations
+
+### Workspace boundary
+- Before any file modification, resolve and record the absolute repository root.
+- Create, edit, move, or delete files only inside that repository.
+- Never modify or clean drive roots, Windows directories, installed applications, user profiles, Desktop, Documents, Downloads, or shared folders outside the repository.
+- A request to fix, build, install packages, refactor, or clean this project does not authorize modifying unrelated files or system settings.
+- If the repository root cannot be verified, perform read-only inspection only.
+
+### Deletion requires specific approval
+- Before deleting any existing file or directory, show its exact absolute path, why deletion is necessary, what it contains, and the recovery method.
+- Obtain explicit approval for those exact targets. General instructions such as “clean up,” “remove unused code,” or “fix everything” are not deletion approval.
+- Do not combine approved deletion with additional targets.
+- Prefer a reversible move to an agreed backup location over permanent deletion.
+- Preserve original contents before overwriting substantial files. Git does not protect untracked or uncommitted work; preserve those separately.
+- Never automatically delete backups.
+
+### Validate every destructive target
+- Resolve the final absolute path, including symbolic links, junctions, and reparse points, before acting.
+- Verify that the target is strictly inside the repository and is not the repository root, a drive root, or an ancestor directory.
+- Reject empty paths, unresolved variables, wildcards, ambiguous relative paths, or links that lead outside the repository.
+- Never construct destructive commands from unchecked variables or user-controlled text.
+- Recursive deletion requires an enumerated target list and explicit approval.
+- Never search an entire drive and delete matching files or folders.
+
+### Forbidden automatic operations
+- Do not run disk cleanup, storage optimization, application uninstallers, registry cleanup, disk formatting, partition changes, or broad permission changes.
+- Do not delete system folders, package caches, SDKs, runtimes, global NuGet caches, or other projects to fix a build.
+- Do not use destructive commands such as `Remove-Item -Recurse -Force`, `rd /s /q`, `rm -rf`, `git clean`, or `git reset --hard` without exact-target approval and a verified recovery plan.
+- Do not use administrator privileges or bypass permission errors to perform cleanup.
+- Do not hide deletion inside scripts, build hooks, package scripts, or chained commands. Inspect unfamiliar cleanup scripts before running them.
+- Standard restore/build commands are permitted when their configuration has been checked for unexpected destructive hooks. Explicit clean commands still require deletion approval.
+
+### If a mistake occurs
+- Stop all write, cleanup, installation, and deletion operations immediately.
+- Report the exact command, affected paths, and known results.
+- Preserve logs and available backups.
+- Do not attempt recovery, reinstall software, or write recovered files onto the affected drive without a separately agreed recovery plan.
+- Never claim that deleted data is recoverable without verification.
