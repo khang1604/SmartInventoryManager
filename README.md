@@ -11,7 +11,7 @@
 | Hệ điều hành | Windows phù hợp yêu cầu hỗ trợ của .NET và Visual Studio; ưu tiên Windows 11 |
 | Ngôn ngữ | C# |
 | Nền tảng mặc định | **.NET 10**, không phải “.NET Framework 10” |
-| Giao diện | Windows Forms |
+| Giao diện | Windows Forms - AntdUI |
 | Môi trường phát triển mặc định | Visual Studio 2026, workload `.NET desktop development` |
 | Database | Microsoft SQL Server; instance local phù hợp cho phát triển |
 | ORM | Entity Framework Core 10.x nếu solution dùng .NET 10 |
