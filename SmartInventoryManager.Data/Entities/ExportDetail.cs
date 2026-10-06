@@ -1,7 +1,20 @@
 namespace SmartInventoryManager.Data.Entities
 {
-    /// <summary>Skeleton ExportDetail type; implementation is intentionally not defined.</summary>
     public class ExportDetail
     {
+        public int ExportDetailId { get; set; }
+
+        public int ExportReceiptId { get; set; }
+
+        public int ProductId { get; set; }
+
+        public int Quantity { get; set; }
+
+        public decimal UnitPrice { get; set; }
+
+        // Navigation
+        public ExportReceipt ExportReceipt { get; set; } = null!;
+
+        public Product Product { get; set; } = null!;
     }
 }

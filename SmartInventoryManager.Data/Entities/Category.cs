@@ -1,7 +1,17 @@
 namespace SmartInventoryManager.Data.Entities
 {
-    /// <summary>Skeleton Category type; implementation is intentionally not defined.</summary>
     public class Category
     {
+        public int CategoryId { get; set; }
+
+        public string CategoryName { get; set; } = null!;
+
+        public string? Description { get; set; }
+
+        public bool IsActive { get; set; }
+
+        // Navigation
+        public ICollection<Product> Products { get; set; }
+            = new List<Product>();
     }
 }

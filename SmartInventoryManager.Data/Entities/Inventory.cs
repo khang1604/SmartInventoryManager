@@ -1,7 +1,20 @@
 namespace SmartInventoryManager.Data.Entities
 {
-    /// <summary>Skeleton Inventory type; implementation is intentionally not defined.</summary>
     public class Inventory
     {
+        public int InventoryId { get; set; }
+
+        public int ProductId { get; set; }
+
+        public int WarehouseId { get; set; }
+
+        public int Quantity { get; set; }
+
+        public DateTime UpdatedAt { get; set; }
+
+        // Navigation
+        public Product Product { get; set; } = null!;
+
+        public Warehouse Warehouse { get; set; } = null!;
     }
 }
