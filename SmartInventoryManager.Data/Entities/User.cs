@@ -10,7 +10,7 @@ namespace SmartInventoryManager.Data.Entities
 
         public string FullName { get; set; } = null!;
 
-        public string Email { get; set; } = null!;
+        public string? Email { get; set; }
 
         public int RoleId { get; set; }
 
