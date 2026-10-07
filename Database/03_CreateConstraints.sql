@@ -123,6 +123,11 @@ ADD CONSTRAINT UQ_Users_Username
 UNIQUE (Username);
 GO
 
+ALTER TABLE Users
+ADD CONSTRAINT UQ_Users_Email
+UNIQUE (Email);
+GO
+
 
 /* Categories */
 ALTER TABLE Categories
