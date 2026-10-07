@@ -32,6 +32,36 @@ public sealed class AuthorizationService
         return HasRole(session, RoleNames.Staff);
     }
 
+    public bool CanManageProduct(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager);
+    }
+
+    public bool CanManageCategory(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager);
+    }
+
+    public bool CanManageSupplier(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager);
+    }
+
+    public bool CanManageUser(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin);
+    }
+
+    public bool CanManageRole(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin);
+    }
+
+    public bool CanManageWarehouse(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin);
+    }
+
     public async Task<bool> CanCreateDraftReceiptAsync(UserSession session, int warehouseId)
     {
         if (HasRole(session, RoleNames.Staff))
@@ -41,6 +71,23 @@ public sealed class AuthorizationService
 
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
             await CanAccessManagedWarehouseAsync(session, warehouseId);
+    }
+
+    public Task<bool> CanCreateDraftReceiptAsync(
+        UserSession session,
+        int warehouseId,
+        IReadOnlySet<int> assignedWarehouseIds)
+    {
+        ArgumentNullException.ThrowIfNull(assignedWarehouseIds);
+
+        if (!HasRole(session, RoleNames.Staff))
+        {
+            return CanCreateDraftReceiptAsync(session, warehouseId);
+        }
+
+        return Task.FromResult(
+            session.IsAuthenticated &&
+            assignedWarehouseIds.Contains(warehouseId));
     }
 
     public Task<bool> CanEditDraftReceiptAsync(UserSession session, int warehouseId)
@@ -54,6 +101,17 @@ public sealed class AuthorizationService
     }
 
     public async Task<bool> CanApproveReceiptAsync(UserSession session, int warehouseId)
+    {
+        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
+            await CanAccessManagedWarehouseAsync(session, warehouseId);
+    }
+
+    public Task<bool> CanCompleteReceiptAsync(UserSession session, int warehouseId)
+    {
+        return CanApproveReceiptAsync(session, warehouseId);
+    }
+
+    public async Task<bool> CanCancelReceiptAsync(UserSession session, int warehouseId)
     {
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
             await CanAccessManagedWarehouseAsync(session, warehouseId);
