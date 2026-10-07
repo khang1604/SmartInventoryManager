@@ -186,6 +186,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             // 
             // label7
             // 
+            label7.BackColor = Color.Transparent;
             label7.Font = new Font("Segoe UI", 8F);
             label7.ForeColor = Color.FromArgb(139, 143, 163);
             label7.Location = new Point(1016, 618);
@@ -211,7 +212,6 @@ namespace SmartInventoryManager.UI.Forms.Login
             pnlLeft.Controls.Add(chkRemember);
             pnlLeft.Controls.Add(label3);
             pnlLeft.Controls.Add(lnkForgotPassword);
-            pnlLeft.Dock = DockStyle.Left;
             pnlLeft.Location = new Point(0, 0);
             pnlLeft.Name = "pnlLeft";
             pnlLeft.Size = new Size(1120, 640);
