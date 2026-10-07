@@ -6,7 +6,23 @@ namespace SmartInventoryManager.Controls
         public ChartControl()
         {
             InitializeComponent();
+            var body = SmartInventoryManager.UI.Components.ProductUi.Layout(1, 2);
+            body.Padding = new Padding(14);
+            body.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            // [COLOR CONFIG]: nền trắng của vùng biểu đồ.
+            body.BackColor = SmartInventoryManager.UI.Themes.AppColors.Surface;
+            _title = SmartInventoryManager.UI.Components.ProductUi.Label("Nhập / xuất theo thời gian", 12, true);
+            body.Controls.Add(_title, 0, 0);
+            body.Controls.Add(SmartInventoryManager.UI.Components.WorkflowUi.Empty("Chưa tải dữ liệu biểu đồ",
+                "Số lượng • Phạm vi kho và thời gian đã chọn", "bar-chart"), 0, 1);
+            Controls.Add(body);
+            Dock = DockStyle.Fill;
+            Margin = new Padding(0, 0, 10, 12);
         }
+        private readonly Label _title;
+        [System.ComponentModel.DefaultValue("Nhập / xuất theo thời gian")]
+        public string ChartTitle { get => _title.Text; set => _title.Text = value; }
     }
 }
 

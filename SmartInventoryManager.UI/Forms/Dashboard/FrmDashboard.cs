@@ -1,12 +1,73 @@
-namespace SmartInventoryManager.Forms.Dashboard
+using SmartInventoryManager.UI.Components;
+using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Controls;
+
+namespace SmartInventoryManager.Forms.Dashboard;
+
+public partial class FrmDashboard : Form
 {
-    /// <summary>Skeleton form for the FrmDashboard screen.</summary>
-    public partial class FrmDashboard : Form
+    public FrmDashboard()
     {
-        public FrmDashboard()
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        var root = ProductUi.Layout(1, 5);
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 74));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 132));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 57));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 43));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+        var filters = ProductUi.Layout(3, 1);
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
+        filters.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        filters.Padding = new Padding(0, 0, 0, 18);
+        var warehouse = ProductUi.Input("cboWarehouse", "Tất cả kho");
+        warehouse.ReadOnly = true;
+        warehouse.SuffixSvg = MainIcons.Get("chevron-down");
+        warehouse.AccessibleName = "Phạm vi kho";
+        var period = ProductUi.Input("cboPeriod", "Chọn khoảng thời gian");
+        period.ReadOnly = true;
+        period.SuffixSvg = MainIcons.Get("chevron-down");
+        period.AccessibleName = "Phạm vi thời gian";
+        filters.Controls.Add(warehouse, 0, 0);
+        filters.Controls.Add(period, 1, 0);
+        var refresh = WorkflowUi.Pending("btnRefresh", "", "arrow-clockwise");
+        refresh.Dock = DockStyle.Fill;
+        refresh.Margin = Padding.Empty;
+        filters.Controls.Add(refresh, 2, 0);
+        root.Controls.Add(filters, 0, 0);
+        var cards = ProductUi.Layout(5, 1);
+        cards.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        foreach (var caption in new[] { "Sản phẩm", "Số lượng tồn", "Giá trị tồn (đ)", "Sắp hết hàng", "Hết hàng" })
         {
-            InitializeComponent();
+            cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+            cards.Controls.Add(new StatisticCard { MetricTitle = caption });
         }
+        root.Controls.Add(cards, 0, 1);
+        var panels = ProductUi.Layout(2, 1);
+        panels.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panels.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+        panels.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+        panels.Controls.Add(new ChartControl(), 0, 0);
+        panels.Controls.Add(new AlertCard(), 1, 0);
+        root.Controls.Add(panels, 0, 2);
+        var activity = ProductUi.Layout(1, 2);
+        activity.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+        activity.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        activity.Controls.Add(ProductUi.Label("Hoạt động gần đây", 12, true), 0, 0);
+        var grid = WorkflowUi.Grid("dgvRecentActivity", ["Mã phiếu", "Loại phiếu", "Kho", "Ngày", "Trạng thái"]);
+        activity.Controls.Add(grid, 0, 1);
+        root.Controls.Add(activity, 0, 3);
+        var note = ProductUi.Label("Chưa tải dữ liệu • Số liệu thống kê đang được hoàn thiện", 9);
+        // [COLOR CONFIG]: ghi chú phụ của số liệu chưa sẵn sàng.
+        note.ForeColor = AppColors.Muted;
+        root.Controls.Add(note, 0, 4);
+        AutoScroll = true;
+        root.Dock = DockStyle.Top;
+        root.Height = 620;
+        SizeChanged += (_, _) => root.Height = Math.Max(620, ClientSize.Height);
+        Controls.Add(root);
     }
 }
-

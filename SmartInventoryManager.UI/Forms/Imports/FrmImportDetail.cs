@@ -1,12 +1,10 @@
-namespace SmartInventoryManager.Forms.Imports
+using SmartInventoryManager.UI.Components;
+namespace SmartInventoryManager.Forms.Imports;
+public partial class FrmImportDetail : Form
 {
-    /// <summary>Skeleton form for the FrmImportDetail screen.</summary>
-    public partial class FrmImportDetail : Form
+    public FrmImportDetail()
     {
-        public FrmImportDetail()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+        ReceiptUi.Build(this, true);
     }
 }
-
