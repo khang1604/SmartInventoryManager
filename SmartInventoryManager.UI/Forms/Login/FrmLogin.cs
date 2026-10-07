@@ -1,13 +1,20 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using AntdUI;
+using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Services;
 
 namespace SmartInventoryManager.UI.Forms.Login
 {
     public partial class FrmLogin : Form
     {
+        private const char PasswordMaskChar = '●';
+        private readonly AuthService _authService;
+        private bool _isSigningIn;
+
         // [COLOR CONFIG]: Màu hover button - accent xanh pastel, #AEE2FF
         private readonly Color _btnLoginHoverColor = Color.FromArgb(174, 226, 255);
         // [COLOR CONFIG]: Màu gốc button - secondary, #B5BAFF
@@ -17,11 +24,14 @@ namespace SmartInventoryManager.UI.Forms.Login
         private const string PlaceholderPassword = "Mật khẩu";
         private readonly PictureBox _logoPictureBox = new();
 
-        public FrmLogin()
+        public FrmLogin(AuthService authService)
         {
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             InitializeComponent();
             SetupUI();
         }
+
+        public AuthenticatedUserDto? AuthenticatedUser { get; private set; }
 
         private void SetupUI()
         {
@@ -74,12 +84,12 @@ namespace SmartInventoryManager.UI.Forms.Login
             }
         }
 
-        private void TxtPassword_KeyDown(object? sender, KeyEventArgs e)
+        private async void TxtPassword_KeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                PerformLogin();
+                await PerformLoginAsync();
             }
         }
 
@@ -93,64 +103,94 @@ namespace SmartInventoryManager.UI.Forms.Login
             );
         }
 
-        private void btnLogin_Click(object sender, EventArgs e)
+        private async void btnLogin_Click(object sender, EventArgs e)
         {
-            PerformLogin();
+            await PerformLoginAsync();
         }
 
-        private void PerformLogin()
+        private async Task PerformLoginAsync()
         {
+            if (_isSigningIn)
+            {
+                return;
+            }
+
             string username = txtUsername.Text.Trim();
-            string password = txtPassword.Text.Trim();
+            string password = txtPassword.Text;
 
-            // Validation UI cơ bản
-            if (string.IsNullOrEmpty(username))
+            var validationErrors = _authService.ValidateLoginCredentials(username, password);
+            if (validationErrors.Count > 0)
             {
                 MessageBox.Show(
-                    "Vui lòng nhập tên đăng nhập.",
+                    validationErrors[0],
                     "Thông báo",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 );
-                txtUsername.Focus();
+                (string.IsNullOrWhiteSpace(username) ? txtUsername : txtPassword).Focus();
                 return;
             }
 
-            if (string.IsNullOrEmpty(password))
+            _isSigningIn = true;
+            btnLogin.Enabled = false;
+
+            try
             {
-                MessageBox.Show(
-                    "Vui lòng nhập mật khẩu.",
-                    "Thông báo",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                txtPassword.Focus();
-                return;
+                AuthenticatedUser = await _authService.AuthenticateAsync(username, password);
+                if (AuthenticatedUser is null)
+                {
+                    MessageBox.Show(
+                        "Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.",
+                        "Đăng nhập thất bại",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    txtPassword.SelectAll();
+                    txtPassword.Focus();
+                    return;
+                }
+
+                DialogResult = DialogResult.OK;
+                Close();
             }
-
-            // TODO: Gọi AuthService.Login(username, password) khi Business Service sẵn sàng (phần việc của Khang)
-
-            MessageBox.Show(
-                $"Đang xử lý đăng nhập cho tài khoản: {username}\n\n" +
-                "(Chức năng xác thực sẽ được tích hợp khi AuthService sẵn sàng)",
-                "Thông báo",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
-
-            // Sau khi đăng nhập thành công:
-            // this.DialogResult = DialogResult.OK;
-            // this.Close();
+            catch (Exception exception)
+            {
+                Debug.WriteLine(exception);
+                MessageBox.Show(
+                    "Không thể kết nối hoặc xác thực với cơ sở dữ liệu. Vui lòng thử lại sau.",
+                    "Lỗi đăng nhập",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isSigningIn = false;
+                btnLogin.Enabled = true;
+            }
         }
 
         private void btnShowPassword_Click(object sender, EventArgs e)
         {
-            txtPassword.UseSystemPasswordChar =
-                !txtPassword.UseSystemPasswordChar;
-            btnShowPassword.Text = txtPassword.UseSystemPasswordChar ? "👁" : "🙈";
-            btnShowPassword.AccessibleName = txtPassword.UseSystemPasswordChar
-                ? "Hiện mật khẩu"
-                : "Ẩn mật khẩu";
+            // Explicit toggle mapping:
+            // If currently masked (PasswordChar != '\0') -> clear PasswordChar to show plaintext.
+            // If currently visible (PasswordChar == '\0') -> restore PasswordMaskChar to hide.
+            var isCurrentlyMasked = txtPassword.PasswordChar != '\0';
+
+            if (isCurrentlyMasked)
+            {
+                // Show password (clear mask)
+                txtPassword.UseSystemPasswordChar = false;
+                txtPassword.PasswordChar = '\0';
+                btnShowPassword.Text = "👁";
+                btnShowPassword.AccessibleName = "Ẩn mật khẩu";
+            }
+            else
+            {
+                // Hide password (restore mask)
+                txtPassword.UseSystemPasswordChar = false;
+                txtPassword.PasswordChar = PasswordMaskChar;
+                btnShowPassword.Text = "🙈";
+                btnShowPassword.AccessibleName = "Hiện mật khẩu";
+            }
         }
 
     }

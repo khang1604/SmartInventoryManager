@@ -2,8 +2,13 @@
 
   <ItemGroup>
 	<PackageReference Include="AntdUI" Version="2.4.12" />
+    <Reference Include="AntdUI">
+      <HintPath>Lib\AntdUI.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
 	<ProjectReference Include="..\SmartInventoryManager.Business\SmartInventoryManager.Business.csproj" />
 	<ProjectReference Include="..\SmartInventoryManager.Common\SmartInventoryManager.Common.csproj" />
+  <ProjectReference Include="..\SmartInventoryManager.Data\SmartInventoryManager.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
