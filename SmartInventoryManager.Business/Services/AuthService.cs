@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using Microsoft.EntityFrameworkCore;
+using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Common.Security;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Data.Context;
@@ -16,13 +17,17 @@ namespace SmartInventoryManager.Business.Services
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         }
 
-        public IReadOnlyList<string> ValidateLoginCredentials(string? username, string? password)
+        public IReadOnlyList<string> ValidateLoginCredentials(string? email, string? password)
         {
             var errors = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(username))
+            if (string.IsNullOrWhiteSpace(email))
             {
-                errors.Add("Vui lòng nhập tên đăng nhập.");
+                errors.Add("Vui lòng nhập email.");
+            }
+            else if (!IsValidEmail(email))
+            {
+                errors.Add("Email không đúng định dạng.");
             }
 
             if (string.IsNullOrWhiteSpace(password))
@@ -34,22 +39,22 @@ namespace SmartInventoryManager.Business.Services
         }
 
         public async Task<AuthenticatedUserDto?> AuthenticateAsync(
-            string? username,
+            string? email,
             string? password,
             CancellationToken cancellationToken = default)
         {
-            var errors = ValidateLoginCredentials(username, password);
+            var errors = ValidateLoginCredentials(email, password);
             if (errors.Count > 0)
             {
                 return null;
             }
 
-            var normalizedUsername = username!.Trim();
+            var normalizedEmail = email!.Trim();
             var user = await _dbContext.Users
                 .AsNoTracking()
                 .Include(candidate => candidate.Role)
                 .SingleOrDefaultAsync(
-                    candidate => candidate.Username == normalizedUsername,
+                    candidate => candidate.Email == normalizedEmail,
                     cancellationToken);
 
             if (user is null || !user.IsActive ||
@@ -124,6 +129,15 @@ namespace SmartInventoryManager.Business.Services
             }
 
             return allowedRoles.Any(role => HasRole(currentRole, role));
+        }
+
+        public bool IsKnownRole(string? role)
+        {
+            return HasAnyRole(
+                role,
+                RoleNames.Admin,
+                RoleNames.WarehouseManager,
+                RoleNames.Staff);
         }
 
         private static bool IsValidEmail(string email)
