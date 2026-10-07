@@ -95,9 +95,25 @@ public sealed class AuthorizationService
         return CanCreateDraftReceiptAsync(session, warehouseId);
     }
 
+    public Task<bool> CanEditDraftReceiptAsync(
+        UserSession session,
+        int warehouseId,
+        IReadOnlySet<int> assignedWarehouseIds)
+    {
+        return CanCreateDraftReceiptAsync(session, warehouseId, assignedWarehouseIds);
+    }
+
     public Task<bool> CanDeleteDraftReceiptAsync(UserSession session, int warehouseId)
     {
         return CanCreateDraftReceiptAsync(session, warehouseId);
+    }
+
+    public Task<bool> CanDeleteDraftReceiptAsync(
+        UserSession session,
+        int warehouseId,
+        IReadOnlySet<int> assignedWarehouseIds)
+    {
+        return CanCreateDraftReceiptAsync(session, warehouseId, assignedWarehouseIds);
     }
 
     public async Task<bool> CanApproveReceiptAsync(UserSession session, int warehouseId)

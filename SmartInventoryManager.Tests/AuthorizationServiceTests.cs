@@ -42,12 +42,17 @@ public class AuthorizationServiceTests
     {
         var service = CreateAuthorizationService();
         var session = CreateSession(RoleNames.Staff);
+        var assignedWarehouses = new HashSet<int> { 7 };
 
-        var assigned = await service.CanCreateDraftReceiptAsync(session, 7, new HashSet<int> { 7 });
-        var unassigned = await service.CanCreateDraftReceiptAsync(session, 8, new HashSet<int> { 7 });
+        var assigned = await service.CanCreateDraftReceiptAsync(session, 7, assignedWarehouses);
+        var unassigned = await service.CanCreateDraftReceiptAsync(session, 8, assignedWarehouses);
+        var canEditAssigned = await service.CanEditDraftReceiptAsync(session, 7, assignedWarehouses);
+        var canDeleteUnassigned = await service.CanDeleteDraftReceiptAsync(session, 8, assignedWarehouses);
 
         Assert.IsTrue(assigned);
         Assert.IsFalse(unassigned);
+        Assert.IsTrue(canEditAssigned);
+        Assert.IsFalse(canDeleteUnassigned);
     }
 
     [TestMethod]
