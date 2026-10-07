@@ -25,11 +25,6 @@ namespace SmartInventoryManager.Business.Services
             {
                 errors.Add("Vui lòng nhập email.");
             }
-            else if (!IsValidEmail(email))
-            {
-                errors.Add("Email không đúng định dạng.");
-            }
-
             if (string.IsNullOrWhiteSpace(password))
             {
                 errors.Add("Vui lòng nhập mật khẩu.");
@@ -49,12 +44,13 @@ namespace SmartInventoryManager.Business.Services
                 return null;
             }
 
-            var normalizedEmail = email!.Trim();
+            var normalizedIdentifier = email!.Trim();
             var user = await _dbContext.Users
                 .AsNoTracking()
                 .Include(candidate => candidate.Role)
                 .SingleOrDefaultAsync(
-                    candidate => candidate.Email == normalizedEmail,
+                    candidate => candidate.Email == normalizedIdentifier ||
+                        candidate.Username == normalizedIdentifier,
                     cancellationToken);
 
             if (user is null || !user.IsActive ||
