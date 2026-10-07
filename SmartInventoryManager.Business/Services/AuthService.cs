@@ -1,23 +1,28 @@
 using System.Net.Mail;
+using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Common.Security;
+using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Data.Context;
 
 namespace SmartInventoryManager.Business.Services
 {
     public class AuthService
     {
+        private readonly InventoryDbContext _dbContext;
         private readonly PasswordHasher _passwordHasher = new();
 
-        public IReadOnlyList<string> ValidateLoginCredentials(string? email, string? password)
+        public AuthService(InventoryDbContext dbContext)
+        {
+            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        }
+
+        public IReadOnlyList<string> ValidateLoginCredentials(string? username, string? password)
         {
             var errors = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(username))
             {
-                errors.Add("Vui lòng nhập email.");
-            }
-            else if (!IsValidEmail(email))
-            {
-                errors.Add("Email không đúng định dạng.");
+                errors.Add("Vui lòng nhập tên đăng nhập.");
             }
 
             if (string.IsNullOrWhiteSpace(password))
@@ -26,6 +31,39 @@ namespace SmartInventoryManager.Business.Services
             }
 
             return errors.AsReadOnly();
+        }
+
+        public async Task<AuthenticatedUserDto?> AuthenticateAsync(
+            string? username,
+            string? password,
+            CancellationToken cancellationToken = default)
+        {
+            var errors = ValidateLoginCredentials(username, password);
+            if (errors.Count > 0)
+            {
+                return null;
+            }
+
+            var normalizedUsername = username!.Trim();
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .Include(candidate => candidate.Role)
+                .SingleOrDefaultAsync(
+                    candidate => candidate.Username == normalizedUsername,
+                    cancellationToken);
+
+            if (user is null || !user.IsActive ||
+                !_passwordHasher.VerifyPassword(password, user.PasswordHash))
+            {
+                return null;
+            }
+
+            return new AuthenticatedUserDto(
+                user.UserId,
+                user.Username,
+                user.FullName,
+                user.Email,
+                user.Role.RoleName);
         }
 
         public IReadOnlyList<string> ValidateSignup(string? fullName, string? email, string? password, string? confirmPassword)

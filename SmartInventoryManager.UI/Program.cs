@@ -1,5 +1,8 @@
-using SmartInventoryManager.UI.Forms.Main;
+using Microsoft.EntityFrameworkCore;
+using SmartInventoryManager.Business.Services;
+using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.UI.Forms.Login;
+using SmartInventoryManager.UI.Forms.Main;
 
 namespace SmartInventoryManager.UI
 {
@@ -14,7 +17,32 @@ namespace SmartInventoryManager.UI
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-            Application.Run(new FrmLogin());
+
+            var connectionString = Environment.GetEnvironmentVariable(
+                "SMART_INVENTORY_CONNECTION_STRING");
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                MessageBox.Show(
+                    "Chưa cấu hình chuỗi kết nối cơ sở dữ liệu. Vui lòng liên hệ quản trị viên.",
+                    "Không thể khởi động",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            var options = new DbContextOptionsBuilder<InventoryDbContext>()
+                .UseSqlServer(connectionString)
+                .Options;
+
+            using var dbContext = new InventoryDbContext(options);
+            var authService = new AuthService(dbContext);
+
+            using var loginForm = new FrmLogin(authService);
+            if (loginForm.ShowDialog() == DialogResult.OK)
+            {
+                Application.Run(new FrmMain());
+            }
         }
     }
 }
