@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Services;
 using SmartInventoryManager.Data.Context;
-using SmartInventoryManager.UI.Forms.Login;
 using SmartInventoryManager.UI.Forms.Main;
 
 namespace SmartInventoryManager.UI
@@ -38,11 +37,8 @@ namespace SmartInventoryManager.UI
             using var dbContext = new InventoryDbContext(options);
             var authService = new AuthService(dbContext);
 
-            using var loginForm = new FrmLogin(authService);
-            if (loginForm.ShowDialog() == DialogResult.OK)
-            {
-                Application.Run(new FrmMain());
-            }
+            // Điều hướng UI dùng kết quả xác thực có sẵn, không thay đổi nghiệp vụ đăng nhập.
+            
         }
     }
 }
