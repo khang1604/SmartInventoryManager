@@ -17,10 +17,30 @@ public sealed class AuthorizationService
         return session.IsAuthenticated;
     }
 
+    public bool IsAdmin(UserSession session)
+    {
+        return HasRole(session, RoleNames.Admin);
+    }
+
+    public bool IsWarehouseManager(UserSession session)
+    {
+        return HasRole(session, RoleNames.WarehouseManager);
+    }
+
+    public bool IsStaff(UserSession session)
+    {
+        return HasRole(session, RoleNames.Staff);
+    }
+
     public async Task<bool> CanCreateDraftReceiptAsync(UserSession session, int warehouseId)
     {
-        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager, RoleNames.Staff) &&
-            await CanAccessWarehouseAsync(session, warehouseId);
+        if (HasRole(session, RoleNames.Staff))
+        {
+            return false;
+        }
+
+        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
+            await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
     public Task<bool> CanEditDraftReceiptAsync(UserSession session, int warehouseId)
@@ -36,30 +56,30 @@ public sealed class AuthorizationService
     public async Task<bool> CanApproveReceiptAsync(UserSession session, int warehouseId)
     {
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
-            await CanAccessWarehouseAsync(session, warehouseId);
+            await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
     public async Task<bool> CanAdjustInventoryAsync(UserSession session, int warehouseId)
     {
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
-            await CanAccessWarehouseAsync(session, warehouseId);
+            await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
     public async Task<bool> CanTransferInventoryAsync(UserSession session, int sourceWarehouseId, int destinationWarehouseId)
     {
         return sourceWarehouseId != destinationWarehouseId &&
             HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
-            await CanAccessWarehouseAsync(session, sourceWarehouseId) &&
-            await CanAccessWarehouseAsync(session, destinationWarehouseId);
+            await CanAccessManagedWarehouseAsync(session, sourceWarehouseId) &&
+            await CanAccessManagedWarehouseAsync(session, destinationWarehouseId);
     }
 
     public async Task<bool> CanResolveStockAlertAsync(UserSession session, int warehouseId)
     {
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
-            await CanAccessWarehouseAsync(session, warehouseId);
+            await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
-    private async Task<bool> CanAccessWarehouseAsync(UserSession session, int warehouseId)
+    private async Task<bool> CanAccessManagedWarehouseAsync(UserSession session, int warehouseId)
     {
         if (!session.IsAuthenticated || session.CurrentUser is null)
         {
