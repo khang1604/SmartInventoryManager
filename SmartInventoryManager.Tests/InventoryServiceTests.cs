@@ -1,4 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SmartInventoryManager.Business.Services;
+using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Business.Validators;
 
 namespace SmartInventoryManager.Tests;
@@ -28,5 +31,19 @@ public class InventoryServiceTests
         var errors = new ExportValidator().ValidateDetail(1, 0, 10m);
 
         CollectionAssert.Contains(errors.ToList(), "Số lượng xuất phải lớn hơn 0.");
+    }
+
+    [TestMethod]
+    public void LoginValidation_AcceptsUsername()
+    {
+        var errors = new AuthService(CreateDbContext()).ValidateLoginCredentials("admin", "SmartInventoryManager");
+
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    private static InventoryDbContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<InventoryDbContext>().Options;
+        return new InventoryDbContext(options);
     }
 }
