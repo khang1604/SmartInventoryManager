@@ -4,6 +4,12 @@ namespace SmartInventoryManager.Forms.Inventory;
 
 public partial class FrmInventory : Form
 {
+    public FrmInventory(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.Inventory(services));
+    }
     public FrmInventory()
     {
         InitializeComponent();

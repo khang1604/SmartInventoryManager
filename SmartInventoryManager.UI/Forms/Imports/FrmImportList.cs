@@ -4,6 +4,12 @@ namespace SmartInventoryManager.Forms.Imports;
 
 public partial class FrmImportList : Form
 {
+    public FrmImportList(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(new ReceiptListView(services, true));
+    }
     public FrmImportList()
     {
         InitializeComponent();

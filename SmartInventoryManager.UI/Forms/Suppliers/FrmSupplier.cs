@@ -5,6 +5,12 @@ namespace SmartInventoryManager.Forms.Suppliers;
 
 public partial class FrmSupplier : Form
 {
+    public FrmSupplier(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.Suppliers(services));
+    }
     private readonly bool _canManageSuppliers;
 
     public FrmSupplier() : this(false) { }
@@ -104,6 +110,8 @@ public partial class FrmSupplier : Form
         {
             Name = "dgvSuppliers", Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false,
             AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false,
+            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None, RowTemplate = { Height = 34 },
             MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, BorderStyle = BorderStyle.None,
             EnableHeadersVisualStyles = false, ColumnHeadersHeight = 52,
@@ -170,4 +178,3 @@ public partial class FrmSupplier : Form
         // Chưa gán DataPropertyName khi hợp đồng DTO chưa có.
     };
 }
-

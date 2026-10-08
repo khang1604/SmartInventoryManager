@@ -104,6 +104,8 @@ public partial class FrmCategory : Form
         {
             Name = "dgvCategories", Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false,
             AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false,
+            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None, RowTemplate = { Height = 34 },
             MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, BorderStyle = BorderStyle.None,
             EnableHeadersVisualStyles = false, ColumnHeadersHeight = 52,
