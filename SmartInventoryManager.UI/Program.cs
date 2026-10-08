@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Services;
 using SmartInventoryManager.Data.Context;
@@ -22,6 +23,11 @@ namespace SmartInventoryManager.UI
 
             var connectionString = Environment.GetEnvironmentVariable(
                 "SMART_INVENTORY_CONNECTION_STRING");
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                connectionString = LoadConnectionStringFromAppConfig();
+            }
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
@@ -76,5 +82,46 @@ namespace SmartInventoryManager.UI
                 }
             }
         }
+
+        private static string? LoadConnectionStringFromAppConfig()
+        {
+            var candidates = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, "SmartInventoryManager.UI.dll.config"),
+                Path.Combine(AppContext.BaseDirectory, "SmartInventoryManager.UI.exe.config"),
+                Path.Combine(AppContext.BaseDirectory, "App.config"),
+                Path.Combine(Directory.GetCurrentDirectory(), "App.config")
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (!File.Exists(candidate))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var document = XDocument.Load(candidate);
+                    var connectionString = document.Descendants("add")
+                        .FirstOrDefault(node =>
+                            string.Equals(node.Attribute("name")?.Value, "SmartInventoryManagerDb", StringComparison.OrdinalIgnoreCase))?
+                        .Attribute("connectionString")?
+                        .Value;
+
+                    if (!string.IsNullOrWhiteSpace(connectionString))
+                    {
+                        return connectionString;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore misconfigured XML and fallback to the next candidate.
+                }
+            }
+
+            return null;
+        }
     }
 }
+

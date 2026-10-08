@@ -1,5 +1,6 @@
 -- SmartInventoryManager database script skeleton: CreateTables
--- Status: not implemented. Do not execute or use this file to create a database.
+-- Status: LEGACY REFERENCE ONLY. EF Core migrations are the sole schema authority.
+-- Do not execute this file to create or alter the database.
 USE SmartInventoryManagerDB;
 GO
 

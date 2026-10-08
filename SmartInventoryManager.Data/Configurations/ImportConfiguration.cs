@@ -56,8 +56,6 @@ namespace SmartInventoryManager.Data.Configurations
         {
             builder.ToTable("ImportDetails", table =>
             {
-                table.HasTrigger("trg_ImportDetails_RecalculateTotal");
-
                 table.HasCheckConstraint(
                     "CK_ImportDetails_Quantity",
                     "[Quantity] > 0");

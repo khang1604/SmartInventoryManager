@@ -16,7 +16,7 @@ namespace SmartInventoryManager.Data.Entities
 
         public decimal TotalAmount { get; set; }
 
-        public string Status { get; set; } = "COMPLETED";
+        public string Status { get; set; } = "DRAFT";
 
         public string? Note { get; set; }
 
