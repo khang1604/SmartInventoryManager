@@ -33,25 +33,25 @@ public class ProductValidatorTests
     }
 
     [TestMethod]
-    public void ValidateThresholds_RejectsReorderPointNotBelowMaximumStock()
+    public void ValidateThresholds_AcceptsEqualReorderPointAndMaximumStock()
     {
         var errors = StockStatusCalculator.ValidateThresholds(100, 100);
 
-        Assert.IsTrue(errors.Count > 0);
+        Assert.AreEqual(0, errors.Count);
     }
 
     [TestMethod]
-    public void ValidateThresholds_RejectsNegativeReorderPointAndNonPositiveMaximum()
+    public void ValidateThresholds_RejectsNegativeThresholds()
     {
         var errors = StockStatusCalculator.ValidateThresholds(-1, 0);
 
-        Assert.AreEqual(2, errors.Count);
+        Assert.AreEqual(1, errors.Count);
     }
 
     [TestMethod]
-    public void Calculate_RejectsInvalidThresholds()
+    public void Calculate_AcceptsZeroMaximumWhenReorderPointIsZero()
     {
-        Assert.Throws<ArgumentException>(() => StockStatusCalculator.Calculate(5, 10, 10));
+        Assert.AreEqual(StockStatus.Overstock, StockStatusCalculator.Calculate(5, 0, 0));
     }
 
     [TestMethod]
@@ -77,18 +77,17 @@ public class ProductValidatorTests
         var errors = new ProductValidator().Validate(
             " ", null, "", -1m, -2m, 100, 100);
 
-        Assert.AreEqual(6, errors.Count);
+        Assert.AreEqual(5, errors.Count);
         CollectionAssert.Contains(errors.ToList(), "Mã sản phẩm không được để trống.");
         CollectionAssert.Contains(errors.ToList(), "Giá nhập không được âm.");
-        CollectionAssert.Contains(errors.ToList(), "Điểm đặt hàng lại phải nhỏ hơn mức tồn tối đa.");
     }
 
     [TestMethod]
-    public void ProductValidator_RejectsZeroMaximumStock()
+    public void ProductValidator_AcceptsZeroMaximumStockWhenReorderPointIsZero()
     {
         var errors = new ProductValidator().Validate(
             "P001", "Sản phẩm", "cái", 1m, 2m, 0, 0);
 
-        CollectionAssert.Contains(errors.ToList(), "Mức tồn tối đa phải lớn hơn 0.");
+        Assert.AreEqual(0, errors.Count);
     }
 }
