@@ -18,6 +18,7 @@ public partial class FrmCategory : Form
 
     private void BuildLayout()
     {
+        UiBrand.ApplyIcon(this);
         Text = "Danh mục";
         Font = new Font("Segoe UI", 10F);
         // [COLOR CONFIG]: nền và chữ đồng bộ với màn hình Sản phẩm.
@@ -124,6 +125,7 @@ public partial class FrmCategory : Form
         grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(16, 0, 0, 0);
         grid.Columns.AddRange(Column("CategoryName", "Tên danh mục", 35),
             Column("Description", "Mô tả", 45), Column("Status", "Trạng thái", 20));
+        UiDetails.AddColumn(grid);
         tableArea.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
@@ -147,7 +149,7 @@ public partial class FrmCategory : Form
         empty.Controls.Add(caption, 0, 2);
         empty.Controls.Add(description, 0, 3);
         tableArea.Controls.Add(empty, 0, 1);
-        root.Controls.Add(tableArea, 0, 2);
+        root.Controls.Add(LiveUi.TableFrame(tableArea), 0, 2);
         var note = ProductUi.Label("Chưa kết nối dữ liệu • Biểu mẫu xem trước chưa lưu danh mục", 9);
         // [COLOR CONFIG]: thông tin trạng thái phụ.
         note.ForeColor = AppColors.Muted;

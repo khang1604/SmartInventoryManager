@@ -132,6 +132,7 @@ public partial class FrmSupplier : Form
             Column("SupplierName", "Tên nhà cung cấp", 24), Column("Phone", "Số điện thoại", 15),
             Column("Email", "Email", 20), Column("TaxCode", "Mã số thuế", 13),
             Column("Status", "Trạng thái", 12));
+        UiDetails.AddColumn(grid);
         tableArea.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
@@ -155,7 +156,7 @@ public partial class FrmSupplier : Form
         empty.Controls.Add(caption, 0, 2);
         empty.Controls.Add(description, 0, 3);
         tableArea.Controls.Add(empty, 0, 1);
-        root.Controls.Add(tableArea, 0, 2);
+        root.Controls.Add(LiveUi.TableFrame(tableArea), 0, 2);
         var note = ProductUi.Label("Chưa kết nối dữ liệu • Biểu mẫu xem trước chưa lưu nhà cung cấp", 9);
         // [COLOR CONFIG]: thông tin trạng thái phụ.
         note.ForeColor = AppColors.Muted;

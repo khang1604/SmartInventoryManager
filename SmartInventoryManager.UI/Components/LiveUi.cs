@@ -23,8 +23,9 @@ internal static class LiveUi
         panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         panel.Controls.Add(ProductUi.Label(caption), 0, 0);
-        control.Dock = DockStyle.Fill;
-        control.Margin = new Padding(0, 6, 0, 6);
+        control.Dock = DockStyle.Top;
+        control.Font = new Font("Segoe UI", 10);
+        control.Margin = new Padding(0, 8, 0, 0);
         panel.Controls.Add(control, 0, 1);
         return panel;
     }
@@ -33,6 +34,19 @@ internal static class LiveUi
     {
         Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true, Margin = Padding.Empty
     };
+
+    public static Control TableFrame(Control content)
+    {
+        var frame = new RoundedSurface
+        {
+            Dock = DockStyle.Fill, Padding = new Padding(8), Margin = Padding.Empty,
+            AccessibleName = "Khung bảng dữ liệu"
+        };
+        content.Dock = DockStyle.Fill;
+        content.Margin = Padding.Empty;
+        frame.Controls.Add(content);
+        return frame;
+    }
 
     public static DataGridViewColumn Column(DataGridView grid, string name) =>
         grid.Columns[name] ?? throw new InvalidOperationException("Thiếu cột giao diện: " + name);
@@ -51,6 +65,10 @@ internal static class LiveUi
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             // [COLOR CONFIG]: nền bảng trắng và chữ tối theo theme VioWare.
             BackgroundColor = AppColors.Surface, ForeColor = AppColors.Text,
+            CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+            ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single,
+            // [COLOR CONFIG]: đường phân cách bảng nhẹ, đồng bộ với khung bo góc.
+            GridColor = AppColors.Border,
             BorderStyle = BorderStyle.None, RowTemplate = { Height = 34 }
         };
         foreach (var (property, caption) in columns)
@@ -58,7 +76,14 @@ internal static class LiveUi
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = property, DataPropertyName = property, HeaderText = caption,
-                MinimumWidth = 110, SortMode = DataGridViewColumnSortMode.NotSortable
+                MinimumWidth = property switch
+                {
+                    "ProductName" => 140,
+                    "Unit" => 70,
+                    "ReorderPoint" => 130,
+                    "PurchasePrice" or "SellingPrice" => 110,
+                    _ => 80
+                }, SortMode = DataGridViewColumnSortMode.NotSortable
             });
             var column = Column(grid, property);
             if (property.Contains("Price") || property.Contains("Amount"))
@@ -74,6 +99,18 @@ internal static class LiveUi
             else if (property is "CreatedAt" or "UpdatedAt" or "ReceiptDate")
                 column.DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
         }
+        // [COLOR CONFIG]: header nhạt và lựa chọn lavender theo bảng màu đã duyệt.
+        grid.EnableHeadersVisualStyles = false;
+        grid.ColumnHeadersHeight = 52;
+        grid.ColumnHeadersDefaultCellStyle.BackColor = AppColors.Workspace;
+        grid.ColumnHeadersDefaultCellStyle.ForeColor = AppColors.Text;
+        grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = AppColors.Workspace;
+        grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = AppColors.Text;
+        grid.DefaultCellStyle.SelectionBackColor = AppColors.Lavender;
+        grid.DefaultCellStyle.SelectionForeColor = AppColors.SelectedText;
+        grid.GridColor = AppColors.Border;
+        grid.ScrollBars = ScrollBars.Both;
+        grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
         grid.DefaultCellStyle.FormatProvider = Culture;
         return grid;
     }

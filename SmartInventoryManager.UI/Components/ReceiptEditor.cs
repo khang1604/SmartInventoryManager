@@ -211,7 +211,7 @@ internal sealed class ReceiptEditor : UserControl
             await UpdatePermissionAsync();
             if (!_import) await LoadStockAsync();
             UpdateTotal();
-            _message.Text = $"{LiveUi.StatusText(_status)} • " + (_editable ? "Nhập thông tin và lưu nháp." : "Chỉ xem; không được sửa phiếu hoặc chưa có quyền tại kho này.");
+            _message.Text = PermissionHint();
             _dirty = false;
             _loaded = true;
         }
@@ -260,9 +260,17 @@ internal sealed class ReceiptEditor : UserControl
         _warehouse.Enabled = _requestedEdit && !_id.HasValue;
         _supplier.Enabled = _editable;
         _save.Enabled = _add.Enabled = _remove.Enabled = _editable && !_busy;
-        if (!_busy && _loaded) _message.Text = _editable
-            ? "Nháp • Nhập thông tin và lưu nháp."
-            : "Chỉ xem; chưa có quyền sửa tại kho đã chọn.";
+        if (!_busy && _loaded) _message.Text = PermissionHint();
+    }
+
+    private string PermissionHint()
+    {
+        if (_requestedEdit && !_id.HasValue && ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) == 0)
+            return "Chọn kho để bắt đầu tạo phiếu nháp.";
+        if (_editable) return "Nháp • Nhập thông tin và lưu nháp.";
+        if (!_requestedEdit || _status != "DRAFT")
+            return $"{LiveUi.StatusText(_status)} • Chỉ xem; phiếu không ở chế độ chỉnh sửa.";
+        return "Chưa có quyền sửa phiếu tại kho đã chọn.";
     }
 
     private bool TryReadLines(out IReadOnlyList<ReceiptDetailDto> details, bool showErrors)

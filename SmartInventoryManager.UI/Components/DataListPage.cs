@@ -32,9 +32,9 @@ internal sealed class DataListPage<T> : UserControl where T : class
         Dock = DockStyle.Fill;
         var root = ProductUi.Layout(1, 4);
         root.Padding = new Padding(20, 12, 20, 16);
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _filters.Controls.Add(LiveUi.Field("Tìm mã hoặc tên", _search));
         if (requiresWarehouse) _filters.Controls.Add(LiveUi.Field("Kho đang xem *", _warehouse));
@@ -68,7 +68,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         root.Controls.Add(_filters, 0, 0);
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
-        root.Controls.Add(_grid, 0, 3);
+        root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
         Controls.Add(root);
         Load += async (_, _) => await RefreshAsync();
         VisibleChanged += async (_, _) =>
@@ -81,6 +81,8 @@ internal sealed class DataListPage<T> : UserControl where T : class
             }
         };
     }
+
+    public void AddDetailsColumn() => UiDetails.AddColumn(_grid);
 
     public AntdUI.Button Action(string caption, Func<Task> action, string? icon = null)
     {

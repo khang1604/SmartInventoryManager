@@ -132,6 +132,7 @@ public partial class FrmProductList : Form
             Column("PurchasePrice", "Giá nhập (đ)", 90, "N2"), Column("SellingPrice", "Giá bán (đ)", 90, "N2"),
             Column("ReorderPoint", "Điểm đặt hàng lại", 130, "N0"), Column("MaximumStock", "Tồn tối đa", 85, "N0"),
             Column("Status", "Trạng thái", 95));
+        UiDetails.AddColumn(grid);
         tableArea.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -156,7 +157,7 @@ public partial class FrmProductList : Form
         empty.Controls.Add(emptyTitle, 0, 2);
         empty.Controls.Add(description, 0, 3);
         tableArea.Controls.Add(empty, 0, 1);
-        root.Controls.Add(tableArea, 0, 2);
+        root.Controls.Add(LiveUi.TableFrame(tableArea), 0, 2);
         tableArea.SizeChanged += (_, _) =>
         {
             int minimumTableWidth = grid.Columns.Cast<DataGridViewColumn>().Sum(column => column.MinimumWidth);
