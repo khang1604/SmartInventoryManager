@@ -563,7 +563,7 @@ GO
 
 ALTER TABLE ImportReceipts
 ADD CONSTRAINT DF_ImportReceipts_Status
-DEFAULT 'COMPLETED' FOR Status;
+DEFAULT 'DRAFT' FOR Status;
 GO
 
 
@@ -580,7 +580,7 @@ GO
 
 ALTER TABLE ExportReceipts
 ADD CONSTRAINT DF_ExportReceipts_Status
-DEFAULT 'COMPLETED' FOR Status;
+DEFAULT 'DRAFT' FOR Status;
 GO
 
 
@@ -663,7 +663,7 @@ GO
 ALTER TABLE ImportReceipts
 ADD CONSTRAINT CK_ImportReceipts_Status
 CHECK (
-    Status IN ('DRAFT', 'COMPLETED', 'CANCELLED')
+    Status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED')
 );
 GO
 
@@ -689,7 +689,7 @@ GO
 ALTER TABLE ExportReceipts
 ADD CONSTRAINT CK_ExportReceipts_Status
 CHECK (
-    Status IN ('DRAFT', 'COMPLETED', 'CANCELLED')
+    Status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED')
 );
 GO
 

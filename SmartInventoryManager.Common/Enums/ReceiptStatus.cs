@@ -1,7 +1,12 @@
 namespace SmartInventoryManager.Common.Enums
 {
-    /// <summary>Skeleton ReceiptStatus enumeration; values require an agreed contract.</summary>
     public enum ReceiptStatus
     {
+        DRAFT,
+        PENDING_APPROVAL,
+        APPROVED,
+        REJECTED,
+        COMPLETED,
+        CANCELLED
     }
 }
