@@ -153,6 +153,39 @@ public sealed class AuthorizationService
             await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
+    public async Task<IReadOnlySet<int>> GetAccessibleWarehouseIdsAsync(UserSession session, CancellationToken cancellationToken = default)
+    {
+        if (session is null || !session.IsAuthenticated || session.CurrentUser is null)
+        {
+            return new HashSet<int>();
+        }
+
+        IQueryable<int> query = _dbContext.Warehouses
+            .AsNoTracking()
+            .Where(warehouse => warehouse.IsActive)
+            .Select(warehouse => warehouse.WarehouseId);
+
+        if (string.Equals(session.CurrentUser.RoleName, RoleNames.WarehouseManager, StringComparison.OrdinalIgnoreCase))
+        {
+            query = _dbContext.Warehouses
+                .AsNoTracking()
+                .Where(warehouse => warehouse.IsActive && warehouse.ManagerId == session.CurrentUser.UserId)
+                .Select(warehouse => warehouse.WarehouseId);
+        }
+        else if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return new HashSet<int>();
+        }
+
+        return (await query.ToListAsync(cancellationToken)).ToHashSet();
+    }
+
+    public async Task<bool> CanViewWarehouseAsync(UserSession session, int warehouseId, CancellationToken cancellationToken = default)
+    {
+        var warehouseIds = await GetAccessibleWarehouseIdsAsync(session, cancellationToken);
+        return warehouseIds.Contains(warehouseId);
+    }
+
     private async Task<bool> CanAccessManagedWarehouseAsync(UserSession session, int warehouseId)
     {
         if (!session.IsAuthenticated || session.CurrentUser is null)

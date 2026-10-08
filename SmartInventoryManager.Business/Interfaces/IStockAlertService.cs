@@ -5,7 +5,7 @@ namespace SmartInventoryManager.Business.Interfaces;
 
 public interface IStockAlertService
 {
-    Task<IReadOnlyList<StockAlertDto>> GetOpenAsync(int warehouseId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StockAlertDto>> GetOpenAsync(UserSession session, int warehouseId, CancellationToken cancellationToken = default);
 
     Task RefreshAsync(int productId, int warehouseId, CancellationToken cancellationToken = default);
 

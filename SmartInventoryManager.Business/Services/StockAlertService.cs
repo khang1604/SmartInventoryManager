@@ -23,9 +23,15 @@ public sealed class StockAlertService : IStockAlertService
     public event EventHandler<StockAlertEvent>? AlertChanged;
 
     public async Task<IReadOnlyList<StockAlertDto>> GetOpenAsync(
+        UserSession session,
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem cảnh báo tại kho này.");
+        }
+
         return await _dbContext.StockAlerts
             .AsNoTracking()
             .Where(alert => alert.WarehouseId == warehouseId && !alert.IsResolved)
