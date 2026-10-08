@@ -82,4 +82,13 @@ public class ProductValidatorTests
         CollectionAssert.Contains(errors.ToList(), "Giá nhập không được âm.");
         CollectionAssert.Contains(errors.ToList(), "Điểm đặt hàng lại phải nhỏ hơn mức tồn tối đa.");
     }
+
+    [TestMethod]
+    public void ProductValidator_RejectsZeroMaximumStock()
+    {
+        var errors = new ProductValidator().Validate(
+            "P001", "Sản phẩm", "cái", 1m, 2m, 0, 0);
+
+        CollectionAssert.Contains(errors.ToList(), "Mức tồn tối đa phải lớn hơn 0.");
+    }
 }
