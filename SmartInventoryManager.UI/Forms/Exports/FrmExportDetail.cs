@@ -1,12 +1,10 @@
-namespace SmartInventoryManager.Forms.Exports
+using SmartInventoryManager.UI.Components;
+namespace SmartInventoryManager.Forms.Exports;
+public partial class FrmExportDetail : Form
 {
-    /// <summary>Skeleton form for the FrmExportDetail screen.</summary>
-    public partial class FrmExportDetail : Form
+    public FrmExportDetail()
     {
-        public FrmExportDetail()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+        ReceiptUi.Build(this, false);
     }
 }
-

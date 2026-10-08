@@ -1,11 +1,15 @@
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.Authorization;
 
 namespace SmartInventoryManager.UI.Forms.Main;
 
 public partial class FrmMain : Form
 {
+    private readonly AuthorizationService? _authorization;
+    private readonly UserSession? _session;
+    public bool LogoutRequested { get; private set; }
     private readonly Dictionary<string, MainNavigationButton> _navigation = new();
     private TableLayoutPanel _root = null!;
     private TableLayoutPanel _brand = null!;
@@ -14,6 +18,7 @@ public partial class FrmMain : Form
     private MainNavigationButton _logout = null!;
     private MainNavigationButton _sidebarToggle = null!;
     private bool _collapsed;
+    private bool _resizingMenu;
     private readonly ToolTip _toolTips = new();
     private readonly Panel _content = new() { Dock = DockStyle.Fill, AutoScroll = true };
     private readonly Label _heading = new();
@@ -25,11 +30,23 @@ public partial class FrmMain : Form
         BuildLayout();
     }
 
-    public FrmMain(AuthenticatedUserDto user) : this()
+    public FrmMain(AuthenticatedUserDto user, AuthorizationService authorization, UserSession session)
     {
         ArgumentNullException.ThrowIfNull(user);
+        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _session = session ?? throw new ArgumentNullException(nameof(session));
+        InitializeComponent();
+        BuildLayout();
         _account.Text = user.FullName;
-        _account.AccessibleDescription = $"Tài khoản {user.FullName}";
+        var role = user.RoleName switch
+        {
+            RoleNames.Admin => "Quản trị viên",
+            RoleNames.WarehouseManager => "Quản lý kho",
+            RoleNames.Staff => "Nhân viên kho",
+            _ => "Tài khoản"
+        };
+        _account.AccessibleDescription = $"{user.FullName} • {role}";
+        _toolTips.SetToolTip(_account, _account.AccessibleDescription);
     }
 
     private readonly Label _account = new();
@@ -126,10 +143,12 @@ public partial class FrmMain : Form
             ("Tổng quan", "house"), ("Sản phẩm", "box-seam"), ("Danh mục", "grid"),
             ("Nhà cung cấp", "people"), ("Kho & vị trí", "building"),
             ("Nhập kho", "box-arrow-in-down"), ("Xuất kho", "box-arrow-up"),
-            ("Tồn kho", "boxes"), ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph")
+            ("Tồn kho", "boxes"), ("Lịch sử tồn kho", "file-earmark-text"),
+            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Người dùng", "people")
         ];
         foreach (var (title, icon) in pages)
         {
+            if (title == "Người dùng" && !CanOpenPage(title)) continue;
             var button = new MainNavigationButton(title, icon);
             button.Size = new Size(175, 43);
             button.TextAlign = ContentAlignment.MiddleLeft;
@@ -140,6 +159,7 @@ public partial class FrmMain : Form
             menu.Controls.Add(button);
         }
         sidebar.Controls.Add(menu, 0, 1);
+        menu.Layout += (_, _) => ResizeMenu();
         menu.SizeChanged += (_, _) =>
         {
             // Chừa chỗ cho thanh cuộn dọc để không phát sinh thanh cuộn ngang khi cửa sổ nhỏ.
@@ -161,7 +181,7 @@ public partial class FrmMain : Form
             if (MessageBox.Show(this, "Đăng xuất và trở về màn hình đăng nhập?", "Đăng xuất",
                 MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.OK)
             {
-                DialogResult = DialogResult.Retry;
+                LogoutRequested = true;
                 Close();
             }
         };
@@ -172,9 +192,17 @@ public partial class FrmMain : Form
 
     private void ResizeMenu()
     {
-        foreach (var button in _navigation.Values)
-            button.Width = _collapsed ? Math.Max(40, (int)(52 * DeviceDpi / 96F))
-                : Math.Max(40, _menu.ClientSize.Width - (_menu.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0) - 4);
+        if (_resizingMenu) return;
+        _resizingMenu = true;
+        try
+        {
+            int itemsHeight = _navigation.Values.Sum(button => button.Height + button.Margin.Vertical);
+            int available = _menu.ClientSize.Width - (itemsHeight > _menu.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0) - 4;
+            foreach (var button in _navigation.Values)
+                button.Width = _collapsed ? Math.Max(32, Math.Min(available, (int)(52 * DeviceDpi / 96F)))
+                    : Math.Max(40, available);
+        }
+        finally { _resizingMenu = false; }
     }
 
     private Control BuildHeader()
@@ -198,14 +226,22 @@ public partial class FrmMain : Form
         header.Controls.Add(titles, 1, 0);
         var notifications = ActionButton("Thông báo", "bell");
         notifications.Dock = DockStyle.Fill;
-        notifications.Click += (_, _) => MessageBox.Show(this,
-            "Chức năng thông báo đang được hoàn thiện.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        notifications.Name = "btnNotifications";
+        notifications.Click += (_, _) => ShowPage("Thông báo");
         header.Controls.Add(notifications, 2, 0);
         return header;
     }
 
     private void ShowPage(string title)
     {
+        _heading.UseMnemonic = false;
+        _breadcrumb.UseMnemonic = false;
+        if (!CanOpenPage(title))
+        {
+            MessageBox.Show(this, "Bạn không có quyền mở chức năng này.", "Quyền truy cập",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
         _heading.Text = title;
         _breadcrumb.Text = $"Trang chủ / {title}";
         foreach (var (name, button) in _navigation)
@@ -222,87 +258,72 @@ public partial class FrmMain : Form
             _content.Controls.Remove(child);
             child.Dispose();
         }
-        _content.Controls.Add(title == "Tổng quan" ? BuildOverview() : EmptyPanel(title,
-            "Màn hình đang được hoàn thiện. Chưa có chức năng thao tác dữ liệu.", "file-earmark-text"));
+        _content.Controls.Add(CreatePage(title));
     }
 
-    private Control BuildOverview()
+    private bool CanOpenPage(string title)
     {
-        var page = CreateLayout(1, 4);
-        page.MinimumSize = new Size(720, 560);
-        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
-        page.RowStyles.Add(new RowStyle(SizeType.Absolute, 106));
-        page.RowStyles.Add(new RowStyle(SizeType.Percent, 57));
-        page.RowStyles.Add(new RowStyle(SizeType.Percent, 43));
-        var filters = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true };
-        filters.Controls.Add(TextLabel("Kho:", 10F, width: 40));
-        filters.Controls.Add(Filter("Tất cả kho", "Lọc theo kho"));
-        filters.Controls.Add(TextLabel("Thời gian:", 10F, width: 80));
-        filters.Controls.Add(Filter("Tháng này", "Lọc theo thời gian"));
-        var refresh = ActionButton("Làm mới", "arrow-clockwise");
-        refresh.Size = new Size(125, 36);
-        refresh.Enabled = false;
-        refresh.AccessibleDescription = "Chưa sẵn sàng: chức năng dữ liệu đang được hoàn thiện";
-        // [COLOR CONFIG]: #9FA1FF, nền hành động chính theo thiết kế.
-        refresh.DefaultBack = AppColors.Primary;
-        filters.Controls.Add(refresh);
-        page.Controls.Add(filters, 0, 0);
-        var cards = CreateLayout(4, 1);
-        for (var i = 0; i < 4; i++) cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-        cards.Controls.Add(Metric("Sản phẩm", "box-seam", AppColors.Lavender), 0, 0);
-        cards.Controls.Add(Metric("Giá trị tồn kho", "coin", AppColors.Mint), 1, 0);
-        cards.Controls.Add(Metric("Sắp hết hàng", "exclamation-triangle", AppColors.Sky), 2, 0);
-        cards.Controls.Add(Metric("Hết hàng", "dash-circle", AppColors.Lavender), 3, 0);
-        page.Controls.Add(cards, 0, 1);
-        var panels = CreateLayout(2, 1);
-        panels.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
-        panels.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
-        panels.Controls.Add(EmptyPanel("Nhập / xuất theo thời gian", "Chưa có dữ liệu • Chức năng đang được hoàn thiện", "bar-chart"), 0, 0);
-        panels.Controls.Add(EmptyPanel("Cảnh báo tồn kho", "Chưa có dữ liệu cảnh báo", "bell"), 1, 0);
-        page.Controls.Add(panels, 0, 2);
-        var activity = CreateLayout(1, 3);
-        activity.Margin = new Padding(5);
-        activity.Padding = new Padding(14);
-        // [COLOR CONFIG]: trắng cho vùng hoạt động gần đây.
-        activity.BackColor = AppColors.Surface;
-        activity.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        activity.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        activity.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        activity.Controls.Add(TextLabel("Hoạt động gần đây", 12F, true), 0, 0);
-        var columns = CreateLayout(5, 1);
-        foreach (var name in new[] { "Mã phiếu", "Loại phiếu", "Kho", "Ngày", "Trạng thái" })
+        // Constructor không tham số phục vụ Designer, không mở phiên nghiệp vụ.
+        if (_authorization is null || _session is null) return title != "Người dùng";
+        return title == "Người dùng"
+            ? _authorization.CanManageUser(_session)
+            : _authorization.CanView(_session);
+    }
+
+    private Control CreatePage(string title) => title switch
+    {
+        "Tổng quan" => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(), title),
+        "Sản phẩm" => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(
+            _authorization is not null && _session is not null && _authorization.CanManageProduct(_session)), title),
+        "Danh mục" => PrepareForm(new SmartInventoryManager.Forms.Categories.FrmCategory(
+            _authorization is not null && _session is not null && _authorization.CanManageCategory(_session)), title),
+        "Nhà cung cấp" => PrepareForm(new SmartInventoryManager.Forms.Suppliers.FrmSupplier(
+            _authorization is not null && _session is not null && _authorization.CanManageSupplier(_session)), title),
+        "Kho & vị trí" => CreateTabs(
+            ("Kho", new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(
+                _authorization is not null && _session is not null && _authorization.CanManageWarehouse(_session))),
+            ("Vị trí", new SmartInventoryManager.Forms.Warehouses.FrmLocation())),
+        "Nhập kho" => PrepareForm(new SmartInventoryManager.Forms.Imports.FrmImportList(), title),
+        "Xuất kho" => PrepareForm(new SmartInventoryManager.Forms.Exports.FrmExportList(), title),
+        "Tồn kho" => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventory(), title),
+        "Lịch sử tồn kho" => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventoryHistory(), title),
+        "Cảnh báo" => PrepareForm(new SmartInventoryManager.Forms.Alerts.FrmStockAlert(), title),
+        "Báo cáo" => CreateTabs(
+            ("Tồn kho", new SmartInventoryManager.Forms.Reports.FrmInventoryReport()),
+            ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport())),
+        "Người dùng" => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(), title),
+        "Thông báo" => new NotificationPanel(),
+        _ => throw new ArgumentOutOfRangeException(nameof(title))
+    };
+
+    private Form PrepareForm(Form form, string title, Control? content = null)
+    {
+        form.TopLevel = false;
+        form.FormBorderStyle = FormBorderStyle.None;
+        form.Dock = DockStyle.Fill;
+        form.Text = title;
+        form.AccessibleName = title;
+        form.Font = Font;
+        // [COLOR CONFIG]: nền trang đồng nhất vùng làm việc.
+        form.BackColor = AppColors.Workspace;
+        if (content is not null) form.Controls.Add(content);
+        else if (form.Controls.Count == 0)
+            form.Controls.Add(EmptyPanel(title,
+                "Màn hình đang được hoàn thiện. Chưa có chức năng thao tác dữ liệu.", "file-earmark-text"));
+        form.Show();
+        return form;
+    }
+
+    private Control CreateTabs(params (string Title, Form Form)[] pages)
+    {
+        var tabs = new TabControl { Dock = DockStyle.Fill };
+        foreach (var (title, form) in pages)
         {
-            columns.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-            columns.Controls.Add(TextLabel(name, 9.5F, true));
+            var page = new TabPage(title);
+            page.Controls.Add(PrepareForm(form, title));
+            tabs.TabPages.Add(page);
         }
-        // [COLOR CONFIG]: lavender cho hàng tiêu đề bảng minh họa chưa có dữ liệu.
-        columns.BackColor = AppColors.Workspace;
-        activity.Controls.Add(columns, 0, 1);
-        activity.Controls.Add(TextLabel("Chưa có dữ liệu giao dịch", 10F, center: true), 0, 2);
-        page.Controls.Add(activity, 0, 3);
-        return page;
-    }
-
-    private static Control Metric(string title, string icon, Color accent)
-    {
-        var card = CreateLayout(2, 1);
-        card.Margin = new Padding(5);
-        card.Padding = new Padding(12);
-        // [COLOR CONFIG]: trắng cho thẻ thống kê, không dùng số liệu giả.
-        card.BackColor = AppColors.Surface;
-        card.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58));
-        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        var symbol = ActionButton("", icon);
-        symbol.Dock = DockStyle.Fill;
-        symbol.TabStop = false;
-        symbol.Cursor = Cursors.Default;
-        symbol.AccessibleName = title;
-        // [COLOR CONFIG]: điểm nhấn lavender/sky/mint tương ứng thẻ thống kê.
-        symbol.DefaultBack = accent;
-        card.Controls.Add(symbol, 0, 0);
-        card.Controls.Add(TextLabel($"{title}\n—", 11F, true), 1, 0);
-        card.AccessibleDescription = $"{title}: chưa có dữ liệu";
-        return card;
+        return tabs;
     }
 
     private static Control EmptyPanel(string title, string message, string icon)
