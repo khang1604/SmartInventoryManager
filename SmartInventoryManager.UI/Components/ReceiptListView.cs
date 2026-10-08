@@ -75,7 +75,7 @@ internal sealed class ReceiptListView : UserControl
         root.Controls.Add(_filters, 0, 0);
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
-        root.Controls.Add(_grid, 0, 3);
+        root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
         Controls.Add(root);
         Load += async (_, _) => await LoadAsync();
         VisibleChanged += async (_, _) =>

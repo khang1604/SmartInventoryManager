@@ -16,15 +16,24 @@ internal static class WorkflowUi
         if (report) root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-        var filterPanel = ProductUi.Layout(filters.Length, 2);
+        var filterPanel = ProductUi.Layout(filters.Length, 3);
         filterPanel.Padding = new Padding(16, 10, 4, 12);
         // [COLOR CONFIG]: vùng lọc trắng.
         filterPanel.BackColor = AppColors.Surface;
         filterPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
-        filterPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        filterPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+        filterPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 18));
         for (int i = 0; i < filters.Length; i++)
         {
             filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / filters.Length));
+
+            if (filters[i].Caption == "Thời gian")
+            {
+                var dates = new DateRangeControl();
+                filterPanel.Controls.Add(dates, i, 0);
+                filterPanel.SetRowSpan(dates, 3);
+                continue;
+            }
             filterPanel.Controls.Add(ProductUi.Label(filters[i].Caption, 10, true), i, 0);
             var input = ProductUi.Input($"filter{i}", filters[i].Value);
             input.ReadOnly = true;
@@ -122,6 +131,10 @@ internal static class WorkflowUi
                 Name = $"column{i}", HeaderText = columns[i], MinimumWidth = columns[i].Length > 17 ? 145 : 115,
                 SortMode = DataGridViewColumnSortMode.NotSortable
             });
+        // [COLOR CONFIG]: dòng đang chọn dùng lavender và chữ tối.
+        grid.DefaultCellStyle.SelectionBackColor = AppColors.Lavender;
+        grid.DefaultCellStyle.SelectionForeColor = AppColors.SelectedText;
+        UiDetails.AddColumn(grid);
         return grid;
     }
 
@@ -135,7 +148,7 @@ internal static class WorkflowUi
         area.Controls.Add(Empty("Chưa có dữ liệu để hiển thị", "Chức năng tải dữ liệu đang được hoàn thiện", icon), 0, 1);
         area.SizeChanged += (_, _) => area.RowStyles[0].Height =
             (area.ClientSize.Width < grid.Columns.Cast<DataGridViewColumn>().Sum(column => column.MinimumWidth) ? 74 : 54) * area.DeviceDpi / 96F;
-        return area;
+        return LiveUi.TableFrame(area);
     }
 
     public static Control Empty(string title, string description, string icon)
@@ -180,6 +193,7 @@ internal static class WorkflowUi
 
     public static void StyleForm(Form form)
     {
+        UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
         // [COLOR CONFIG]: nền và chữ của các màn hình nghiệp vụ.
         form.BackColor = AppColors.Workspace;

@@ -6,16 +6,16 @@ internal static class ConnectedPages
 {
     public static Control Products(UiServices services) => new ProductManagementPage(services);
 
-    public static Control Suppliers(UiServices services) => new DataListPage<LookupItemDto>(services,
-        "Nhà cung cấp đang hoạt động • Chi tiết và thêm/sửa chưa sẵn sàng",
+    public static Control Suppliers(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
+        "Nhà cung cấp đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
         [("Code", "Mã nhà cung cấp"), ("Name", "Tên nhà cung cấp")],
-        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search));
+        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search)), services.Authorization.CanManageSupplier(services.Session));
 
-    public static Control Warehouses(UiServices services) => new DataListPage<LookupItemDto>(services,
-        "Kho đang hoạt động • Chi tiết và thêm/sửa chưa sẵn sàng",
+    public static Control Warehouses(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
+        "Kho đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
         [("Code", "Mã kho"), ("Name", "Tên kho")],
         async (_, search, _, _) => (await services.Warehouses.GetActiveAsync(services.Session))
-            .Where(row => Match(row.Code, row.Name, search)).ToList());
+            .Where(row => Match(row.Code, row.Name, search)).ToList()), services.Authorization.CanManageWarehouse(services.Session));
 
     public static Control Inventory(UiServices services)
     {
@@ -72,6 +72,21 @@ internal static class ConnectedPages
                 MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
             await services.RunAsync(() => services.Alerts.ResolveAsync(services.Session, row.AlertId));
         }, permission: (_, warehouseId) => services.Authorization.CanResolveStockAlertAsync(services.Session, warehouseId));
+        return page;
+    }
+
+    private static Control WithDetails(DataListPage<LookupItemDto> page, bool canManage)
+    {
+        page.AddDetailsColumn();
+        if (canManage)
+        {
+            foreach (var caption in new[] { "Thêm", "Sửa", "Ngừng hoạt động" })
+            {
+                var button = page.Action(caption, () => Task.CompletedTask);
+                button.Enabled = false;
+                button.AccessibleDescription = "Chưa có chức năng lưu dữ liệu cho mục này.";
+            }
+        }
         return page;
     }
 

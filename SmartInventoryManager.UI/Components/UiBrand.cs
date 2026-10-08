@@ -4,6 +4,16 @@ internal static class UiBrand
 {
     public const string ApplicationName = "VioWare";
     public const string ProjectName = "Smart Inventory Manager";
+    public static void ApplyIcon(Form form)
+    {
+        using var stream = typeof(UiBrand).Assembly.GetManifestResourceStream("SmartInventoryManager.UI.ApplicationIcon")
+            ?? throw new InvalidOperationException("Missing application icon resource");
+        using var source = new Icon(stream);
+        var icon = (Icon)source.Clone();
+        form.Icon = icon;
+        form.Disposed += (_, _) => icon.Dispose();
+    }
+
     public static PictureBox CreateLogo()
     {
         using var stream = typeof(UiBrand).Assembly.GetManifestResourceStream("SmartInventoryManager.UI.ProjectLogo")

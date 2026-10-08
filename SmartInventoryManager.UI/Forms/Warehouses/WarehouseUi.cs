@@ -7,6 +7,7 @@ internal static class WarehouseUi
 {
     public static void BuildList(Form form, bool location, bool canManage)
     {
+        UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
         var root = ProductUi.Layout(1, 4);
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -101,6 +102,7 @@ internal static class WarehouseUi
             : new[] { ("WarehouseCode", "Mã kho"), ("WarehouseName", "Tên kho"), ("Location", "Địa chỉ"), ("ManagerName", "Người quản lý"), ("Status", "Trạng thái") };
         foreach (var (name, caption) in columns)
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = name, HeaderText = caption, MinimumWidth = 110, SortMode = DataGridViewColumnSortMode.NotSortable });
+        UiDetails.AddColumn(grid);
         area.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
@@ -124,7 +126,7 @@ internal static class WarehouseUi
         empty.Controls.Add(captionLabel, 0, 2);
         empty.Controls.Add(description, 0, 3);
         area.Controls.Add(empty, 0, 1);
-        root.Controls.Add(area, 0, 2);
+        root.Controls.Add(LiveUi.TableFrame(area), 0, 2);
         var note = ProductUi.Label(location ? "Xem trước • Chưa lưu dữ liệu • Quyền quản lý vị trí đang chờ xác nhận" : "Chưa kết nối dữ liệu • Biểu mẫu xem trước chưa lưu kho", 9);
         // [COLOR CONFIG]: ghi chú phụ.
         note.ForeColor = AppColors.Muted;

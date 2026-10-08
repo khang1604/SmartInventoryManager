@@ -22,6 +22,10 @@ public partial class FrmMain : Form
     private bool _collapsed;
     private bool _resizingMenu;
     private readonly ToolTip _toolTips = new();
+    private Action<bool> _setMenuCollapsed = null!;
+    private AccountPopover? _accountPopover;
+    private readonly Dictionary<Control, float> _originalFontSizes = new();
+    private readonly List<Font> _preferenceFonts = new();
     private readonly Panel _content = new() { Dock = DockStyle.Fill, AutoScroll = true };
     private readonly Label _heading = new();
     private readonly Label _breadcrumb = new();
@@ -49,7 +53,9 @@ public partial class FrmMain : Form
             _ => "Tài khoản"
         };
         _account.AccessibleDescription = $"{user.FullName} • {role}";
-        _account.Text = $"{user.FullName}\n{role}";
+        _account.Text = role;
+        _logout.Text = role;
+        _logout.AccessibleName = $"{role} - Mở menu tài khoản";
         _toolTips.SetToolTip(_account, _account.AccessibleDescription);
     }
 
@@ -61,6 +67,8 @@ public partial class FrmMain : Form
         {
             foreach (var page in _pages.Values) page.Dispose();
             _pages.Clear();
+            _accountPopover?.Dispose();
+            foreach (var font in _preferenceFonts) font.Dispose();
             _toolTips.Dispose();
         };
         FormClosing += (_, e) =>
@@ -71,6 +79,7 @@ public partial class FrmMain : Form
             MessageBox.Show(this, "Đang xử lý dữ liệu. Vui lòng chờ hoàn tất rồi đóng hoặc đăng xuất.",
                 "Đang xử lý", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
+        UiBrand.ApplyIcon(this);
         SuspendLayout();
         Text = $"{UiBrand.ApplicationName} - Quản lý kho";
         ClientSize = new Size(1320, 780);
@@ -102,6 +111,8 @@ public partial class FrmMain : Form
         Controls.Add(root);
         Disposed += (_, _) => _toolTips.Dispose();
         ShowPage("Tổng quan");
+        _setMenuCollapsed(UiPreferences.Current.CollapsedMenu);
+        ApplyFontPreferences();
         ResumeLayout(true);
     }
 
@@ -111,7 +122,7 @@ public partial class FrmMain : Form
         sidebar.Padding = new Padding(8, 12, 8, 12);
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
         var brand = _brand = CreateLayout(2, 1);
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60));
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -127,15 +138,15 @@ public partial class FrmMain : Form
         var toggle = _sidebarToggle = new MainNavigationButton("", "chevron-left") { Collapsed = true };
         toggle.Dock = DockStyle.Fill;
         toggle.AccessibleName = "Thu gọn hoặc mở rộng menu";
-        toggle.Click += (_, _) =>
+        _setMenuCollapsed = collapsed =>
         {
-            _collapsed = !_collapsed;
+            _collapsed = collapsed;
             _root.ColumnStyles[0].Width = (_collapsed ? 76 : 205) * DeviceDpi / 96F;
             _brandText.Visible = !_collapsed;
             _account.Visible = !_collapsed;
             _brand.ColumnStyles[0].Width = 60 * DeviceDpi / 96F;
             toggle.SetIcon(_collapsed ? "chevron-right" : "chevron-left");
-            _logout.Dock = _collapsed ? DockStyle.None : DockStyle.Fill;
+            _logout.Dock = DockStyle.Fill;
             _logout.Size = new Size((int)(52 * DeviceDpi / 96F), (int)(40 * DeviceDpi / 96F));
             _toolTips.SetToolTip(toggle, _collapsed ? "Mở rộng menu" : "Thu gọn menu");
             foreach (var button in _navigation.Values.Append(_logout))
@@ -150,6 +161,7 @@ public partial class FrmMain : Form
             _menu.Refresh();
             Refresh();
         };
+        toggle.Click += (_, _) => _setMenuCollapsed(!_collapsed);
         _toolTips.SetToolTip(toggle, "Thu gọn menu");
         var menu = _menu = new FlowLayoutPanel
         {
@@ -159,7 +171,7 @@ public partial class FrmMain : Form
         (string title, string icon)[] pages =
         [
             ("Tổng quan", "house"), ("Sản phẩm", "box-seam"), ("Danh mục", "grid"),
-            ("Nhà cung cấp", "people"), ("Kho & vị trí", "building"),
+            ("Nhà cung cấp", "supplier"), ("Kho & vị trí", "building"),
             ("Nhập kho", "box-arrow-in-down"), ("Xuất kho", "box-arrow-up"),
             ("Tồn kho", "boxes"), ("Lịch sử tồn kho", "file-earmark-text"),
             ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Người dùng", "people")
@@ -183,29 +195,75 @@ public partial class FrmMain : Form
             // Chừa chỗ cho thanh cuộn dọc để không phát sinh thanh cuộn ngang khi cửa sổ nhỏ.
             ResizeMenu();
         };
-        var footer = CreateLayout(1, 2);
-        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        var footer = CreateLayout(1, 1);
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        footer.Padding = new Padding(0, 12, 0, 12);
         _account.Text = "Tài khoản";
-        _account.Dock = DockStyle.Fill;
-        _account.TextAlign = ContentAlignment.MiddleLeft;
-        _account.AutoEllipsis = true;
-        footer.Controls.Add(_account, 0, 0);
-        var logout = _logout = new MainNavigationButton("Đăng xuất", "box-arrow-right");
-        _toolTips.SetToolTip(logout, "Đăng xuất");
-        logout.Dock = DockStyle.Fill;
-        logout.Click += (_, _) =>
+        var accountButton = _logout = new MainNavigationButton("Tài khoản", "person")
         {
-            if (MessageBox.Show(this, "Đăng xuất và trở về màn hình đăng nhập?", "Đăng xuất",
-                MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.OK)
-            {
-                LogoutRequested = true;
-                Close();
-            }
+            Selected = true, CornerRadius = 12, UseAvatar = true, ShowChevron = true, Dock = DockStyle.Fill
         };
-        footer.Controls.Add(logout, 0, 1);
+        accountButton.AccessibleName = "Mở menu tài khoản";
+        footer.Controls.Add(accountButton, 0, 0);
+        _toolTips.SetToolTip(accountButton, "Tài khoản và cài đặt");
+        accountButton.Click += (_, _) =>
+        {
+            if (_accountPopover?.Visible == true) { _accountPopover.Close(); return; }
+            _accountPopover?.Dispose();
+            _accountPopover = new AccountPopover(_account.Text, Math.Max(189, accountButton.Width), OpenApplicationSettings,
+                () => { using var dialog = new SmartInventoryManager.UI.Forms.Settings.FrmAccountSettings(_session?.CurrentUser, _account.Text); dialog.ShowDialog(this); },
+                () =>
+                {
+                    if (MessageBox.Show(this, "Đăng xuất và trở về màn hình đăng nhập?", "Đăng xuất", MessageBoxButtons.OKCancel,
+                        MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
+                    LogoutRequested = true; Close();
+                });
+            _accountPopover.Closed += (_, _) => { accountButton.ChevronExpanded = false; accountButton.Invalidate(); };
+            accountButton.ChevronExpanded = true; accountButton.Invalidate();
+            _accountPopover.Show(accountButton, new Point(0, -_accountPopover.Height - 6));
+        };
         sidebar.Controls.Add(footer, 0, 2);
         return sidebar;
+    }
+
+    private async void OpenApplicationSettings()
+    {
+        using var dialog = new SmartInventoryManager.UI.Forms.Settings.FrmApplicationSettings();
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        _setMenuCollapsed(UiPreferences.Current.CollapsedMenu);
+        ApplyFontPreferences();
+        foreach (var page in _pages.Values)
+            foreach (var product in Descendants(page).OfType<ProductManagementPage>())
+                await product.ApplyPreferencesAsync();
+    }
+
+    private static IEnumerable<Control> Descendants(Control root)
+    {
+        yield return root;
+        foreach (Control child in root.Controls)
+            foreach (var nested in Descendants(child)) yield return nested;
+    }
+
+    private void ApplyFontPreferences()
+    {
+        var controls = Descendants(this).Concat(_pages.Values.SelectMany(Descendants)).Distinct().Where(c => !c.IsDisposed).ToArray();
+        foreach (var control in controls)
+        {
+            if (_originalFontSizes.ContainsKey(control)) continue;
+            float size = control.Font.Size;
+            if (System.ComponentModel.TypeDescriptor.GetProperties(control)["Font"]?.ShouldSerializeValue(control) == false
+                && control.Parent is not null && _originalFontSizes.TryGetValue(control.Parent, out var parentSize)) size = parentSize;
+            _originalFontSizes.Add(control, size);
+        }
+        foreach (var control in controls)
+        {
+            float size = _originalFontSizes[control];
+            float target = size * UiPreferences.Current.FontSize / 10F;
+            if (Math.Abs(control.Font.Size - target) < .01F) continue;
+            var font = new Font(control.Font.FontFamily, target, control.Font.Style);
+            _preferenceFonts.Add(font); control.Font = font;
+        }
     }
 
     private void ResizeMenu()
@@ -283,6 +341,7 @@ public partial class FrmMain : Form
         }
         _content.Controls.Add(page);
         page.Show();
+        ApplyFontPreferences();
     }
 
     private bool CanOpenPage(string title)
@@ -323,7 +382,7 @@ public partial class FrmMain : Form
         "Báo cáo" => CreateTabs(
             ("Tồn kho", new SmartInventoryManager.Forms.Reports.FrmInventoryReport()),
             ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport())),
-        "Người dùng" => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(), title),
+        "Người dùng" => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
         "Thông báo" => new NotificationPanel(),
         _ => throw new ArgumentOutOfRangeException(nameof(title))
     };

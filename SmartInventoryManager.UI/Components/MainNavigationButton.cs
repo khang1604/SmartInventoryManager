@@ -8,6 +8,14 @@ internal sealed class MainNavigationButton : Button
     private Bitmap _icon;
     private bool _hover;
     [System.ComponentModel.DefaultValue(false)]
+    public bool UseAvatar { get; set; }
+    [System.ComponentModel.DefaultValue(false)]
+    public bool ShowChevron { get; set; }
+    [System.ComponentModel.DefaultValue(false)]
+    public bool ChevronExpanded { get; set; }
+    [System.ComponentModel.DefaultValue(6)]
+    public int CornerRadius { get; set; } = 6;
+    [System.ComponentModel.DefaultValue(false)]
     public bool Collapsed { get; set; }
     [System.ComponentModel.DefaultValue(false)]
     public bool Selected { get; set; }
@@ -54,16 +62,30 @@ internal sealed class MainNavigationButton : Button
         using var brush = new SolidBrush(background);
         using var outline = new GraphicsPath();
         var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-        outline.AddRoundedRectangle(bounds, new Size(6, 6));
+        outline.AddRoundedRectangle(bounds, new Size(CornerRadius, CornerRadius));
         e.Graphics.FillPath(brush, outline);
         var iconSize = (int)((Text.Length == 0 ? 18 : 28) * DeviceDpi / 96F);
         var left = Collapsed ? (Width - iconSize) / 2 : (int)(12 * DeviceDpi / 96F);
         var iconRect = new Rectangle(left, (Height - iconSize) / 2, iconSize, iconSize);
+        if (UseAvatar)
+        {
+            // [COLOR CONFIG]: avatar tròn xanh trời, person.svg là ảnh đại diện mặc định.
+            using var avatarBrush = new SolidBrush(AppColors.Sky);
+            e.Graphics.FillEllipse(avatarBrush, Rectangle.Inflate(iconRect, 4, 4));
+        }
         e.Graphics.DrawImage(_icon, iconRect);
         if (!Collapsed)
             TextRenderer.DrawText(e.Graphics, Text, Font,
-                new Rectangle(iconRect.Right + 10, 0, Math.Max(0, Width - iconRect.Right - 18), Height),
+                new Rectangle(iconRect.Right + 10, 0, Math.Max(0, Width - iconRect.Right - (ShowChevron ? 34 : 18)), Height),
                 foreground, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        if (ShowChevron && !Collapsed)
+        {
+            // [COLOR CONFIG]: mũi tên dùng cùng màu chữ, báo trạng thái thanh tài khoản.
+            using var pen = new Pen(foreground, 1.5F);
+            int x = Width - 18, y = Height / 2;
+            int offset = ChevronExpanded ? 3 : -3;
+            e.Graphics.DrawLines(pen, [new Point(x - 4, y - offset), new Point(x, y + offset), new Point(x + 4, y - offset)]);
+        }
         if (Focused && ShowFocusCues)
         {
             // [COLOR CONFIG]: viền nét liền màu chữ, chỉ hiện khi dùng bàn phím để giữ focus rõ ràng.

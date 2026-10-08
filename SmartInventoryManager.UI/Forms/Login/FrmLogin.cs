@@ -64,6 +64,7 @@ namespace SmartInventoryManager.UI.Forms.Login
 
         private void SetupUI()
         {
+            UiBrand.ApplyIcon(this);
             var projectLogo = UiBrand.CreateLogo();
             // Logo đặt cạnh tên app, cùng chiều cao vùng chữ VioWare.
             projectLogo.Location = new Point(244, 34);
