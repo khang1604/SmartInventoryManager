@@ -56,7 +56,7 @@ internal sealed class StockOperationForm : Form
             _busy = true;
             try
             {
-                var warehouses = await services.RunAsync(() => services.Warehouses.GetActiveAsync());
+                var warehouses = await services.RunAsync(() => services.Warehouses.GetActiveAsync(services.Session));
                 var source = warehouses.FirstOrDefault(w => w.Id == inventory.WarehouseId);
                 _context.Text = $"{inventory.ProductCode} • {inventory.ProductName}\nKho nguồn: {source?.Name ?? "Không còn hoạt động"} • Tồn hiển thị: {inventory.Quantity:N0}";
                 _destination.DisplayMember = nameof(LookupItemDto.Name);
@@ -95,12 +95,12 @@ internal sealed class StockOperationForm : Form
                 : _services.Inventory.AdjustAsync(_services.Session, _inventory.WarehouseId, _inventory.ProductId, quantity, _reason.Text.Trim()));
             committed = true;
             // Tách refresh khỏi lệnh ghi. Không gửi lại nghiệp vụ nếu refresh lỗi.
-            var source = await _services.RunAsync(() => _services.Inventory.GetByWarehouseAsync(_inventory.WarehouseId));
+            var source = await _services.RunAsync(() => _services.Inventory.GetByWarehouseAsync(_services.Session, _inventory.WarehouseId));
             var sourceQuantity = source.FirstOrDefault(r => r.ProductId == _inventory.ProductId)?.Quantity;
             var destinationText = "";
             if (_transfer)
             {
-                var destination = await _services.RunAsync(() => _services.Inventory.GetByWarehouseAsync(destinationId));
+                var destination = await _services.RunAsync(() => _services.Inventory.GetByWarehouseAsync(_services.Session, destinationId));
                 destinationText = $" • Kho đích: {destination.FirstOrDefault(r => r.ProductId == _inventory.ProductId)?.Quantity:N0}";
             }
             _message.Text = $"Đã lưu thành công • Tồn kho nguồn: {sourceQuantity:N0}{destinationText}. Đóng để làm mới danh sách.";

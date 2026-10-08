@@ -4,22 +4,17 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ConnectedPages
 {
-    public static Control Products(UiServices services) => new DataListPage<ProductLookupDto>(services,
-        "Sản phẩm đang hoạt động • Chức năng thêm/sửa chưa sẵn sàng",
-        [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"), ("Unit", "Đơn vị"),
-            ("PurchasePrice", "Giá nhập (đ)"), ("SellingPrice", "Giá bán (đ)"),
-            ("ReorderPoint", "Điểm đặt hàng lại"), ("MaximumStock", "Tồn tối đa")],
-        (_, search, _, _) => services.Products.GetActiveAsync(search));
+    public static Control Products(UiServices services) => new ProductManagementPage(services);
 
     public static Control Suppliers(UiServices services) => new DataListPage<LookupItemDto>(services,
         "Nhà cung cấp đang hoạt động • Chi tiết và thêm/sửa chưa sẵn sàng",
         [("Code", "Mã nhà cung cấp"), ("Name", "Tên nhà cung cấp")],
-        (_, search, _, _) => services.Suppliers.GetActiveAsync(search));
+        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search));
 
     public static Control Warehouses(UiServices services) => new DataListPage<LookupItemDto>(services,
         "Kho đang hoạt động • Chi tiết và thêm/sửa chưa sẵn sàng",
         [("Code", "Mã kho"), ("Name", "Tên kho")],
-        async (_, search, _, _) => (await services.Warehouses.GetActiveAsync())
+        async (_, search, _, _) => (await services.Warehouses.GetActiveAsync(services.Session))
             .Where(row => Match(row.Code, row.Name, search)).ToList());
 
     public static Control Inventory(UiServices services)
@@ -27,7 +22,7 @@ internal static class ConnectedPages
         var page = new DataListPage<InventoryDto>(services,
             "Tồn hiện tại • Đơn vị, ngưỡng và trạng thái chưa sẵn sàng",
             [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"), ("Quantity", "Số lượng tồn"), ("UpdatedAt", "Cập nhật")],
-            async (warehouseId, search, _, _) => (await services.Inventory.GetByWarehouseAsync(warehouseId))
+            async (warehouseId, search, _, _) => (await services.Inventory.GetByWarehouseAsync(services.Session, warehouseId))
                 .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true);
         page.SelectedAction("Điều chỉnh tồn", async (row, warehouseId) =>
         {
@@ -58,7 +53,7 @@ internal static class ConnectedPages
         [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("TransactionType", "Loại giao dịch"),
             ("Quantity", "Số lượng"), ("ReferenceType", "Loại tham chiếu"), ("ReferenceId", "ID tham chiếu"),
             ("CreatorName", "Người tạo"), ("CreatedAt", "Thời gian"), ("Note", "Ghi chú")],
-        async (warehouseId, search, from, to) => (await services.Inventory.GetHistoryAsync(warehouseId, productId, from, to))
+        async (warehouseId, search, from, to) => (await services.Inventory.GetHistoryAsync(services.Session, warehouseId, productId, from, to))
             .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true, history: true);
 
     public static Control Alerts(UiServices services)
@@ -66,7 +61,7 @@ internal static class ConnectedPages
         var page = new DataListPage<StockAlertDto>(services, "Cảnh báo đang mở",
             [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("AlertType", "Loại cảnh báo"),
                 ("CurrentQuantity", "Tồn hiện tại"), ("Threshold", "Ngưỡng"), ("CreatedAt", "Thời gian")],
-            async (warehouseId, search, _, _) => (await services.Alerts.GetOpenAsync(warehouseId))
+            async (warehouseId, search, _, _) => (await services.Alerts.GetOpenAsync(services.Session, warehouseId))
                 .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true);
         page.SelectedAction("Đóng cảnh báo", async (row, warehouseId) =>
         {

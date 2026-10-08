@@ -128,7 +128,7 @@ internal sealed class ReceiptListView : UserControl
         {
             if (_warehouse.DataSource is null)
             {
-                var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync());
+                var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync(_services.Session));
                 if (IsDisposed) return;
                 _warehouse.DisplayMember = nameof(LookupItemDto.Name);
                 _warehouse.ValueMember = nameof(LookupItemDto.Id);
@@ -142,13 +142,13 @@ internal sealed class ReceiptListView : UserControl
             var search = _search.Text.Trim();
             if (_import)
             {
-                var rows = await _services.RunAsync(() => _services.Imports.GetListAsync(warehouseId, status, from, to, search));
+                var rows = await _services.RunAsync(() => _services.Imports.GetListAsync(_services.Session, warehouseId, status, from, to, search));
                 if (IsDisposed) return;
                 _grid.DataSource = rows.ToList();
             }
             else
             {
-                var rows = await _services.RunAsync(() => _services.Exports.GetListAsync(warehouseId, status, from, to, search));
+                var rows = await _services.RunAsync(() => _services.Exports.GetListAsync(_services.Session, warehouseId, status, from, to, search));
                 if (IsDisposed) return;
                 _grid.DataSource = rows.ToList();
             }
@@ -174,8 +174,8 @@ internal sealed class ReceiptListView : UserControl
             var rights = await _services.RunAsync(async () =>
             {
                 int? warehouseId = _import
-                    ? (await _services.Imports.GetByIdAsync(id.Value))?.WarehouseId
-                    : (await _services.Exports.GetByIdAsync(id.Value))?.WarehouseId;
+                    ? (await _services.Imports.GetByIdAsync(_services.Session, id.Value))?.WarehouseId
+                    : (await _services.Exports.GetByIdAsync(_services.Session, id.Value))?.WarehouseId;
                 if (!warehouseId.HasValue) return (false, false, false);
                 return (await _services.Authorization.CanEditDraftReceiptAsync(_services.Session, warehouseId.Value),
                     await _services.Authorization.CanCompleteReceiptAsync(_services.Session, warehouseId.Value),
@@ -237,8 +237,8 @@ internal sealed class ReceiptListView : UserControl
             try
             {
                 var actual = await _services.RunAsync(async () => _import
-                    ? (await _services.Imports.GetByIdAsync(id.Value))?.Status
-                    : (await _services.Exports.GetByIdAsync(id.Value))?.Status);
+                    ? (await _services.Imports.GetByIdAsync(_services.Session, id.Value))?.Status
+                    : (await _services.Exports.GetByIdAsync(_services.Session, id.Value))?.Status);
                 committed = actual == (cancel ? "CANCELLED" : "COMPLETED");
             }
             catch (Exception readError) { System.Diagnostics.Debug.WriteLine(readError); }

@@ -66,7 +66,7 @@ public sealed class AuthorizationService
     {
         if (HasRole(session, RoleNames.Staff))
         {
-            return false;
+            return await CanAccessCurrentWarehouseAsync(session, warehouseId);
         }
 
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
@@ -174,7 +174,17 @@ public sealed class AuthorizationService
         }
         else if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
         {
-            return new HashSet<int>();
+            if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase) ||
+                !session.CurrentWarehouseId.HasValue)
+            {
+                return new HashSet<int>();
+            }
+
+            return await _dbContext.Warehouses
+                .AsNoTracking()
+                .Where(warehouse => warehouse.IsActive && warehouse.WarehouseId == session.CurrentWarehouseId.Value)
+                .Select(warehouse => warehouse.WarehouseId)
+                .ToHashSetAsync(cancellationToken);
         }
 
         return (await query.ToListAsync(cancellationToken)).ToHashSet();
@@ -211,6 +221,18 @@ public sealed class AuthorizationService
                 warehouse.WarehouseId == warehouseId &&
                 warehouse.ManagerId == session.CurrentUser.UserId &&
                 warehouse.IsActive);
+    }
+
+    private async Task<bool> CanAccessCurrentWarehouseAsync(UserSession session, int warehouseId)
+    {
+        if (!HasRole(session, RoleNames.Staff) || session.CurrentWarehouseId != warehouseId)
+        {
+            return false;
+        }
+
+        return await _dbContext.Warehouses
+            .AsNoTracking()
+            .AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive);
     }
 
     private static bool HasRole(UserSession session, params string[] roles)

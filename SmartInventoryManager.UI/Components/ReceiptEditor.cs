@@ -167,9 +167,9 @@ internal sealed class ReceiptEditor : UserControl
         _lines.Rows.Clear();
         try
         {
-            var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync());
-            var suppliers = _import ? await _services.RunAsync(() => _services.Suppliers.GetActiveAsync()) : Array.Empty<LookupItemDto>();
-            _products = await _services.RunAsync(() => _services.Products.GetActiveAsync());
+            var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync(_services.Session));
+            var suppliers = _import ? await _services.RunAsync(() => _services.Suppliers.GetActiveAsync(_services.Session)) : Array.Empty<LookupItemDto>();
+            _products = await _services.RunAsync(() => _services.Products.GetActiveAsync(_services.Session));
             IReadOnlyList<ReceiptDetailViewDto> details = Array.Empty<ReceiptDetailViewDto>();
             int warehouseId = 0, supplierId = 0;
             string warehouseName = "", supplierName = "";
@@ -177,7 +177,7 @@ internal sealed class ReceiptEditor : UserControl
             {
                 if (_import)
                 {
-                    var receipt = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_id.Value))
+                    var receipt = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_services.Session, _id.Value))
                         ?? throw new KeyNotFoundException();
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
@@ -186,7 +186,7 @@ internal sealed class ReceiptEditor : UserControl
                 }
                 else
                 {
-                    var receipt = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_id.Value))
+                    var receipt = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_services.Session, _id.Value))
                         ?? throw new KeyNotFoundException();
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
@@ -236,7 +236,7 @@ internal sealed class ReceiptEditor : UserControl
         _stock = null;
         foreach (DataGridViewRow row in _lines.Rows) row.Cells["CurrentStock"].Value = null;
         if (warehouseId == 0) return;
-        var stock = await _services.RunAsync(() => _services.Inventory.GetByWarehouseAsync(warehouseId));
+        var stock = await _services.RunAsync(() => _services.Inventory.GetByWarehouseAsync(_services.Session, warehouseId));
         if (IsDisposed || ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) != warehouseId) return;
         _stock = stock.ToDictionary(item => item.ProductId, item => item.Quantity);
         foreach (DataGridViewRow row in _lines.Rows)
