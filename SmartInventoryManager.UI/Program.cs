@@ -4,6 +4,7 @@ using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.UI.Forms.Login;
 using SmartInventoryManager.UI.Forms.Main;
 using SmartInventoryManager.Business.Authorization;
+using SmartInventoryManager.UI.Components;
 
 namespace SmartInventoryManager.UI
 {
@@ -41,6 +42,13 @@ namespace SmartInventoryManager.UI
 
             var authorizationService = new AuthorizationService(dbContext);
             var session = new UserSession();
+            using var services = new UiServices(session, authorizationService,
+                new ImportService(dbContext, authorizationService),
+                new ExportService(dbContext, authorizationService),
+                new InventoryService(dbContext, authorizationService),
+                new StockAlertService(dbContext, authorizationService),
+                new ProductService(dbContext), new WarehouseService(dbContext),
+                new SupplierService(dbContext), () => dbContext.ChangeTracker.Clear());
             while (true)
             {
                 using var loginForm = new FrmLogin(authService);
@@ -50,7 +58,7 @@ namespace SmartInventoryManager.UI
                 }
 
                 session.SignIn(loginForm.AuthenticatedUser);
-                using var mainForm = new FrmMain(loginForm.AuthenticatedUser, authorizationService, session);
+                using var mainForm = new FrmMain(loginForm.AuthenticatedUser, authorizationService, session, services);
                 Application.Run(mainForm);
                 session.SignOut();
                 dbContext.ChangeTracker.Clear();

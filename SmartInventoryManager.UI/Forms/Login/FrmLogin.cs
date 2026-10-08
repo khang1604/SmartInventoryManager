@@ -57,7 +57,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             chkRemember.Location = new Point(fieldLeft + 12, 402);
             lnkForgotPassword.SetBounds(fieldLeft + fieldWidth - 135, 402, 123, 20);
             btnLogin.SetBounds(fieldLeft, 438, fieldWidth, 46);
-            label2.SetBounds(center - 250, 502, 500, 32);
+            label2.SetBounds(fieldLeft, 494, fieldWidth, 64);
             label7.Location = new Point(pnlLeft.ClientSize.Width - label7.Width - 12,
                 pnlLeft.ClientSize.Height - label7.Height - 8);
         }
@@ -99,6 +99,9 @@ namespace SmartInventoryManager.UI.Forms.Login
             btnShowPassword.AccessibleName = "Hiện hoặc ẩn mật khẩu";
             txtUsername.AccessibleName = "Tên đăng nhập";
             txtPassword.AccessibleName = "Mật khẩu";
+            label2.AccessibleName = "Thông báo đăng nhập";
+            txtUsername.TextChanged += (_, _) => label2.Text = string.Empty;
+            txtPassword.TextChanged += (_, _) => label2.Text = string.Empty;
             // NOTE: Title bar tùy chỉnh cần tự implement nếu muốn giống hình mẫu 100%
             // FormBorderStyle = None + tự vẽ title bar với icon cube + text
         }
@@ -157,16 +160,12 @@ namespace SmartInventoryManager.UI.Forms.Login
 
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
+            label2.Text = string.Empty;
 
             var validationErrors = _authService.ValidateLoginCredentials(username, password);
             if (validationErrors.Count > 0)
             {
-                MessageBox.Show(
-                    validationErrors[0],
-                    "Thông báo",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
+                label2.Text = validationErrors[0];
                 (string.IsNullOrWhiteSpace(username) ? txtUsername : txtPassword).Focus();
                 return;
             }
@@ -179,11 +178,7 @@ namespace SmartInventoryManager.UI.Forms.Login
                 AuthenticatedUser = await _authService.AuthenticateAsync(username, password);
                 if (AuthenticatedUser is null)
                 {
-                    MessageBox.Show(
-                        "Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.",
-                        "Đăng nhập thất bại",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
+                    label2.Text = "Tên đăng nhập hoặc mật khẩu không đúng,\nhoặc tài khoản đã bị khóa.";
                     txtPassword.SelectAll();
                     txtPassword.Focus();
                     return;
@@ -195,11 +190,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             catch (Exception exception)
             {
                 Debug.WriteLine(exception);
-                MessageBox.Show(
-                    "Không thể kết nối hoặc xác thực với cơ sở dữ liệu. Vui lòng thử lại sau.",
-                    "Lỗi đăng nhập",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                label2.Text = "Không thể kết nối hoặc xác thực.\nVui lòng thử lại sau.";
             }
             finally
             {

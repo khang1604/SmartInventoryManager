@@ -4,6 +4,12 @@ namespace SmartInventoryManager.Forms.Exports;
 
 public partial class FrmExportList : Form
 {
+    public FrmExportList(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(new ReceiptListView(services, false));
+    }
     public FrmExportList()
     {
         InitializeComponent();

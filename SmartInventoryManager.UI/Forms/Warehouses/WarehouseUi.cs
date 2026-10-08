@@ -78,6 +78,8 @@ internal static class WarehouseUi
         {
             Name = location ? "dgvLocations" : "dgvWarehouses", Dock = DockStyle.Fill,
             ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None, RowTemplate = { Height = 34 },
             AutoGenerateColumns = false, RowHeadersVisible = false, MultiSelect = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect, BorderStyle = BorderStyle.None,
