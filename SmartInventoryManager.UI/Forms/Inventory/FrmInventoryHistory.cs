@@ -4,6 +4,12 @@ namespace SmartInventoryManager.Forms.Inventory;
 
 public partial class FrmInventoryHistory : Form
 {
+    public FrmInventoryHistory(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.History(services));
+    }
     public FrmInventoryHistory()
     {
         InitializeComponent();

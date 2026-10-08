@@ -5,6 +5,12 @@ namespace SmartInventoryManager.Forms.Products;
 
 public partial class FrmProductList : Form
 {
+    public FrmProductList(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.Products(services));
+    }
     private readonly bool _canManageProducts;
 
     public FrmProductList() : this(false) { }
@@ -99,7 +105,9 @@ public partial class FrmProductList : Form
         var grid = new DataGridView
         {
             Name = "dgvProducts", Dock = DockStyle.Fill, ReadOnly = true,
-            AllowUserToAddRows = false, AllowUserToDeleteRows = false, AllowUserToOrderColumns = true,
+            AllowUserToAddRows = false, AllowUserToDeleteRows = false, AllowUserToOrderColumns = false,
+            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None, RowTemplate = { Height = 34 },
             AutoGenerateColumns = false, RowHeadersVisible = false, MultiSelect = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,

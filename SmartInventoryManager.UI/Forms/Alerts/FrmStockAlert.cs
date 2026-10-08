@@ -4,6 +4,12 @@ namespace SmartInventoryManager.Forms.Alerts;
 
 public partial class FrmStockAlert : Form
 {
+    public FrmStockAlert(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.Alerts(services));
+    }
     public FrmStockAlert()
     {
         InitializeComponent();

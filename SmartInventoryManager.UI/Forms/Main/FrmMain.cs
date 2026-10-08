@@ -9,8 +9,10 @@ public partial class FrmMain : Form
 {
     private readonly AuthorizationService? _authorization;
     private readonly UserSession? _session;
+    private readonly UiServices? _services;
     public bool LogoutRequested { get; private set; }
     private readonly Dictionary<string, MainNavigationButton> _navigation = new();
+    private readonly Dictionary<string, Control> _pages = new();
     private TableLayoutPanel _root = null!;
     private TableLayoutPanel _brand = null!;
     private Label _brandText = null!;
@@ -30,11 +32,12 @@ public partial class FrmMain : Form
         BuildLayout();
     }
 
-    public FrmMain(AuthenticatedUserDto user, AuthorizationService authorization, UserSession session)
+    public FrmMain(AuthenticatedUserDto user, AuthorizationService authorization, UserSession session, UiServices? services = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _services = services;
         InitializeComponent();
         BuildLayout();
         _account.Text = user.FullName;
@@ -46,6 +49,7 @@ public partial class FrmMain : Form
             _ => "Tài khoản"
         };
         _account.AccessibleDescription = $"{user.FullName} • {role}";
+        _account.Text = $"{user.FullName}\n{role}";
         _toolTips.SetToolTip(_account, _account.AccessibleDescription);
     }
 
@@ -53,6 +57,20 @@ public partial class FrmMain : Form
 
     private void BuildLayout()
     {
+        FormClosed += (_, _) =>
+        {
+            foreach (var page in _pages.Values) page.Dispose();
+            _pages.Clear();
+            _toolTips.Dispose();
+        };
+        FormClosing += (_, e) =>
+        {
+            if (_services?.HasPendingOperations != true) return;
+            e.Cancel = true;
+            LogoutRequested = false;
+            MessageBox.Show(this, "Đang xử lý dữ liệu. Vui lòng chờ hoàn tất rồi đóng hoặc đăng xuất.",
+                "Đang xử lý", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        };
         SuspendLayout();
         Text = $"{UiBrand.ApplicationName} - Quản lý kho";
         ClientSize = new Size(1320, 780);
@@ -256,9 +274,15 @@ public partial class FrmMain : Form
         foreach (Control child in _content.Controls.Cast<Control>().ToArray())
         {
             _content.Controls.Remove(child);
-            child.Dispose();
+            child.Hide();
         }
-        _content.Controls.Add(CreatePage(title));
+        if (!_pages.TryGetValue(title, out var page))
+        {
+            page = CreatePage(title);
+            _pages.Add(title, page);
+        }
+        _content.Controls.Add(page);
+        page.Show();
     }
 
     private bool CanOpenPage(string title)
@@ -273,6 +297,14 @@ public partial class FrmMain : Form
     private Control CreatePage(string title) => title switch
     {
         "Tổng quan" => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(), title),
+        "Sản phẩm" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(_services), title),
+        "Nhà cung cấp" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Suppliers.FrmSupplier(_services), title),
+        "Kho & vị trí" when _services is not null => CreateTabs(
+            ("Kho", new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(_services)),
+            ("Vị trí", new SmartInventoryManager.Forms.Warehouses.FrmLocation())),
+        "Tồn kho" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventory(_services), title),
+        "Lịch sử tồn kho" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventoryHistory(_services), title),
+        "Cảnh báo" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Alerts.FrmStockAlert(_services), title),
         "Sản phẩm" => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(
             _authorization is not null && _session is not null && _authorization.CanManageProduct(_session)), title),
         "Danh mục" => PrepareForm(new SmartInventoryManager.Forms.Categories.FrmCategory(
@@ -283,8 +315,8 @@ public partial class FrmMain : Form
             ("Kho", new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(
                 _authorization is not null && _session is not null && _authorization.CanManageWarehouse(_session))),
             ("Vị trí", new SmartInventoryManager.Forms.Warehouses.FrmLocation())),
-        "Nhập kho" => PrepareForm(new SmartInventoryManager.Forms.Imports.FrmImportList(), title),
-        "Xuất kho" => PrepareForm(new SmartInventoryManager.Forms.Exports.FrmExportList(), title),
+        "Nhập kho" => PrepareForm(_services is null ? new SmartInventoryManager.Forms.Imports.FrmImportList() : new SmartInventoryManager.Forms.Imports.FrmImportList(_services), title),
+        "Xuất kho" => PrepareForm(_services is null ? new SmartInventoryManager.Forms.Exports.FrmExportList() : new SmartInventoryManager.Forms.Exports.FrmExportList(_services), title),
         "Tồn kho" => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventory(), title),
         "Lịch sử tồn kho" => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventoryHistory(), title),
         "Cảnh báo" => PrepareForm(new SmartInventoryManager.Forms.Alerts.FrmStockAlert(), title),

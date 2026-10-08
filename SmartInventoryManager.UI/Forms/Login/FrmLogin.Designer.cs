@@ -52,12 +52,13 @@ namespace SmartInventoryManager.UI.Forms.Login
             // 
             label2.BackColor = Color.Transparent;
             label2.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            label2.ForeColor = Color.FromArgb(100, 100, 255);
+            // [COLOR CONFIG]: chữ đỏ đậm cho lỗi đăng nhập trên nền pastel.
+            label2.ForeColor = Color.FromArgb(170, 35, 50);
             label2.Location = new Point(370, 483);
             label2.Name = "label2";
             label2.Size = new Size(411, 32);
             label2.TabIndex = 0;
-            label2.Text = "Quan sát rõ - Phân tích thông minh - Tối ưu tồn kho";
+            label2.Text = string.Empty;
             label2.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // btnShowPassword

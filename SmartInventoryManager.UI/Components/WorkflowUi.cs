@@ -97,7 +97,9 @@ internal static class WorkflowUi
         var grid = new DataGridView
         {
             Name = name, Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false,
-            AllowUserToAddRows = false, AllowUserToDeleteRows = false, AllowUserToOrderColumns = true,
+            AllowUserToAddRows = false, AllowUserToDeleteRows = false, AllowUserToOrderColumns = false,
+            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None, RowTemplate = { Height = 34 },
             RowHeadersVisible = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, BorderStyle = BorderStyle.None,
             EnableHeadersVisualStyles = false, ColumnHeadersHeight = 52,
