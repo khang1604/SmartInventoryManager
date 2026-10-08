@@ -3,6 +3,7 @@ namespace SmartInventoryManager.Controls
     /// <summary>Skeleton UserControl for the ChartControl component.</summary>
     public partial class ChartControl : UserControl
     {
+        private readonly Panel _plotHost;
         public ChartControl()
         {
             InitializeComponent();
@@ -14,8 +15,8 @@ namespace SmartInventoryManager.Controls
             body.BackColor = SmartInventoryManager.UI.Themes.AppColors.Surface;
             _title = SmartInventoryManager.UI.Components.ProductUi.Label("Nhập / xuất theo thời gian", 12, true);
             body.Controls.Add(_title, 0, 0);
-            body.Controls.Add(SmartInventoryManager.UI.Components.WorkflowUi.Empty("Chưa tải dữ liệu biểu đồ",
-                "Số lượng • Phạm vi kho và thời gian đã chọn", "bar-chart"), 0, 1);
+            _plotHost = new Panel { Dock = DockStyle.Fill };
+            body.Controls.Add(_plotHost, 0, 1);
             Controls.Add(body);
             Dock = DockStyle.Fill;
             Margin = new Padding(0, 0, 10, 12);
@@ -23,6 +24,19 @@ namespace SmartInventoryManager.Controls
         private readonly Label _title;
         [System.ComponentModel.DefaultValue("Nhập / xuất theo thời gian")]
         public string ChartTitle { get => _title.Text; set => _title.Text = value; }
+
+        public void ShowSeries(IReadOnlyList<string> labels, IReadOnlyList<double> values)
+        {
+            ArgumentNullException.ThrowIfNull(labels);
+            ArgumentNullException.ThrowIfNull(values);
+            if (labels.Count != values.Count) throw new ArgumentException("Nhãn và dữ liệu biểu đồ phải cùng số lượng.");
+            _plotHost.Controls.Clear();
+            var plot = new ScottPlot.WinForms.FormsPlot { Dock = DockStyle.Fill };
+            plot.Plot.Add.Bars(values.ToArray());
+            plot.Plot.Axes.Margins(bottom: 0);
+            plot.Refresh();
+            _plotHost.Controls.Add(plot);
+        }
     }
 }
 

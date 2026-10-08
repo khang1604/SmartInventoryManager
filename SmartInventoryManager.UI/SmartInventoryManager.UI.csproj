@@ -2,11 +2,14 @@
 
   <ItemGroup>
 	<PackageReference Include="AntdUI" Version="2.4.12" />
+	<PackageReference Include="ClosedXML" Version="0.105.1" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
 	  <PrivateAssets>all</PrivateAssets>
 	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 	</PackageReference>
+	<PackageReference Include="QuestPDF" Version="2026.9.1" />
+	<PackageReference Include="ScottPlot.WinForms" Version="5.1.59" />
     <Reference Include="AntdUI">
       <HintPath>Lib\AntdUI.dll</HintPath>
       <Private>true</Private>

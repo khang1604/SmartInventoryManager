@@ -41,12 +41,15 @@ internal sealed class ProductManagementPage : UserControl
 
         var actions = LiveUi.Toolbar();
         var add = ProductUi.Button("btnAddProduct", "Thêm sản phẩm", "plus-lg", true);
-        add.Enabled = false;
-        add.AccessibleDescription = "Chưa sẵn sàng: cần CategoryService để chọn danh mục.";
+        add.Enabled = _services.Authorization.CanManageProduct(_services.Session);
+        add.Click += async (_, _) => await OpenEditorAsync(null);
         actions.Controls.Add(add);
         var edit = ProductUi.Button("btnEditProduct", "Sửa", "pencil");
         edit.Enabled = false;
-        edit.AccessibleDescription = "Chưa sẵn sàng: cần CategoryService để chọn danh mục.";
+        edit.Click += async (_, _) =>
+        {
+            if (_grid is not null && _grid.CurrentRow?.DataBoundItem is ProductDto product) await OpenEditorAsync(product.ProductId);
+        };
         actions.Controls.Add(edit);
         _previous.Enabled = false;
         _next.Enabled = false;
@@ -65,6 +68,7 @@ internal sealed class ProductManagementPage : UserControl
             ("PurchasePrice", "Giá nhập (đ)"), ("SellingPrice", "Giá bán (đ)"),
             ("ReorderPoint", "Điểm đặt hàng lại"), ("MaximumStock", "Tồn tối đa"),
             ("IsActive", "Trạng thái")]);
+        _grid.SelectionChanged += (_, _) => edit.Enabled = _services.Authorization.CanManageProduct(_services.Session) && _grid.CurrentRow?.DataBoundItem is ProductDto;
         _grid.CellFormatting += (_, e) =>
         {
             if (_grid.Columns[e.ColumnIndex].Name == "IsActive" && e.Value is bool active)
@@ -164,5 +168,12 @@ internal sealed class ProductManagementPage : UserControl
             _busy = false;
             if (!IsDisposed) Enabled = true;
         }
+    }
+
+    private async Task OpenEditorAsync(int? productId)
+    {
+        if (_busy) return;
+        using var form = new SmartInventoryManager.Forms.Products.FrmProductDetail(_services, productId);
+        if (form.ShowDialog(FindForm()) == DialogResult.OK) await RefreshAsync();
     }
 }

@@ -9,7 +9,7 @@ namespace SmartInventoryManager.Forms.Warehouses
         {
             InitializeComponent();
             WorkflowUi.StyleForm(this);
-            Controls.Add(ConnectedPages.Warehouses(services));
+            WarehouseUi.BuildList(this, false, services.Authorization.CanManageWarehouse(services.Session), services);
         }
         public FrmWarehouse() : this(false) { }
 

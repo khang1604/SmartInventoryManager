@@ -1,14 +1,26 @@
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Products;
 
 public partial class FrmProductDetail : Form
 {
+    private readonly UiServices? _services;
+    private readonly int? _productId;
+
     public FrmProductDetail()
     {
         InitializeComponent();
         BuildLayout();
+    }
+
+    public FrmProductDetail(UiServices services, int? productId = null) : this()
+    {
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+        _productId = productId;
+        FindControl<AntdUI.Button>("btnSave").Enabled = true;
+        Shown += async (_, _) => await LoadDataAsync();
     }
 
     private void BuildLayout()
@@ -92,15 +104,74 @@ public partial class FrmProductDetail : Form
         var save = ProductUi.Button("btnSave", "Lưu sản phẩm", primary: true);
         save.Width = 145;
         save.Margin = Padding.Empty;
-        save.Enabled = false;
+        save.Enabled = _services is not null;
         save.TabIndex = 10;
         save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu sản phẩm đang được hoàn thiện";
+        save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
         CancelButton = close;
         footer.Controls.Add(actions, 1, 0);
         root.Controls.Add(footer, 0, 2);
         Controls.Add(root);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (_services is null) return;
+        try
+        {
+            var categories = await _services.RunAsync(() => _services.Categories.GetActiveAsync(_services.Session));
+            var category = FindControl<AntdUI.Input>("cboCategory");
+            category.Text = categories.FirstOrDefault()?.Name ?? string.Empty;
+            if (_productId is null) return;
+            var product = await _services.RunAsync(() => _services.ProductManagement.GetByIdAsync(_services.Session, _productId.Value));
+            if (product is null) throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
+            FindControl<AntdUI.Input>("txtProductCode").Text = product.ProductCode;
+            FindControl<AntdUI.Input>("txtProductName").Text = product.ProductName;
+            category.Text = product.CategoryName;
+            FindControl<AntdUI.Input>("txtUnit").Text = product.Unit;
+            FindControl<AntdUI.InputNumber>("numPurchasePrice").Value = product.PurchasePrice;
+            FindControl<AntdUI.InputNumber>("numSellingPrice").Value = product.SellingPrice;
+            FindControl<AntdUI.InputNumber>("numReorderPoint").Value = product.ReorderPoint;
+            FindControl<AntdUI.InputNumber>("numMaximumStock").Value = product.MaximumStock;
+            FindControl<CheckBox>("chkIsActive").Checked = product.IsActive;
+        }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể tải dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_services is null) return;
+        try
+        {
+            var categoryName = FindControl<AntdUI.Input>("cboCategory").Text.Trim();
+            var categories = await _services.RunAsync(() => _services.Categories.GetActiveAsync(_services.Session));
+            var category = categories.FirstOrDefault(item => string.Equals(item.Name, categoryName, StringComparison.CurrentCultureIgnoreCase)) ?? categories.FirstOrDefault();
+            if (category is null) throw new InvalidOperationException("Chưa có danh mục hoạt động.");
+            var request = new ProductRequestDto
+            {
+                ProductCode = FindControl<AntdUI.Input>("txtProductCode").Text,
+                ProductName = FindControl<AntdUI.Input>("txtProductName").Text,
+                CategoryId = category.Id,
+                Unit = FindControl<AntdUI.Input>("txtUnit").Text,
+                PurchasePrice = Convert.ToDecimal(FindControl<AntdUI.InputNumber>("numPurchasePrice").Value),
+                SellingPrice = Convert.ToDecimal(FindControl<AntdUI.InputNumber>("numSellingPrice").Value),
+                ReorderPoint = Convert.ToInt32(FindControl<AntdUI.InputNumber>("numReorderPoint").Value),
+                MaximumStock = Convert.ToInt32(FindControl<AntdUI.InputNumber>("numMaximumStock").Value)
+            };
+            await _services.RunAsync(() => _productId.HasValue
+                ? _services.ProductManagement.UpdateAsync(_services.Session, _productId.Value, request)
+                : _services.ProductManagement.CreateAsync(_services.Session, request));
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu sản phẩm", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    }
+
+    private T FindControl<T>(string name) where T : Control
+    {
+        return Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
     }
 
     private static TableLayoutPanel Section(string caption)

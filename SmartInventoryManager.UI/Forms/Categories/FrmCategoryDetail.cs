@@ -1,12 +1,32 @@
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Categories;
 
 public sealed class FrmCategoryDetail : Form
 {
-    public FrmCategoryDetail()
+    private readonly UiServices? _services;
+    private readonly int? _categoryId;
+
+    public FrmCategoryDetail() : this((UiServices?)null, (int?)null)
     {
+    }
+
+    public FrmCategoryDetail(UiServices services, CategoryDto? category = null) : this(services, category?.CategoryId)
+    {
+        _services = services;
+        _categoryId = category?.CategoryId;
+        Shown += async (_, _) =>
+        {
+            if (category is not null) LoadCategory(category);
+        };
+    }
+
+    private FrmCategoryDetail(UiServices? services, int? categoryId)
+    {
+        _services = services;
+        _categoryId = categoryId;
         AutoScaleMode = AutoScaleMode.Font;
         Font = new Font("Segoe UI", 10F);
         Text = "VioWare - Thông tin danh mục";
@@ -85,9 +105,10 @@ public sealed class FrmCategoryDetail : Form
         var save = ProductUi.Button("btnSave", "Lưu danh mục", primary: true);
         save.Width = 145;
         save.Margin = Padding.Empty;
-        save.Enabled = false;
+        save.Enabled = _services is not null;
         save.TabIndex = 4;
         save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu danh mục đang được hoàn thiện";
+        save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
         CancelButton = close;
@@ -95,4 +116,26 @@ public sealed class FrmCategoryDetail : Form
         root.Controls.Add(footer, 0, 2);
         Controls.Add(root);
     }
+
+    private void LoadCategory(CategoryDto category)
+    {
+        FindControl<AntdUI.Input>("txtCategoryName").Text = category.CategoryName;
+        FindControl<AntdUI.Input>("txtDescription").Text = category.Description ?? string.Empty;
+        FindControl<CheckBox>("chkIsActive").Checked = category.IsActive;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_services is null) return;
+        try
+        {
+            var request = new CategoryRequestDto { CategoryName = FindControl<AntdUI.Input>("txtCategoryName").Text, Description = FindControl<AntdUI.Input>("txtDescription").Text, IsActive = FindControl<CheckBox>("chkIsActive").Checked };
+            await _services.RunAsync(() => _categoryId.HasValue ? _services.Categories.UpdateAsync(_services.Session, _categoryId.Value, request) : _services.Categories.CreateAsync(_services.Session, request));
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu danh mục", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    }
+
+    private T FindControl<T>(string name) where T : Control => Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
 }

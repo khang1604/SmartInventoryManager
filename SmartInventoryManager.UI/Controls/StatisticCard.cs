@@ -15,7 +15,8 @@ namespace SmartInventoryManager.Controls
             body.BackColor = SmartInventoryManager.UI.Themes.AppColors.Surface;
             _title = SmartInventoryManager.UI.Components.ProductUi.Label("Chỉ số", 10, true);
             body.Controls.Add(_title, 0, 0);
-            body.Controls.Add(SmartInventoryManager.UI.Components.ProductUi.Label("—", 22, true), 0, 1);
+            _value = SmartInventoryManager.UI.Components.ProductUi.Label("—", 22, true);
+            body.Controls.Add(_value, 0, 1);
             var note = SmartInventoryManager.UI.Components.ProductUi.Label("Chưa có dữ liệu", 8.5F);
             // [COLOR CONFIG]: ghi chú phụ của chỉ số chưa sẵn sàng.
             note.ForeColor = SmartInventoryManager.UI.Themes.AppColors.Muted;
@@ -25,8 +26,11 @@ namespace SmartInventoryManager.Controls
             Margin = new Padding(0, 0, 10, 12);
         }
         private readonly Label _title;
+        private readonly Label _value;
         [System.ComponentModel.DefaultValue("Chỉ số")]
         public string MetricTitle { get => _title.Text; set { _title.Text = value; AccessibleName = value; } }
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public string MetricValue { get => _value.Text; set => _value.Text = value; }
     }
 }
 
