@@ -37,9 +37,9 @@ Before coding, follow this order and stop at the first sufficient solution:
 
 ### Ownership map
 
-- **Bảo Anh — Database + Architecture:** database, ERD, Entity models, EF DbContext, repositories/UnitOfWork when justified, architecture, SQL scripts, constraints, indexes, views, and supporting stored procedures.
-- **Khang — Backend + Warehouse Operations:** Business Services, warehouse operations, imports, exports, inventory, stock-alert backend, business validation, receipt workflows, stock updates, and Business tests.
-- **Khiêm — UI + Dashboard + Analytics:** Windows Forms UI, Dashboard, Analytics, charts, reports, notification UI, UI interactions, and related presentation/query logic within agreed contracts.
+- **Bảo Anh — Database + Architecture + Data/EF/ADO.NET Infrastructure:** database, ERD, Entity models, EF DbContext, EF Configurations, EF Core Migrations, repositories/UnitOfWork when justified, ADO.NET infrastructure, architecture, SQL-managed artifacts, constraints, indexes, views, and supporting stored procedures.
+- **Khang — Business/Backend + Warehouse Operations:** Business Services, warehouse operations, imports, exports, inventory workflows, stock-alert backend, business validation, receipt state machine, stock updates, transfer/adjustment workflows, business events, and Business tests.
+- **Khiêm — UI + Dashboard + Analytics + Reports + Notification UI:** Windows Forms UI, Dashboard, Analytics, charts, reports, notification UI, UI interactions, and presentation/query integration within agreed contracts.
 
 ### Active scope enforcement
 
@@ -84,12 +84,12 @@ Before coding, follow this order and stop at the first sufficient solution:
 - Import/export quantities must be positive; prices nonnegative; money uses decimal. Quantity types follow agreed units.
 - Validate referenced products, warehouses, suppliers, and relationships before writing.
 - Only the agreed posted/completed state affects stock. Drafts must not change stock when a draft/approval workflow exists.
-- Each receipt affects stock exactly once. Protect repeated submissions/double-clicks at Service and database levels as appropriate.
+- Each receipt affects stock exactly once. Protect repeated submissions/double-clicks at Service and database levels as appropriate. The goal is mandatory; a specific duplicate-posting unique index is not locked until all transaction/reference cases are reviewed.
 - Atomically save the receipt, lines, stock movement, history, and related alerts when consistency requires it. Roll back the entire operation on failure.
 - Validate/decrement exports safely under concurrency; reading then updating without concurrency protection is insufficient. Reject negative stock unless explicitly allowed; use suitable constraints/concurrency/locking.
 - Transfer source decrease and destination increase in one transaction; reject identical warehouses and record both sides.
 - Adjustments record before/after quantities, difference, reason, actor, and timestamp. Posted receipts use an agreed cancellation/reversal flow; never silently edit/delete them.
-- Business Services are the authoritative stock-update path. Never use triggers to automatically increase/decrease Inventory. SQL constraints/indexes/FKs/checks/views/stored procedures support the Service workflow; they must not perform an independent or duplicate stock posting.
+- Business Services are the authoritative stock-update path. Never use triggers to automatically increase/decrease Inventory. A trigger that supports `TotalAmount` is optional and requires explicit approval; it must not perform stock posting or bypass Business validation. SQL constraints/indexes/FKs/checks/views/stored procedures support the Service workflow; they must not perform an independent or duplicate stock posting.
 - Import flow: Form -> ImportService -> transaction -> update Inventory -> write InventoryTransaction -> commit. Export/adjustment/transfer follow the same Business-controlled principle.
 - Do not share DbContext concurrently. Manage context/connection/transaction lifetimes and disposal correctly.
 - Publish InventoryChangedEvent/StockAlertEvent only after commit. UI refresh failure must not replay a committed transaction.
@@ -98,7 +98,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 ## 6. Stock Alert Rules
 
 - CurrentStock (Quantity) is stock for the relevant product/warehouse. ReorderPoint is the reorder-alert threshold. MaximumStock is the intended upper limit.
-- Require configured thresholds with 0 <= ReorderPoint < MaximumStock. Reject invalid configuration; do not invent missing thresholds. Reject negative quantities rather than assigning a normal status.
+- Require configured thresholds with 0 <= ReorderPoint <= MaximumStock. Reject invalid configuration; do not invent missing thresholds. Reject negative quantities rather than assigning a normal status.
 - Apply these mutually exclusive rules, including the boundary values:
   - Quantity = 0 -> OUT_OF_STOCK.
   - 0 < Quantity <= ReorderPoint -> LOW_STOCK.
@@ -113,7 +113,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 
 - Dashboard, Analytics, charts, reports, and notification presentation belong to the UI/Analytics scope. Business-owned stock calculation, validation, and updates remain in Business; Data owns database/query implementations.
 - Agree input/output contracts before connecting Analytics to Services. Request authorization for cross-owner Service/Data changes rather than implementing them independently.
-- Define metrics explicitly: warehouse/time scope, units, stock valuation method, Top Products ranking criterion, Dead Stock time window, ABC basis/cutoffs, and reorder formula.
+- Define metrics explicitly through the agreed Analytics/Report contract: warehouse/time scope, units, stock valuation method, Top Products ranking criterion, Dead Stock time window, ABC basis/cutoffs, and reorder formula. Bảo Anh does not unilaterally decide report metrics or business formulas for Khiêm.
 - Do not invent formulas or data. Reorder recommendations must explain their criteria and never automatically create/post imports without a separate requirement.
 - Reuse approved EF/LINQ/ADO.NET query paths. New chart/export/AI libraries require permission; presentation responsibilities do not authorize new technologies.
 
@@ -230,7 +230,8 @@ References:
 
 ### Database responsibilities
 
-- Preserve multi-warehouse keys, foreign keys, constraints, indexes, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
+- EF Core Migration is the authoritative mechanism for EF-managed schema evolution (tables, columns, types, PK/FK, UNIQUE, CHECK, NOT NULL, defaults, indexes, and EF relationships). Existing table/constraint/index SQL scripts must not compete with Migration as a second schema authority.
+- Preserve multi-warehouse keys, foreign keys, constraints, indexes, delete behavior, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
 - Repository and UnitOfWork are optional: use them only when they add clear value or are established project contracts. Do not build wrappers just to fill folders; EF already provides related capabilities. Do not remove established contracts without authorization.
 - Business Services are the authoritative stock-update path. No triggers may automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
 - EF and ADO.NET participating in one workflow must share the intended transaction/context consistency strategy; do not commit partial steps separately or retain stale tracked quantities.
