@@ -1,7 +1,10 @@
-namespace SmartInventoryManager.Business.DTOs
-{
-    /// <summary>Skeleton InventoryDto type; implementation is intentionally not defined.</summary>
-    public class InventoryDto
-    {
-    }
-}
+namespace SmartInventoryManager.Business.DTOs;
+
+public sealed record InventoryDto(
+    int InventoryId,
+    int ProductId,
+    string ProductCode,
+    string ProductName,
+    int WarehouseId,
+    int Quantity,
+    DateTime UpdatedAt);

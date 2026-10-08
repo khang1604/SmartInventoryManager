@@ -41,7 +41,7 @@ CREATE TABLE Users
     Username VARCHAR(50) NOT NULL,
     PasswordHash VARCHAR(255) NOT NULL,
     FullName NVARCHAR(100) NOT NULL,
-    Email VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) NULL,
     RoleId INT NOT NULL,
     IsActive BIT NOT NULL,
     CreatedAt DATETIME2 NOT NULL

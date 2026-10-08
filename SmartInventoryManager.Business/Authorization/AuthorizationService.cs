@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Data.Context;
 
 namespace SmartInventoryManager.Business.Authorization;

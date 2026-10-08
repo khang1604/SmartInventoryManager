@@ -17,14 +17,15 @@ namespace SmartInventoryManager.Business.Services
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         }
 
-        public IReadOnlyList<string> ValidateLoginCredentials(string? email, string? password)
+        public IReadOnlyList<string> ValidateLoginCredentials(string? username, string? password)
         {
             var errors = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(username))
             {
-                errors.Add("Vui lòng nhập email.");
+                errors.Add("Vui lòng nhập tên đăng nhập.");
             }
+
             if (string.IsNullOrWhiteSpace(password))
             {
                 errors.Add("Vui lòng nhập mật khẩu.");
@@ -34,17 +35,17 @@ namespace SmartInventoryManager.Business.Services
         }
 
         public async Task<AuthenticatedUserDto?> AuthenticateAsync(
-            string? email,
+            string? username,
             string? password,
             CancellationToken cancellationToken = default)
         {
-            var errors = ValidateLoginCredentials(email, password);
+            var errors = ValidateLoginCredentials(username, password);
             if (errors.Count > 0)
             {
                 return null;
             }
 
-            var normalizedIdentifier = email!.Trim();
+            var normalizedIdentifier = username!.Trim();
             var user = await _dbContext.Users
                 .AsNoTracking()
                 .Include(candidate => candidate.Role)

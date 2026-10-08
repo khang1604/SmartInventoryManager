@@ -1,4 +1,4 @@
-namespace SmartInventoryManager.Business.Authorization;
+﻿namespace SmartInventoryManager.Business.Authorization;
 
 public static class RoleNames
 {

@@ -1,7 +1,14 @@
-namespace SmartInventoryManager.Business.Events
+namespace SmartInventoryManager.Business.Events;
+
+public sealed class InventoryChangedEvent : EventArgs
 {
-    /// <summary>Skeleton InventoryChangedEvent type; implementation is intentionally not defined.</summary>
-    public class InventoryChangedEvent : EventArgs
+    public InventoryChangedEvent(int productId, int warehouseId)
     {
+        ProductId = productId;
+        WarehouseId = warehouseId;
     }
+
+    public int ProductId { get; }
+
+    public int WarehouseId { get; }
 }
