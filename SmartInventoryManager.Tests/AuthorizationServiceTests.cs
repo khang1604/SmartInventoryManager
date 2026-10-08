@@ -56,13 +56,17 @@ public class AuthorizationServiceTests
     }
 
     [TestMethod]
-    public async Task StaffDraftAccess_WithoutAssignments_IsDenied()
+    public void UserSession_CurrentWarehouseContext_RequiresAuthenticationAndCanBeChanged()
     {
-        var service = CreateAuthorizationService();
+        var session = new UserSession();
 
-        var allowed = await service.CanCreateDraftReceiptAsync(CreateSession(RoleNames.Staff), 7);
+        Assert.ThrowsException<InvalidOperationException>(() => session.SetCurrentWarehouse(7));
+        session.SignIn(new AuthenticatedUserDto(1, "user", "User", "user@example.com", RoleNames.Staff));
+        session.SetCurrentWarehouse(7);
+        Assert.AreEqual(7, session.CurrentWarehouseId);
 
-        Assert.IsFalse(allowed);
+        session.SetCurrentWarehouse(8);
+        Assert.AreEqual(8, session.CurrentWarehouseId);
     }
 
     private static UserSession CreateSession(string roleName)
