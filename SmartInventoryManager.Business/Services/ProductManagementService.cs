@@ -45,12 +45,13 @@ public sealed class ProductManagementService : IProductService
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
+        var products = await query
+            .Include(product => product.Category)
             .OrderBy(product => product.ProductCode)
             .Skip((page.PageNumber - 1) * page.PageSize)
             .Take(page.PageSize)
-            .Select(product => ToDto(product))
             .ToListAsync(cancellationToken);
+        var items = products.Select(ToDto).ToList();
         return new PagedResultDto<ProductDto>(items, page.PageNumber, page.PageSize, totalCount);
     }
 
@@ -60,11 +61,11 @@ public sealed class ProductManagementService : IProductService
         CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated(session);
-        return await _dbContext.Products
+        var product = await _dbContext.Products
             .AsNoTracking()
-            .Where(product => product.ProductId == productId)
-            .Select(product => ToDto(product))
-            .SingleOrDefaultAsync(cancellationToken);
+            .Include(item => item.Category)
+            .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken);
+        return product is null ? null : ToDto(product);
     }
 
     public async Task<int> CreateAsync(
@@ -195,17 +196,27 @@ public sealed class ProductManagementService : IProductService
         return (pageNumber, pageSize);
     }
 
-    private static ProductDto ToDto(Product product) => new(
-        product.ProductId,
-        product.ProductCode,
-        product.ProductName,
-        product.CategoryId,
-        product.Category.CategoryName,
-        product.Unit,
-        product.PurchasePrice,
-        product.SellingPrice,
-        product.ReorderPoint,
-        product.MaximumStock,
-        product.IsActive,
-        product.CreatedAt);
+    private static ProductDto ToDto(Product product)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        if (product.Category is null)
+        {
+            throw new InvalidOperationException(
+                $"Không thể đọc sản phẩm {product.ProductId}: danh mục {product.CategoryId} không tồn tại hoặc chưa được tải.");
+        }
+
+        return new(
+            product.ProductId,
+            product.ProductCode,
+            product.ProductName,
+            product.CategoryId,
+            product.Category.CategoryName,
+            product.Unit,
+            product.PurchasePrice,
+            product.SellingPrice,
+            product.ReorderPoint,
+            product.MaximumStock,
+            product.IsActive,
+            product.CreatedAt);
+    }
 }
