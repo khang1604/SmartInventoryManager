@@ -1,7 +1,10 @@
 namespace SmartInventoryManager.Common.Enums
 {
-    /// <summary>Skeleton StockStatus enumeration; values require an agreed contract.</summary>
     public enum StockStatus
     {
+        OUT_OF_STOCK,
+        LOW_STOCK,
+        NORMAL,
+        OVERSTOCK
     }
 }

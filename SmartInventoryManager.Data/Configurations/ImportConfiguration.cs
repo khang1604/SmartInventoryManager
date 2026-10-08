@@ -9,7 +9,16 @@ namespace SmartInventoryManager.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<ImportReceipt> builder)
         {
-            builder.ToTable("ImportReceipts");
+            builder.ToTable("ImportReceipts", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ImportReceipts_TotalAmount",
+                    "[TotalAmount] >= 0");
+
+                table.HasCheckConstraint(
+                    "CK_ImportReceipts_Status",
+                    "[Status] IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED')");
+            });
 
             builder.HasKey(i => i.ImportReceiptId);
 
@@ -30,53 +39,21 @@ namespace SmartInventoryManager.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(20)
                 .IsUnicode(false)
-                .HasDefaultValue("COMPLETED");
+                .HasDefaultValue("DRAFT");
 
             builder.Property(i => i.Note)
                 .HasMaxLength(500);
 
             builder.HasIndex(i => i.ReceiptCode)
                 .IsUnique();
-
-            builder.ToTable("ImportReceipts", table =>
-            {
-                table.HasCheckConstraint(
-                    "CK_ImportReceipts_TotalAmount",
-                    "[TotalAmount] >= 0");
-
-                table.HasCheckConstraint(
-                    "CK_ImportReceipts_Status",
-                    "[Status] IN ('DRAFT', 'COMPLETED', 'CANCELLED')");
-            });
         }
     }
-
 
     public class ImportDetailConfiguration
         : IEntityTypeConfiguration<ImportDetail>
     {
         public void Configure(EntityTypeBuilder<ImportDetail> builder)
         {
-            builder.ToTable("ImportDetails");
-
-            builder.HasKey(i => i.ImportDetailId);
-
-            builder.Property(i => i.Quantity)
-                .IsRequired();
-
-            builder.Property(i => i.UnitPrice)
-                .IsRequired()
-                .HasPrecision(18, 2);
-
-            // Một sản phẩm chỉ xuất hiện một lần
-            // trong một phiếu nhập.
-            builder.HasIndex(i => new
-            {
-                i.ImportReceiptId,
-                i.ProductId
-            })
-            .IsUnique();
-
             builder.ToTable("ImportDetails", table =>
             {
                 table.HasCheckConstraint(
@@ -87,6 +64,22 @@ namespace SmartInventoryManager.Data.Configurations
                     "CK_ImportDetails_UnitPrice",
                     "[UnitPrice] >= 0");
             });
+
+            builder.HasKey(i => i.ImportDetailId);
+
+            builder.Property(i => i.Quantity)
+                .IsRequired();
+
+            builder.Property(i => i.UnitPrice)
+                .IsRequired()
+                .HasPrecision(18, 2);
+
+            builder.HasIndex(i => new
+            {
+                i.ImportReceiptId,
+                i.ProductId
+            })
+            .IsUnique();
         }
     }
 }

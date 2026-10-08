@@ -318,25 +318,59 @@ namespace SmartInventoryManager.Data.Context
 
             modelBuilder.Entity<ImportReceipt>(entity =>
             {
-                // Supplier 1:N ImportReceipt
+                entity.ToTable("ImportReceipts", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_ImportReceipts_TotalAmount",
+                        "[TotalAmount] >= 0");
+
+                    table.HasCheckConstraint(
+                        "CK_ImportReceipts_Status",
+                        "[Status] IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED')");
+                });
+
+                entity.HasKey(i => i.ImportReceiptId);
+
+                entity.Property(i => i.ReceiptCode)
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
+                entity.Property(i => i.ReceiptDate)
+                    .IsRequired()
+                    .HasDefaultValueSql("SYSDATETIME()");
+
+                entity.Property(i => i.TotalAmount)
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0);
+
+                entity.Property(i => i.Status)
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .IsUnicode(false)
+                    .HasDefaultValue("DRAFT");
+
+                entity.Property(i => i.Note)
+                    .HasMaxLength(500);
+
+                entity.HasIndex(i => i.ReceiptCode)
+                    .IsUnique();
+
                 entity.HasOne(i => i.Supplier)
                     .WithMany(s => s.ImportReceipts)
                     .HasForeignKey(i => i.SupplierId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Warehouse 1:N ImportReceipt
                 entity.HasOne(i => i.Warehouse)
                     .WithMany(w => w.ImportReceipts)
                     .HasForeignKey(i => i.WarehouseId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // User 1:N ImportReceipt
                 entity.HasOne(i => i.Creator)
                     .WithMany(u => u.CreatedImportReceipts)
                     .HasForeignKey(i => i.CreatedBy)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // ImportReceipt 1:N ImportDetail
                 entity.HasMany(i => i.Details)
                     .WithOne(d => d.ImportReceipt)
                     .HasForeignKey(d => d.ImportReceiptId)
@@ -364,7 +398,16 @@ namespace SmartInventoryManager.Data.Context
 
             modelBuilder.Entity<ExportReceipt>(entity =>
             {
-                entity.ToTable("ExportReceipts");
+                entity.ToTable("ExportReceipts", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_ExportReceipts_TotalAmount",
+                        "[TotalAmount] >= 0");
+
+                    table.HasCheckConstraint(
+                        "CK_ExportReceipts_Status",
+                        "[Status] IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED')");
+                });
 
                 entity.HasKey(e => e.ExportReceiptId);
 
@@ -385,7 +428,7 @@ namespace SmartInventoryManager.Data.Context
                     .IsRequired()
                     .HasMaxLength(20)
                     .IsUnicode(false)
-                    .HasDefaultValue("COMPLETED");
+                    .HasDefaultValue("DRAFT");
 
                 entity.Property(e => e.Note)
                     .HasMaxLength(500);
@@ -393,34 +436,20 @@ namespace SmartInventoryManager.Data.Context
                 entity.HasIndex(e => e.ReceiptCode)
                     .IsUnique();
 
-                // Warehouse 1:N ExportReceipt
                 entity.HasOne(e => e.Warehouse)
                     .WithMany(w => w.ExportReceipts)
                     .HasForeignKey(e => e.WarehouseId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // User 1:N ExportReceipt
                 entity.HasOne(e => e.Creator)
                     .WithMany(u => u.CreatedExportReceipts)
                     .HasForeignKey(e => e.CreatedBy)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // ExportReceipt 1:N ExportDetail
                 entity.HasMany(e => e.Details)
                     .WithOne(d => d.ExportReceipt)
                     .HasForeignKey(d => d.ExportReceiptId)
                     .OnDelete(DeleteBehavior.Restrict);
-
-                entity.ToTable("ExportReceipts", table =>
-                {
-                    table.HasCheckConstraint(
-                        "CK_ExportReceipts_TotalAmount",
-                        "[TotalAmount] >= 0");
-
-                    table.HasCheckConstraint(
-                        "CK_ExportReceipts_Status",
-                        "[Status] IN ('DRAFT', 'COMPLETED', 'CANCELLED')");
-                });
             });
 
 
@@ -507,21 +536,24 @@ namespace SmartInventoryManager.Data.Context
                     .HasForeignKey(t => t.CreatedBy)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasCheckConstraint(
-                    "CK_InventoryTransactions_Quantity",
-                    "[Quantity] > 0");
+                entity.ToTable("InventoryTransactions", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_InventoryTransactions_Quantity",
+                        "[Quantity] > 0");
 
-                entity.HasCheckConstraint(
-                    "CK_InventoryTransactions_TransactionType",
-                    "[TransactionType] IN " +
-                    "('IMPORT', 'EXPORT', 'ADJUSTMENT', " +
-                    "'TRANSFER_IN', 'TRANSFER_OUT')");
+                    table.HasCheckConstraint(
+                        "CK_InventoryTransactions_TransactionType",
+                        "[TransactionType] IN " +
+                        "('IMPORT', 'EXPORT', 'ADJUSTMENT', " +
+                        "'TRANSFER_IN', 'TRANSFER_OUT')");
 
-                entity.HasCheckConstraint(
-                    "CK_InventoryTransactions_ReferenceType",
-                    "[ReferenceType] IS NULL OR " +
-                    "[ReferenceType] IN " +
-                    "('IMPORT_RECEIPT', 'EXPORT_RECEIPT', 'MANUAL')");
+                    table.HasCheckConstraint(
+                        "CK_InventoryTransactions_ReferenceType",
+                        "[ReferenceType] IS NULL OR " +
+                        "[ReferenceType] IN " +
+                        "('IMPORT_RECEIPT', 'EXPORT_RECEIPT', 'MANUAL')");
+                });
             });
 
 
@@ -567,20 +599,23 @@ namespace SmartInventoryManager.Data.Context
                     .HasForeignKey(a => a.ResolvedBy)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasCheckConstraint(
-                    "CK_StockAlerts_AlertType",
-                    "[AlertType] IN " +
-                    "('LOW_STOCK', 'OUT_OF_STOCK', 'OVERSTOCK')");
+                entity.ToTable("StockAlerts", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_StockAlerts_AlertType",
+                        "[AlertType] IN " +
+                        "('LOW_STOCK', 'OUT_OF_STOCK', 'OVERSTOCK')");
 
-                entity.HasCheckConstraint(
-                    "CK_StockAlerts_CurrentQuantity",
-                    "[CurrentQuantity] >= 0");
+                    table.HasCheckConstraint(
+                        "CK_StockAlerts_CurrentQuantity",
+                        "[CurrentQuantity] >= 0");
 
-                entity.HasCheckConstraint(
-                    "CK_StockAlerts_Resolution",
-                    "([IsResolved] = 0 AND [ResolvedAt] IS NULL) " +
-                    "OR " +
-                    "([IsResolved] = 1 AND [ResolvedAt] IS NOT NULL)");
+                    table.HasCheckConstraint(
+                        "CK_StockAlerts_Resolution",
+                        "([IsResolved] = 0 AND [ResolvedAt] IS NULL) " +
+                        "OR " +
+                        "([IsResolved] = 1 AND [ResolvedAt] IS NOT NULL)");
+                });
             });
 
 
