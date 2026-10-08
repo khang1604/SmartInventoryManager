@@ -4,6 +4,13 @@ namespace SmartInventoryManager.Forms.Reports;
 
 public partial class FrmImportExportReport : Form
 {
+    public FrmImportExportReport(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.ImportExportReport(services));
+    }
+
     public FrmImportExportReport()
     {
         InitializeComponent();

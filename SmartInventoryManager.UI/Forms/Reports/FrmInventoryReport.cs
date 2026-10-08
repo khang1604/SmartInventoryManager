@@ -4,6 +4,13 @@ namespace SmartInventoryManager.Forms.Reports;
 
 public partial class FrmInventoryReport : Form
 {
+    public FrmInventoryReport(UiServices services)
+    {
+        InitializeComponent();
+        WorkflowUi.StyleForm(this);
+        Controls.Add(ConnectedPages.InventoryReport(services));
+    }
+
     public FrmInventoryReport()
     {
         InitializeComponent();

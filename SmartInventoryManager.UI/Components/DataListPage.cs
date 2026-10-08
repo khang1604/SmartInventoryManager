@@ -84,6 +84,11 @@ internal sealed class DataListPage<T> : UserControl where T : class
 
     public void AddDetailsColumn() => UiDetails.AddColumn(_grid);
 
+    public IReadOnlyList<T> CurrentRows => _grid.DataSource is IEnumerable<T> rows ? rows.ToList() : [];
+    public int SelectedWarehouseId => (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
+    public DateTime? SelectedFrom => _history && _from.Checked ? _from.Value.Date : null;
+    public DateTime? SelectedTo => _history && _to.Checked ? _to.Value.Date : null;
+
     public AntdUI.Button Action(string caption, Func<Task> action, string? icon = null)
     {
         var button = ProductUi.Button("btn" + _actions.Controls.Count, caption, icon);
