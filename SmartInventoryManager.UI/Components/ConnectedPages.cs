@@ -9,7 +9,7 @@ internal static class ConnectedPages
     public static Control Suppliers(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
         "Nhà cung cấp đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
         [("Code", "Mã nhà cung cấp"), ("Name", "Tên nhà cung cấp")],
-        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search)), services.Authorization.CanManageSupplier(services.Session));
+        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search)), services.Authorization.CanManageSupplier(services.Session), insetButton: true);
 
     public static Control Warehouses(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
         "Kho đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
@@ -20,8 +20,8 @@ internal static class ConnectedPages
     public static Control Inventory(UiServices services)
     {
         var page = new DataListPage<InventoryDto>(services,
-            "Tồn hiện tại • Đơn vị, ngưỡng và trạng thái chưa sẵn sàng",
-            [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"), ("Quantity", "Số lượng tồn"), ("UpdatedAt", "Cập nhật")],
+            "Tồn hiện tại theo kho",
+            [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"), ("Unit", "Đơn vị"), ("Quantity", "Số lượng tồn"), ("ReorderPoint", "Ngưỡng đặt hàng"), ("MaximumStock", "Tồn tối đa"), ("StockStatus", "Trạng thái tồn"), ("UpdatedAt", "Cập nhật")],
             async (warehouseId, search, _, _) => (await services.Inventory.GetByWarehouseAsync(services.Session, warehouseId))
                 .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true);
         page.SelectedAction("Điều chỉnh tồn", async (row, warehouseId) =>
@@ -145,9 +145,9 @@ internal static class ConnectedPages
         return page;
     }
 
-    private static Control WithDetails(DataListPage<LookupItemDto> page, bool canManage)
+    private static Control WithDetails(DataListPage<LookupItemDto> page, bool canManage, bool insetButton = false)
     {
-        page.AddDetailsColumn();
+        page.AddDetailsColumn(insetButton);
         if (canManage)
         {
             foreach (var caption in new[] { "Thêm", "Sửa", "Ngừng hoạt động" })

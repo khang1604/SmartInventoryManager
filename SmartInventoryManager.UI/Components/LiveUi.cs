@@ -39,12 +39,53 @@ internal static class LiveUi
     {
         var frame = new RoundedSurface
         {
-            Dock = DockStyle.Fill, Padding = new Padding(8), Margin = Padding.Empty,
+            Dock = DockStyle.Fill, Padding = new Padding(10), Margin = Padding.Empty,
             AccessibleName = "Khung bảng dữ liệu"
         };
         content.Dock = DockStyle.Fill;
         content.Margin = Padding.Empty;
         frame.Controls.Add(content);
+        void StyleTables(Control control)
+        {
+            if (control is DataGridView table)
+            {
+                var bodyFont = new Font("Segoe UI", 10F, FontStyle.Regular);
+                table.Font = bodyFont;
+                Font? headerFont = null;
+                void ApplyHeaderFont()
+                {
+                    var previous = headerFont;
+                    headerFont = new Font("Segoe UI", table.Font.Size, FontStyle.Bold);
+                    table.ColumnHeadersDefaultCellStyle.Font = headerFont;
+                    previous?.Dispose();
+                }
+                table.ColumnHeadersDefaultCellStyle.Padding = new Padding(12, 0, 8, 0);
+                table.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                ApplyHeaderFont();
+                table.FontChanged += (_, _) => ApplyHeaderFont();
+                table.Disposed += (_, _) => { headerFont?.Dispose(); bodyFont.Dispose(); };
+                table.BorderStyle = BorderStyle.None;
+                table.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+                table.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+                // [COLOR CONFIG]: đường ngang nhạt, bỏ viền đen giữa các tiêu đề.
+                table.GridColor = AppColors.Border;
+                void RoundTable()
+                {
+                    if (table.Width < 2 || table.Height < 2) return;
+                    using var outline = new System.Drawing.Drawing2D.GraphicsPath();
+                    int radius = Math.Max(8, 8 * table.DeviceDpi / 96);
+                    outline.AddRoundedRectangle(table.ClientRectangle, new Size(radius, radius));
+                    var previous = table.Region;
+                    table.Region = new Region(outline);
+                    previous?.Dispose();
+                }
+                table.SizeChanged += (_, _) => RoundTable();
+                table.DpiChangedAfterParent += (_, _) => RoundTable();
+                RoundTable();
+            }
+            foreach (Control child in control.Controls) StyleTables(child);
+        }
+        StyleTables(content);
         return frame;
     }
 
@@ -114,6 +155,15 @@ internal static class LiveUi
         grid.DefaultCellStyle.FormatProvider = Culture;
         return grid;
     }
+
+    public static string StockStatusText(SmartInventoryManager.Business.Inventory.StockStatus status) => status switch
+    {
+        SmartInventoryManager.Business.Inventory.StockStatus.OutOfStock => "Hết hàng",
+        SmartInventoryManager.Business.Inventory.StockStatus.LowStock => "Sắp hết hàng",
+        SmartInventoryManager.Business.Inventory.StockStatus.Normal => "Bình thường",
+        SmartInventoryManager.Business.Inventory.StockStatus.Overstock => "Vượt mức",
+        _ => "Chưa xác định"
+    };
 
     public static string StatusText(string status) => status switch
     {

@@ -142,7 +142,7 @@ public partial class FrmSupplier : Form
             Column("SupplierName", "Tên nhà cung cấp", 24), Column("Phone", "Số điện thoại", 15),
             Column("Email", "Email", 20), Column("TaxCode", "Mã số thuế", 13),
             Column("Status", "Trạng thái", 12));
-        UiDetails.AddColumn(grid);
+        UiDetails.AddColumn(grid, insetButton: true);
         tableArea.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
