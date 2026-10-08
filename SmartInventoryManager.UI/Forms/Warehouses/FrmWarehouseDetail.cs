@@ -1,0 +1,131 @@
+using SmartInventoryManager.UI.Components;
+using SmartInventoryManager.UI.Themes;
+
+namespace SmartInventoryManager.Forms.Warehouses;
+
+public sealed class FrmWarehouseDetail : Form
+{
+    public FrmWarehouseDetail(bool location = false)
+    {
+        AutoScaleMode = AutoScaleMode.Font;
+        Font = new Font("Segoe UI", 10F);
+        string subject = location ? "vị trí" : "kho";
+        Text = $"VioWare - Thông tin {subject}";
+        ClientSize = new Size(560, location ? 520 : 600);
+        MinimumSize = new Size(500, 480);
+        StartPosition = FormStartPosition.CenterParent;
+        ShowInTaskbar = false;
+        MaximizeBox = false;
+        // [COLOR CONFIG]: nền và chữ theo bảng màu KH duyệt.
+        BackColor = AppColors.Workspace;
+        ForeColor = AppColors.Text;
+        var root = ProductUi.Layout(1, 3);
+        root.Padding = new Padding(20, 14, 20, 12);
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+        var heading = ProductUi.Layout(1, 2);
+        heading.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+        heading.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        heading.Controls.Add(ProductUi.Label($"Thông tin {subject}", 18, true), 0, 0);
+        var instruction = ProductUi.Label("Các trường có dấu * là bắt buộc");
+        // [COLOR CONFIG]: hướng dẫn phụ màu muted.
+        instruction.ForeColor = AppColors.Muted;
+        heading.Controls.Add(instruction, 0, 1);
+        root.Controls.Add(heading, 0, 0);
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Margin = Padding.Empty };
+        var fields = ProductUi.Layout(2, location ? 5 : 6);
+        fields.Dock = DockStyle.Top;
+        fields.Height = location ? 280 : 368;
+        fields.Padding = new Padding(12);
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 142));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        // [COLOR CONFIG]: nền trắng nhóm trường.
+        fields.BackColor = AppColors.Surface;
+        if (location)
+        {
+            Field(fields, 0, "Kho *", Input("cboWarehouse", "Chọn kho", dropdown: true));
+            Field(fields, 1, "Mã vị trí *", Input("txtLocationCode", maxLength: 50));
+            Field(fields, 2, "Tên vị trí", Input("txtLocationName", maxLength: 100));
+            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+            var hint = ProductUi.Label("Mã vị trí được phân biệt trong từng kho", 9);
+            // [COLOR CONFIG]: ghi chú liên hệ kho/vị trí.
+            hint.ForeColor = AppColors.Muted;
+            fields.Controls.Add(hint, 0, 3);
+            fields.SetColumnSpan(hint, 2);
+        }
+        else
+        {
+            Field(fields, 0, "Mã kho *", Input("txtWarehouseCode", maxLength: 50));
+            Field(fields, 1, "Tên kho *", Input("txtWarehouseName", maxLength: 200));
+            var address = Input("txtAddress", maxLength: 255);
+            address.Multiline = true;
+            Field(fields, 2, "Địa chỉ", address, 110);
+            Field(fields, 3, "Người quản lý", Input("cboManager", "Chọn người quản lý", dropdown: true));
+            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 14));
+        }
+        fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        var active = new CheckBox
+        {
+            Name = "chkIsActive", Text = "Đang hoạt động", Checked = true,
+            Dock = DockStyle.Fill, Padding = new Padding(12, 0, 0, 0), TabIndex = 4,
+            // [COLOR CONFIG]: nền mint và chữ tối cho trạng thái.
+            BackColor = AppColors.Mint, ForeColor = AppColors.Text
+        };
+        int activeRow = location ? 4 : 5;
+        fields.Controls.Add(active, 0, activeRow);
+        fields.SetColumnSpan(active, 2);
+        scroll.Controls.Add(fields);
+        root.Controls.Add(scroll, 0, 1);
+        var footer = ProductUi.Layout(2, 1);
+        footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 236));
+        footer.Padding = new Padding(0, 14, 0, 0);
+        var note = ProductUi.Label("Xem trước • Chưa lưu dữ liệu", 8.5F);
+        // [COLOR CONFIG]: ghi chú phụ.
+        note.ForeColor = AppColors.Muted;
+        footer.Controls.Add(note, 0, 0);
+        var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty };
+        var close = ProductUi.Button("btnClose", "Đóng");
+        close.Width = 90;
+        close.DialogResult = DialogResult.Cancel;
+        close.TabIndex = 5;
+        var save = ProductUi.Button("btnSave", $"Lưu {subject}", primary: true);
+        save.Width = 135;
+        save.Enabled = false;
+        save.TabIndex = 6;
+        save.Margin = Padding.Empty;
+        save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu dữ liệu đang được hoàn thiện";
+        actions.Controls.Add(close);
+        actions.Controls.Add(save);
+        CancelButton = close;
+        footer.Controls.Add(actions, 1, 0);
+        root.Controls.Add(footer, 0, 2);
+        Controls.Add(root);
+    }
+
+    private static AntdUI.Input Input(string name, string placeholder = "", int maxLength = 0, bool dropdown = false)
+    {
+        var input = ProductUi.Input(name, placeholder);
+        input.MaxLength = maxLength;
+        input.ReadOnly = dropdown;
+        if (dropdown)
+        {
+            input.SuffixSvg = MainIcons.Get("chevron-down");
+            input.AccessibleDescription = "Danh sách lựa chọn chưa có dữ liệu";
+        }
+        return input;
+    }
+
+    private static void Field(TableLayoutPanel fields, int row, string caption, Control input, int height = 54)
+    {
+        fields.RowStyles.Add(new RowStyle(SizeType.Absolute, height));
+        fields.Controls.Add(ProductUi.Label(caption, 10, true), 0, row);
+        input.Margin = new Padding(0, 5, 0, 5);
+        input.TabIndex = row;
+        input.AccessibleName = caption.Replace(" *", "");
+        fields.Controls.Add(input, 1, row);
+    }
+}

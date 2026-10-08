@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using Microsoft.EntityFrameworkCore;
+using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Common.Security;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Data.Context;
@@ -44,12 +45,13 @@ namespace SmartInventoryManager.Business.Services
                 return null;
             }
 
-            var normalizedUsername = username!.Trim();
+            var normalizedIdentifier = username!.Trim();
             var user = await _dbContext.Users
                 .AsNoTracking()
                 .Include(candidate => candidate.Role)
                 .SingleOrDefaultAsync(
-                    candidate => candidate.Username == normalizedUsername,
+                    candidate => candidate.Email == normalizedIdentifier ||
+                        candidate.Username == normalizedIdentifier,
                     cancellationToken);
 
             if (user is null || !user.IsActive ||
@@ -124,6 +126,15 @@ namespace SmartInventoryManager.Business.Services
             }
 
             return allowedRoles.Any(role => HasRole(currentRole, role));
+        }
+
+        public bool IsKnownRole(string? role)
+        {
+            return HasAnyRole(
+                role,
+                RoleNames.Admin,
+                RoleNames.WarehouseManager,
+                RoleNames.Staff);
         }
 
         private static bool IsValidEmail(string email)

@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using AntdUI;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Business.Services;
+using SmartInventoryManager.UI.Components;
 
 namespace SmartInventoryManager.UI.Forms.Login
 {
@@ -33,8 +34,47 @@ namespace SmartInventoryManager.UI.Forms.Login
 
         public AuthenticatedUserDto? AuthenticatedUser { get; private set; }
 
+        private void ArrangeLoginLayout(PictureBox logo)
+        {
+            int center = pnlLeft.ClientSize.Width / 2;
+            int textWidth = Math.Max(label5.PreferredSize.Width,
+                TextRenderer.MeasureText(label1.Text, label1.Font).Width + 8);
+            int brandLeft = center - (logo.Width + 6 + textWidth) / 2;
+            logo.Location = new Point(brandLeft, 38);
+            int textLeft = brandLeft + logo.Width + 6;
+            label5.Location = new Point(textLeft, 34);
+            label1.SetBounds(textLeft, 108, textWidth, 34);
+            const int fieldWidth = 458;
+            int fieldLeft = center - fieldWidth / 2;
+            lblTitle.SetBounds(fieldLeft, 190, fieldWidth, 48);
+            lblTitle.TextAlign = ContentAlignment.MiddleCenter;
+            label3.SetBounds(fieldLeft + 12, 244, 110, 20);
+            label4.SetBounds(fieldLeft + 12, 320, 110, 20);
+            label3.TextAlign = label4.TextAlign = ContentAlignment.MiddleLeft;
+            txtUsername.SetBounds(fieldLeft, 268, fieldWidth, 44);
+            txtPassword.SetBounds(fieldLeft, 344, fieldWidth, 44);
+            btnShowPassword.Location = new Point(fieldLeft + fieldWidth - 44, 355);
+            chkRemember.Location = new Point(fieldLeft + 12, 402);
+            lnkForgotPassword.SetBounds(fieldLeft + fieldWidth - 135, 402, 123, 20);
+            btnLogin.SetBounds(fieldLeft, 438, fieldWidth, 46);
+            label2.SetBounds(center - 250, 502, 500, 32);
+            label7.Location = new Point(pnlLeft.ClientSize.Width - label7.Width - 12,
+                pnlLeft.ClientSize.Height - label7.Height - 8);
+        }
+
         private void SetupUI()
         {
+            var projectLogo = UiBrand.CreateLogo();
+            // Logo đặt cạnh tên app, cùng chiều cao vùng chữ VioWare.
+            projectLogo.Location = new Point(244, 34);
+            projectLogo.Size = new Size(74, 74);
+            label5.Text = UiBrand.ApplicationName;
+            label1.Text = UiBrand.ProjectName;
+            Text = $"{UiBrand.ApplicationName} - Đăng nhập";
+            pnlLeft.Controls.Add(projectLogo);
+            projectLogo.BringToFront();
+            ArrangeLoginLayout(projectLogo);
+            pnlLeft.SizeChanged += (_, _) => ArrangeLoginLayout(projectLogo);
             string backgroundPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Images", "background.png");
             if (File.Exists(backgroundPath))
             {

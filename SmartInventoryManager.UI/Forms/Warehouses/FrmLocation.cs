@@ -6,6 +6,7 @@ namespace SmartInventoryManager.Forms.Warehouses
         public FrmLocation()
         {
             InitializeComponent();
+            WarehouseUi.BuildList(this, true, false);
         }
     }
 }

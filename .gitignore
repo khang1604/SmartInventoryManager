@@ -8,3 +8,5 @@
 # Build output
 bin/
 obj/
+
+.nuget-project-cache/

@@ -3,6 +3,7 @@ using SmartInventoryManager.Business.Services;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.UI.Forms.Login;
 using SmartInventoryManager.UI.Forms.Main;
+using SmartInventoryManager.Business.Authorization;
 
 namespace SmartInventoryManager.UI
 {
@@ -38,10 +39,25 @@ namespace SmartInventoryManager.UI
             using var dbContext = new InventoryDbContext(options);
             var authService = new AuthService(dbContext);
 
-            using var loginForm = new FrmLogin(authService);
-            if (loginForm.ShowDialog() == DialogResult.OK)
+            var authorizationService = new AuthorizationService(dbContext);
+            var session = new UserSession();
+            while (true)
             {
-                Application.Run(new FrmMain());
+                using var loginForm = new FrmLogin(authService);
+                if (loginForm.ShowDialog() != DialogResult.OK || loginForm.AuthenticatedUser is null)
+                {
+                    return;
+                }
+
+                session.SignIn(loginForm.AuthenticatedUser);
+                using var mainForm = new FrmMain(loginForm.AuthenticatedUser, authorizationService, session);
+                Application.Run(mainForm);
+                session.SignOut();
+                dbContext.ChangeTracker.Clear();
+                if (!mainForm.LogoutRequested)
+                {
+                    return;
+                }
             }
         }
     }
