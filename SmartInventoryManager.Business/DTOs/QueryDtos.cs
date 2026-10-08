@@ -81,3 +81,29 @@ public sealed record ProductLookupDto(
     decimal SellingPrice,
     int ReorderPoint,
     int MaximumStock);
+
+public sealed record InventoryReportRowDto(
+    int ProductId,
+    string ProductCode,
+    string ProductName,
+    string Unit,
+    string WarehouseName,
+    int Quantity,
+    int ReorderPoint,
+    int MaximumStock,
+    string StockStatus,
+    DateTime UpdatedAt);
+
+public sealed record InventoryReportDto(
+    long TotalQuantity,
+    int OpenAlertCount,
+    IReadOnlyList<InventoryReportRowDto> Rows);
+
+public sealed record ImportExportReportDto(
+    DateTime? From,
+    DateTime? To,
+    int? WarehouseId,
+    IReadOnlyList<ImportReceiptListItemDto> Imports,
+    IReadOnlyList<ExportReceiptListItemDto> Exports,
+    decimal ImportTotalAmount,
+    decimal ExportTotalAmount);

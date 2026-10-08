@@ -6,8 +6,18 @@ namespace SmartInventoryManager.Forms.Dashboard;
 
 public partial class FrmDashboard : Form
 {
-    public FrmDashboard()
+    private readonly UiServices? _services;
+    private readonly StatisticCard[] _cards = new StatisticCard[5];
+    private readonly ChartControl _chart;
+    private readonly Label _note;
+
+    public FrmDashboard() : this(null)
     {
+    }
+
+    public FrmDashboard(UiServices? services)
+    {
+        _services = services;
         InitializeComponent();
         WorkflowUi.StyleForm(this);
         var root = ProductUi.Layout(1, 5);
@@ -44,17 +54,20 @@ public partial class FrmDashboard : Form
         root.Controls.Add(filters, 0, 0);
         var cards = ProductUi.Layout(5, 1);
         cards.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        foreach (var caption in new[] { "Sản phẩm", "Số lượng tồn", "Giá trị tồn (đ)", "Sắp hết hàng", "Hết hàng" })
+        var captions = new[] { "Sản phẩm", "Số lượng tồn", "Giá trị tồn (đ)", "Sắp hết hàng", "Hết hàng" };
+        for (var i = 0; i < captions.Length; i++)
         {
             cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-            cards.Controls.Add(new StatisticCard { MetricTitle = caption });
+            _cards[i] = new StatisticCard { MetricTitle = captions[i] };
+            cards.Controls.Add(_cards[i]);
         }
         root.Controls.Add(cards, 0, 1);
         var panels = ProductUi.Layout(2, 1);
         panels.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         panels.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
         panels.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-        panels.Controls.Add(new ChartControl(), 0, 0);
+        _chart = new ChartControl();
+        panels.Controls.Add(_chart, 0, 0);
         panels.Controls.Add(new AlertCard(), 1, 0);
         root.Controls.Add(panels, 0, 2);
         var activity = ProductUi.Layout(1, 2);
@@ -64,14 +77,35 @@ public partial class FrmDashboard : Form
         var grid = WorkflowUi.Grid("dgvRecentActivity", ["Mã phiếu", "Loại phiếu", "Kho", "Ngày", "Trạng thái"]);
         activity.Controls.Add(LiveUi.TableFrame(grid), 0, 1);
         root.Controls.Add(activity, 0, 3);
-        var note = ProductUi.Label("Chưa tải dữ liệu • Số liệu thống kê đang được hoàn thiện", 9);
-        // [COLOR CONFIG]: ghi chú phụ của số liệu chưa sẵn sàng.
-        note.ForeColor = AppColors.Muted;
-        root.Controls.Add(note, 0, 4);
+        _note = ProductUi.Label("Chưa tải dữ liệu • Số liệu thống kê đang được hoàn thiện", 9);
+        _note.ForeColor = AppColors.Muted;
+        root.Controls.Add(_note, 0, 4);
         AutoScroll = true;
         root.Dock = DockStyle.Top;
         root.Height = 620;
         SizeChanged += (_, _) => root.Height = Math.Max(620, ClientSize.Height);
         Controls.Add(root);
+        if (_services is not null) Shown += async (_, _) => await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            var data = await _services!.RunAsync(() => _services.Dashboard.GetAsync(_services.Session));
+            _cards[0].MetricValue = data.InventoryLineCount.ToString("N0");
+            _cards[1].MetricValue = data.TotalQuantity.ToString("N0");
+            _cards[2].MetricValue = "Chưa có công thức";
+            _cards[3].MetricValue = data.OpenAlertCount.ToString("N0");
+            _cards[4].MetricValue = data.OutOfStockCount.ToString("N0");
+            var series = data.RecentTransactions.GroupBy(item => item.TransactionType).OrderBy(item => item.Key)
+                .Select(item => (item.Key, item.Sum(value => (double)value.Quantity))).ToArray();
+            _chart.ShowSeries(series.Select(item => item.Key).ToArray(), series.Select(item => item.Item2).ToArray());
+            _note.Text = "Đã cập nhật dữ liệu từ cơ sở dữ liệu";
+        }
+        catch (Exception exception)
+        {
+            _note.Text = exception.Message;
+        }
     }
 }

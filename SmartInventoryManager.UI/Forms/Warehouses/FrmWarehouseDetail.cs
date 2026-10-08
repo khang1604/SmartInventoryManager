@@ -1,12 +1,23 @@
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Warehouses;
 
 public sealed class FrmWarehouseDetail : Form
 {
-    public FrmWarehouseDetail(bool location = false)
+    private readonly UiServices? _services;
+    private readonly bool _location;
+    private readonly int? _id;
+
+    public FrmWarehouseDetail(bool location = false) : this(null, location, null, null) { }
+
+    public FrmWarehouseDetail(UiServices services, bool location, WarehouseDto? warehouse = null) : this(services, location, warehouse, null) { }
+    public FrmWarehouseDetail(UiServices services, bool location, LocationDto? locationDto) : this(services, location, null, locationDto) { }
+
+    private FrmWarehouseDetail(UiServices? services, bool location, WarehouseDto? warehouse, LocationDto? locationDto)
     {
+        _services = services; _location = location; _id = warehouse?.WarehouseId ?? locationDto?.LocationId;
         AutoScaleMode = AutoScaleMode.Font;
         Font = new Font("Segoe UI", 10F);
         string subject = location ? "vị trí" : "kho";
@@ -94,16 +105,36 @@ public sealed class FrmWarehouseDetail : Form
         close.TabIndex = 5;
         var save = ProductUi.Button("btnSave", $"Lưu {subject}", primary: true);
         save.Width = 135;
-        save.Enabled = false;
+        save.Enabled = _services is not null;
         save.TabIndex = 6;
         save.Margin = Padding.Empty;
         save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu dữ liệu đang được hoàn thiện";
+        save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
         CancelButton = close;
         footer.Controls.Add(actions, 1, 0);
         root.Controls.Add(footer, 0, 2);
         Controls.Add(root);
+        if (warehouse is not null) LoadWarehouse(warehouse);
+        if (locationDto is not null) LoadLocation(locationDto);
+    }
+
+    private void LoadWarehouse(WarehouseDto value) { Input("txtWarehouseCode").Text = value.WarehouseCode; Input("txtWarehouseName").Text = value.WarehouseName; Input("txtAddress").Text = value.Location ?? string.Empty; Check().Checked = value.IsActive; }
+    private void LoadLocation(LocationDto value) { Input("txtLocationCode").Text = value.LocationCode; Input("txtLocationName").Text = value.LocationName ?? string.Empty; Input("cboWarehouse").Text = value.WarehouseId.ToString(); Check().Checked = value.IsActive; }
+    private AntdUI.Input Input(string name) => Controls.Find(name, true).OfType<AntdUI.Input>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
+    private CheckBox Check() => Controls.Find("chkIsActive", true).OfType<CheckBox>().FirstOrDefault() ?? throw new InvalidOperationException("Không tìm thấy trạng thái.");
+    private async Task SaveAsync()
+    {
+        if (_services is null) return;
+        try
+        {
+            if (_location) throw new NotSupportedException("Cần chọn kho trong danh sách vị trí trước khi lưu.");
+            var request = new WarehouseRequestDto { WarehouseCode = Input("txtWarehouseCode").Text, WarehouseName = Input("txtWarehouseName").Text, Location = Input("txtAddress").Text, IsActive = Check().Checked };
+            await _services.RunAsync(() => _id.HasValue ? _services.Warehouses.UpdateAsync(_services.Session, _id.Value, request) : _services.Warehouses.CreateAsync(_services.Session, request));
+            DialogResult = DialogResult.OK; Close();
+        }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 
     private static AntdUI.Input Input(string name, string placeholder = "", int maxLength = 0, bool dropdown = false)

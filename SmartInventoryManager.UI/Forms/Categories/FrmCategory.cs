@@ -1,11 +1,15 @@
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Categories;
 
 public partial class FrmCategory : Form
 {
     private readonly bool _canManageCategories;
+    private readonly UiServices? _services;
+    private DataGridView? _grid;
+    private AntdUI.Button? _refresh;
 
     public FrmCategory() : this(false) { }
 
@@ -14,6 +18,12 @@ public partial class FrmCategory : Form
         _canManageCategories = canManageCategories;
         InitializeComponent();
         BuildLayout();
+    }
+
+    public FrmCategory(UiServices services) : this(services.Authorization.CanManageCategory(services.Session))
+    {
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+        Shown += async (_, _) => await LoadCategoriesAsync();
     }
 
     private void BuildLayout()
@@ -69,10 +79,11 @@ public partial class FrmCategory : Form
             add.Width = 180;
             add.TabIndex = 2;
             add.AccessibleDescription = "Mở biểu mẫu xem trước, chưa lưu danh mục";
-            add.Click += (_, _) =>
+            add.Click += async (_, _) =>
             {
-                using var detail = new FrmCategoryDetail();
-                detail.ShowDialog(this);
+                if (_services is null) return;
+                using var detail = new FrmCategoryDetail(_services);
+                if (detail.ShowDialog(this) == DialogResult.OK) await LoadCategoriesAsync();
             };
             actions.Controls.Add(add);
         }
@@ -81,15 +92,21 @@ public partial class FrmCategory : Form
         actions.Controls.Add(preview);
         if (_canManageCategories)
         {
-            var edit = Unavailable("btnEdit", "Sửa", "pencil");
+            var edit = ProductUi.Button("btnEdit", "Sửa", "pencil");
             edit.Width = 100;
+            edit.Enabled = false;
+            edit.Click += async (_, _) => await EditSelectedAsync();
             actions.Controls.Add(edit);
-            var deactivate = Unavailable("btnDeactivate", "Ngừng hoạt động", "dash-circle");
+            var deactivate = ProductUi.Button("btnDeactivate", "Ngừng hoạt động", "dash-circle");
             deactivate.Width = 190;
+            deactivate.Enabled = false;
+            deactivate.Click += async (_, _) => await ToggleSelectedAsync();
             actions.Controls.Add(deactivate);
         }
         toolbar.Controls.Add(actions, 0, 0);
         var refresh = Unavailable("btnRefresh", "", "arrow-clockwise");
+        _refresh = refresh;
+        if (_services is not null) { refresh.Enabled = true; refresh.Click += async (_, _) => await LoadCategoriesAsync(); }
         refresh.Dock = DockStyle.Fill;
         refresh.Margin = Padding.Empty;
         refresh.AccessibleName = "Làm mới danh mục";
@@ -116,6 +133,8 @@ public partial class FrmCategory : Form
             // [COLOR CONFIG]: nền bảng trắng, đường kẻ nhẹ.
             BackgroundColor = AppColors.Surface, GridColor = AppColors.Border
         };
+        _grid = grid;
+        grid.SelectionChanged += (_, _) => UpdateActions();
         // [COLOR CONFIG]: header nhạt với chữ tối.
         grid.ColumnHeadersDefaultCellStyle.BackColor = AppColors.Workspace;
         grid.ColumnHeadersDefaultCellStyle.ForeColor = AppColors.Text;
@@ -155,6 +174,47 @@ public partial class FrmCategory : Form
         note.ForeColor = AppColors.Muted;
         root.Controls.Add(note, 0, 3);
         Controls.Add(root);
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        if (_services is null || _grid is null) return;
+        try
+        {
+            var rows = await _services.RunAsync(() => _services.Categories.GetAsync(_services.Session));
+            _grid.DataSource = rows.ToList();
+            foreach (DataGridViewColumn column in _grid.Columns)
+                column.DataPropertyName = column.Name == "Status" ? nameof(CategoryDto.IsActive) : column.Name;
+            _grid.CellFormatting -= FormatStatus;
+            _grid.CellFormatting += FormatStatus;
+            UpdateActions();
+        }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể tải danh mục", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    }
+
+    private void FormatStatus(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (_grid is not null && _grid.Columns[e.ColumnIndex].Name == "Status" && e.Value is bool active) e.Value = active ? "Đang hoạt động" : "Ngừng hoạt động";
+    }
+
+    private void UpdateActions()
+    {
+        var selected = _grid?.CurrentRow?.DataBoundItem is CategoryDto;
+        foreach (Control control in Controls.Find("btnEdit", true).Concat(Controls.Find("btnDeactivate", true))) control.Enabled = selected;
+    }
+
+    private async Task EditSelectedAsync()
+    {
+        if (_services is null || _grid?.CurrentRow?.DataBoundItem is not CategoryDto category) return;
+        using var detail = new FrmCategoryDetail(_services, category);
+        if (detail.ShowDialog(this) == DialogResult.OK) await LoadCategoriesAsync();
+    }
+
+    private async Task ToggleSelectedAsync()
+    {
+        if (_services is null || _grid?.CurrentRow?.DataBoundItem is not CategoryDto category) return;
+        await _services.RunAsync(() => _services.Categories.SetActiveAsync(_services.Session, category.CategoryId, !category.IsActive));
+        await LoadCategoriesAsync();
     }
 
     private static AntdUI.Button Unavailable(string name, string text, string icon)

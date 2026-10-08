@@ -1,12 +1,29 @@
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Suppliers;
 
 public sealed class FrmSupplierDetail : Form
 {
-    public FrmSupplierDetail()
+    private readonly UiServices? _services;
+    private readonly int? _supplierId;
+
+    public FrmSupplierDetail() : this((UiServices?)null, (int?)null)
     {
+    }
+
+    public FrmSupplierDetail(UiServices services, SupplierDto? supplier = null) : this(services, supplier?.SupplierId)
+    {
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+        _supplierId = supplier?.SupplierId;
+        Shown += (_, _) => { if (supplier is not null) LoadSupplier(supplier); };
+    }
+
+    private FrmSupplierDetail(UiServices? services, int? supplierId)
+    {
+        _services = services;
+        _supplierId = supplierId;
         AutoScaleMode = AutoScaleMode.Font;
         Font = new Font("Segoe UI", 10F);
         Text = "VioWare - Thông tin nhà cung cấp";
@@ -80,9 +97,10 @@ public sealed class FrmSupplierDetail : Form
         var save = ProductUi.Button("btnSave", "Lưu nhà cung cấp", primary: true);
         save.Width = 175;
         save.Margin = Padding.Empty;
-        save.Enabled = false;
+        save.Enabled = _services is not null;
         save.TabIndex = 8;
         save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu nhà cung cấp đang được hoàn thiện";
+        save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
         CancelButton = close;
@@ -90,6 +108,43 @@ public sealed class FrmSupplierDetail : Form
         root.Controls.Add(footer, 0, 2);
         Controls.Add(root);
     }
+
+    private void LoadSupplier(SupplierDto supplier)
+    {
+        FindControl<AntdUI.Input>("txtSupplierCode").Text = supplier.SupplierCode;
+        FindControl<AntdUI.Input>("txtSupplierName").Text = supplier.SupplierName;
+        FindControl<AntdUI.Input>("txtTaxCode").Text = supplier.TaxCode ?? string.Empty;
+        FindControl<AntdUI.Input>("txtPhone").Text = supplier.Phone ?? string.Empty;
+        FindControl<AntdUI.Input>("txtEmail").Text = supplier.Email ?? string.Empty;
+        FindControl<AntdUI.Input>("txtAddress").Text = supplier.Address ?? string.Empty;
+        FindControl<CheckBox>("chkIsActive").Checked = supplier.IsActive;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_services is null) return;
+        try
+        {
+            var request = new SupplierRequestDto
+            {
+                SupplierCode = FindControl<AntdUI.Input>("txtSupplierCode").Text,
+                SupplierName = FindControl<AntdUI.Input>("txtSupplierName").Text,
+                TaxCode = FindControl<AntdUI.Input>("txtTaxCode").Text,
+                Phone = FindControl<AntdUI.Input>("txtPhone").Text,
+                Email = FindControl<AntdUI.Input>("txtEmail").Text,
+                Address = FindControl<AntdUI.Input>("txtAddress").Text,
+                IsActive = FindControl<CheckBox>("chkIsActive").Checked
+            };
+            await _services.RunAsync(() => _supplierId.HasValue
+                ? _services.Suppliers.UpdateAsync(_services.Session, _supplierId.Value, request)
+                : _services.Suppliers.CreateAsync(_services.Session, request));
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu nhà cung cấp", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    }
+
+    private T FindControl<T>(string name) where T : Control => Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
 
     private static TableLayoutPanel Section(string caption, int lastInputHeight)
     {

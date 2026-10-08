@@ -183,6 +183,92 @@ public sealed class ImportService
                     detail.Quantity * detail.UnitPrice)).ToList());
     }
 
+    public async Task SubmitAsync(
+        UserSession session,
+        int importReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
+            item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu nhập.");
+        }
+        if (receipt.Status != "DRAFT")
+        {
+            throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được gửi duyệt.");
+        }
+        receipt.Status = "PENDING_APPROVAL";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ApproveAsync(
+        UserSession session,
+        int importReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
+            item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (!await _authorization.CanApproveReceiptAsync(session, receipt.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền duyệt phiếu nhập tại kho này.");
+        }
+        if (receipt.Status != "PENDING_APPROVAL")
+        {
+            throw new InvalidOperationException("Chỉ phiếu nhập đang chờ duyệt mới được duyệt.");
+        }
+        receipt.Status = "APPROVED";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RejectAsync(
+        UserSession session,
+        int importReceiptId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Lý do từ chối là bắt buộc.", nameof(reason));
+        }
+        var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
+            item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (!await _authorization.CanApproveReceiptAsync(session, receipt.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền từ chối phiếu nhập tại kho này.");
+        }
+        if (receipt.Status != "PENDING_APPROVAL")
+        {
+            throw new InvalidOperationException("Chỉ phiếu nhập đang chờ duyệt mới được từ chối.");
+        }
+        receipt.Status = "REJECTED";
+        receipt.Note = $"Lý do từ chối: {reason.Trim()}";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ResubmitAsync(
+        UserSession session,
+        int importReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
+            item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền gửi lại phiếu nhập.");
+        }
+        if (receipt.Status != "REJECTED")
+        {
+            throw new InvalidOperationException("Chỉ phiếu nhập bị từ chối mới được gửi lại.");
+        }
+        receipt.Status = "DRAFT";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task CompleteAsync(
         UserSession session,
         int importReceiptId,
@@ -203,9 +289,9 @@ public sealed class ImportService
             return;
         }
 
-        if (receipt.Status != "DRAFT")
+        if (receipt.Status != "APPROVED")
         {
-            throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được hoàn tất.");
+            throw new InvalidOperationException("Chỉ phiếu nhập đã được duyệt mới được hoàn tất.");
         }
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(
@@ -265,11 +351,11 @@ public sealed class ImportService
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
-        if (receipt.Status != "DRAFT")
+        if (receipt.Status != "DRAFT" && receipt.Status != "REJECTED")
         {
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được sửa.");
         }
-        if (!await _authorization.CanEditDraftReceiptAsync(session, receipt.WarehouseId))
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu nhập tại kho này.");
         }
@@ -311,13 +397,13 @@ public sealed class ImportService
         var receipt = await _dbContext.ImportReceipts
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
-        if (!await _authorization.CanCancelReceiptAsync(session, receipt.WarehouseId))
+        if (!await _authorization.CanCancelReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền hủy phiếu nhập tại kho này.");
         }
-        if (receipt.Status != "DRAFT")
+        if (receipt.Status != "DRAFT" && receipt.Status != "PENDING_APPROVAL" && receipt.Status != "APPROVED")
         {
-            throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được hủy.");
+            throw new InvalidOperationException("Phiếu nhập không ở trạng thái được phép hủy.");
         }
         receipt.Status = "CANCELLED";
         await _dbContext.SaveChangesAsync(cancellationToken);

@@ -1,12 +1,14 @@
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.UI.Themes;
+using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Warehouses;
 
 internal static class WarehouseUi
 {
-    public static void BuildList(Form form, bool location, bool canManage)
+    public static void BuildList(Form form, bool location, bool canManage, UiServices? services = null)
     {
+        DataGridView? grid = null;
         UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
         var root = ProductUi.Layout(1, 4);
@@ -54,20 +56,30 @@ internal static class WarehouseUi
         {
             var add = ProductUi.Button("btnAdd", location ? "Thêm vị trí" : "Thêm kho", "plus-lg", true);
             add.AccessibleDescription = "Chỉ mở biểu mẫu xem trước, chưa lưu dữ liệu hoặc cấp quyền quản lý";
-            add.Click += (_, _) => { using var detail = new FrmWarehouseDetail(location); detail.ShowDialog(form); };
+            add.Click += async (_, _) =>
+            {
+                if (services is null) return;
+                using var detail = new FrmWarehouseDetail(services, location);
+                if (detail.ShowDialog(form) == DialogResult.OK) await Task.CompletedTask;
+            };
             actions.Controls.Add(add);
         }
         actions.Controls.Add(Unavailable("btnPreview", "Xem chi tiết", "eye", 150));
         if (canManage || location)
         {
-            actions.Controls.Add(Unavailable("btnEdit", "Sửa", "pencil", 100));
-            actions.Controls.Add(Unavailable("btnDeactivate", "Ngừng hoạt động", "dash-circle", 190));
+            var edit = Unavailable("btnEdit", "Sửa", "pencil", 100);
+            var deactivate = Unavailable("btnDeactivate", "Ngừng hoạt động", "dash-circle", 190);
+            edit.Enabled = deactivate.Enabled = services is not null;
+            edit.Click += async (_, _) => await EditAsync();
+            deactivate.Click += async (_, _) => await ToggleAsync();
+            actions.Controls.Add(edit); actions.Controls.Add(deactivate);
         }
         toolbar.Controls.Add(actions, 0, 0);
         var refresh = Unavailable("btnRefresh", "", "arrow-clockwise", 44);
         refresh.Dock = DockStyle.Fill;
         refresh.Margin = Padding.Empty;
         refresh.AccessibleName = "Làm mới danh sách";
+        if (services is not null) { refresh.Enabled = true; refresh.Click += async (_, _) => await LoadAsync(); }
         toolbar.Controls.Add(refresh, 1, 0);
         root.Controls.Add(toolbar, 0, 1);
         var area = ProductUi.Layout(1, 2);
@@ -75,7 +87,7 @@ internal static class WarehouseUi
         area.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         // [COLOR CONFIG]: nền trắng của bảng và trạng thái chưa tải dữ liệu.
         area.BackColor = AppColors.Surface;
-        var grid = new DataGridView
+        grid = new DataGridView
         {
             Name = location ? "dgvLocations" : "dgvWarehouses", Dock = DockStyle.Fill,
             ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
@@ -104,6 +116,7 @@ internal static class WarehouseUi
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = name, HeaderText = caption, MinimumWidth = 110, SortMode = DataGridViewColumnSortMode.NotSortable });
         UiDetails.AddColumn(grid);
         area.Controls.Add(grid, 0, 0);
+        grid.SelectionChanged += (_, _) => UpdateActions();
         var empty = ProductUi.Layout(1, 5);
         empty.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
         empty.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
@@ -132,6 +145,60 @@ internal static class WarehouseUi
         note.ForeColor = AppColors.Muted;
         root.Controls.Add(note, 0, 3);
         form.Controls.Add(root);
+
+        async Task LoadAsync()
+        {
+            if (services is null) return;
+            try
+            {
+                if (location)
+                {
+                    var rows = await services.RunAsync(() => services.Locations.GetAsync(services.Session));
+                    grid!.DataSource = rows.ToList();
+                    foreach (DataGridViewColumn column in grid.Columns) column.DataPropertyName = column.Name == "Status" ? nameof(LocationDto.IsActive) : column.Name;
+                }
+                else
+                {
+                    var rows = await services.RunAsync(() => services.Warehouses.GetAllAsync(services.Session));
+                    grid!.DataSource = rows.ToList();
+                    foreach (DataGridViewColumn column in grid.Columns) column.DataPropertyName = column.Name == "Status" ? nameof(WarehouseDto.IsActive) : column.Name;
+                }
+                grid.CellFormatting += (_, e) => { if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value is bool active) e.Value = active ? "Đang hoạt động" : "Ngừng hoạt động"; };
+                UpdateActions();
+            }
+            catch (Exception ex) { MessageBox.Show(form, LiveUi.Error(ex), "Không thể tải dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        }
+
+        void UpdateActions()
+        {
+            var selected = grid?.CurrentRow?.DataBoundItem is WarehouseDto or LocationDto;
+            if (form.Controls.Find("btnEdit", true).FirstOrDefault() is Control edit) edit.Enabled = selected && canManage;
+            if (form.Controls.Find("btnDeactivate", true).FirstOrDefault() is Control deactivate) deactivate.Enabled = selected && canManage;
+        }
+
+        async Task EditAsync()
+        {
+            if (services is null) return;
+            if (location && grid?.CurrentRow?.DataBoundItem is LocationDto locationDto)
+            {
+                using var detail = new FrmWarehouseDetail(services, true, locationDto);
+                if (detail.ShowDialog(form) == DialogResult.OK) await LoadAsync();
+            }
+            else if (!location && grid?.CurrentRow?.DataBoundItem is WarehouseDto warehouseDto)
+            {
+                using var detail = new FrmWarehouseDetail(services, false, warehouseDto);
+                if (detail.ShowDialog(form) == DialogResult.OK) await LoadAsync();
+            }
+        }
+
+        async Task ToggleAsync()
+        {
+            if (services is null) return;
+            if (location && grid?.CurrentRow?.DataBoundItem is LocationDto locationDto) await services.RunAsync(() => services.Locations.SetActiveAsync(services.Session, locationDto.LocationId, !locationDto.IsActive));
+            else if (!location && grid?.CurrentRow?.DataBoundItem is WarehouseDto warehouseDto) await services.RunAsync(() => services.Warehouses.SetActiveAsync(services.Session, warehouseDto.WarehouseId, !warehouseDto.IsActive));
+            await LoadAsync();
+        }
+        if (services is not null) form.Shown += async (_, _) => await LoadAsync();
     }
 
     private static AntdUI.Button Unavailable(string name, string text, string icon, int width)

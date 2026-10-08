@@ -38,6 +38,20 @@ public class AuthorizationServiceTests
     }
 
     [TestMethod]
+    public void AdminPermissions_AllowManagementOfAllCrudAreas()
+    {
+        var service = CreateAuthorizationService();
+        var adminSession = CreateSession(RoleNames.Admin);
+
+        Assert.IsTrue(service.CanManageProduct(adminSession));
+        Assert.IsTrue(service.CanManageCategory(adminSession));
+        Assert.IsTrue(service.CanManageSupplier(adminSession));
+        Assert.IsTrue(service.CanManageWarehouse(adminSession));
+        Assert.IsTrue(service.CanManageUser(adminSession));
+        Assert.IsTrue(service.CanManageRole(adminSession));
+    }
+
+    [TestMethod]
     public async Task StaffDraftAccess_RequiresAssignedWarehouse()
     {
         var service = CreateAuthorizationService();

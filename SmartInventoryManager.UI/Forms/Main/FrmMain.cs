@@ -355,17 +355,19 @@ public partial class FrmMain : Form
 
     private Control CreatePage(string title) => title switch
     {
+        "Tổng quan" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(_services), title),
         "Tổng quan" => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(), title),
         "Sản phẩm" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(_services), title),
         "Nhà cung cấp" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Suppliers.FrmSupplier(_services), title),
         "Kho & vị trí" when _services is not null => CreateTabs(
             ("Kho", new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(_services)),
-            ("Vị trí", new SmartInventoryManager.Forms.Warehouses.FrmLocation())),
+            ("Vị trí", new SmartInventoryManager.Forms.Warehouses.FrmLocation(_services))),
         "Tồn kho" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventory(_services), title),
         "Lịch sử tồn kho" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventoryHistory(_services), title),
         "Cảnh báo" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Alerts.FrmStockAlert(_services), title),
         "Sản phẩm" => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(
             _authorization is not null && _session is not null && _authorization.CanManageProduct(_session)), title),
+        "Danh mục" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Categories.FrmCategory(_services), title),
         "Danh mục" => PrepareForm(new SmartInventoryManager.Forms.Categories.FrmCategory(
             _authorization is not null && _session is not null && _authorization.CanManageCategory(_session)), title),
         "Nhà cung cấp" => PrepareForm(new SmartInventoryManager.Forms.Suppliers.FrmSupplier(

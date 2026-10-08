@@ -133,6 +133,50 @@ public sealed class AuthorizationService
             await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
+    public async Task<bool> CanCancelReceiptAsync(
+        UserSession session,
+        int warehouseId,
+        int createdBy,
+        string status)
+    {
+        if (string.Equals(status, "DRAFT", StringComparison.OrdinalIgnoreCase))
+        {
+            if (HasRole(session, RoleNames.Staff))
+            {
+                return session.CurrentUser?.UserId == createdBy &&
+                    await CanAccessCurrentWarehouseAsync(session, warehouseId);
+            }
+
+            return await CanCreateDraftReceiptAsync(session, warehouseId);
+        }
+
+        return string.Equals(status, "PENDING_APPROVAL", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(status, "APPROVED", StringComparison.OrdinalIgnoreCase)
+            ? await CanApproveReceiptAsync(session, warehouseId)
+            : false;
+    }
+
+    public async Task<bool> CanEditReceiptAsync(
+        UserSession session,
+        int warehouseId,
+        int createdBy,
+        string status)
+    {
+        if (!string.Equals(status, "DRAFT", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(status, "REJECTED", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (HasRole(session, RoleNames.Staff))
+        {
+            return session.CurrentUser?.UserId == createdBy &&
+                await CanAccessCurrentWarehouseAsync(session, warehouseId);
+        }
+
+        return await CanCreateDraftReceiptAsync(session, warehouseId);
+    }
+
     public async Task<bool> CanAdjustInventoryAsync(UserSession session, int warehouseId)
     {
         return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&

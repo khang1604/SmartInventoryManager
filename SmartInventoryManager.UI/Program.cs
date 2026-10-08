@@ -49,7 +49,11 @@ namespace SmartInventoryManager.UI
                 new StockAlertService(dbContext, authorizationService),
                 new ProductService(dbContext), new WarehouseService(dbContext, authorizationService),
                 new SupplierService(dbContext),
+                new CategoryService(dbContext, authorizationService),
                 new ProductManagementService(dbContext, authorizationService),
+                new LocationService(dbContext, authorizationService),
+                new DashboardService(dbContext, authorizationService),
+                new ReportService(dbContext, authorizationService),
                 () => dbContext.ChangeTracker.Clear());
             while (true)
             {
