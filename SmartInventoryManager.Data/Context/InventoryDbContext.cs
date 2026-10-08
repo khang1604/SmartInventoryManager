@@ -455,6 +455,8 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.ToTable("ExportDetails", table =>
                 {
+                    table.HasTrigger("trg_ExportDetails_RecalculateTotal");
+
                     table.HasCheckConstraint(
                         "CK_ExportDetails_Quantity",
                         "[Quantity] > 0");

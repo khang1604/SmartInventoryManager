@@ -144,7 +144,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         {
             if (_requiresWarehouse && _warehouse.DataSource is null)
             {
-                var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync());
+                var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync(_services.Session));
                 if (IsDisposed) return;
                 _warehouse.DisplayMember = nameof(LookupItemDto.Name);
                 _warehouse.ValueMember = nameof(LookupItemDto.Id);

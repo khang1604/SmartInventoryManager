@@ -47,8 +47,10 @@ namespace SmartInventoryManager.UI
                 new ExportService(dbContext, authorizationService),
                 new InventoryService(dbContext, authorizationService),
                 new StockAlertService(dbContext, authorizationService),
-                new ProductService(dbContext), new WarehouseService(dbContext),
-                new SupplierService(dbContext), () => dbContext.ChangeTracker.Clear());
+                new ProductService(dbContext), new WarehouseService(dbContext, authorizationService),
+                new SupplierService(dbContext),
+                new ProductManagementService(dbContext, authorizationService),
+                () => dbContext.ChangeTracker.Clear());
             while (true)
             {
                 using var loginForm = new FrmLogin(authService);

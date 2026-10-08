@@ -42,8 +42,15 @@ public sealed class InventoryService : IInventoryService
                 inventory.ProductId,
                 inventory.Product.ProductCode,
                 inventory.Product.ProductName,
+                inventory.Product.Unit,
                 inventory.WarehouseId,
                 inventory.Quantity,
+                inventory.Product.ReorderPoint,
+                inventory.Product.MaximumStock,
+                StockStatusCalculator.Calculate(
+                    inventory.Quantity,
+                    inventory.Product.ReorderPoint,
+                    inventory.Product.MaximumStock),
                 inventory.UpdatedAt))
             .ToListAsync(cancellationToken);
     }

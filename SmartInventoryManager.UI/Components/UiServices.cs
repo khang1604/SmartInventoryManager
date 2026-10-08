@@ -1,4 +1,5 @@
 using SmartInventoryManager.Business.Authorization;
+using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Services;
 
 namespace SmartInventoryManager.UI.Components;
@@ -17,13 +18,14 @@ public sealed class UiServices : IDisposable
     public InventoryService Inventory { get; }
     public StockAlertService Alerts { get; }
     public ProductService Products { get; }
+    public IProductService ProductManagement { get; }
     public WarehouseService Warehouses { get; }
     public SupplierService Suppliers { get; }
 
     public UiServices(UserSession session, AuthorizationService authorization,
         ImportService imports, ExportService exports, InventoryService inventory,
         StockAlertService alerts, ProductService products, WarehouseService warehouses,
-        SupplierService suppliers, Action resetTracking)
+        SupplierService suppliers, IProductService productManagement, Action resetTracking)
     {
         Session = session;
         Authorization = authorization;
@@ -32,6 +34,7 @@ public sealed class UiServices : IDisposable
         Inventory = inventory;
         Alerts = alerts;
         Products = products;
+        ProductManagement = productManagement;
         Warehouses = warehouses;
         Suppliers = suppliers;
         _resetTracking = resetTracking;
