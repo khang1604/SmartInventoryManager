@@ -62,6 +62,8 @@ internal sealed class DataListPage<T> : UserControl where T : class
         _grid.SelectionChanged += async (_, _) => { if (!_busy) await UpdateSelectedActionsAsync(); };
         _grid.CellFormatting += (_, e) =>
         {
+            if (_grid.Columns[e.ColumnIndex].Name == "StockStatus" && e.Value is SmartInventoryManager.Business.Inventory.StockStatus stockStatus)
+                e.Value = LiveUi.StockStatusText(stockStatus);
             if (_grid.Columns[e.ColumnIndex].Name is "AlertType" or "TransactionType" && e.Value is string status)
                 e.Value = LiveUi.StatusText(status);
         };
@@ -82,7 +84,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         };
     }
 
-    public void AddDetailsColumn() => UiDetails.AddColumn(_grid);
+    public void AddDetailsColumn(bool insetButton = false) => UiDetails.AddColumn(_grid, insetButton);
 
     public AntdUI.Button Action(string caption, Func<Task> action, string? icon = null)
     {
@@ -118,7 +120,11 @@ internal sealed class DataListPage<T> : UserControl where T : class
 
     private async Task UpdateSelectedActionsAsync()
     {
-        foreach (var action in _selectedActions) action.Button.Enabled = false;
+        foreach (var action in _selectedActions)
+        {
+            action.Button.Enabled = false;
+            if (action.Permission is not null) action.Button.Visible = false;
+        }
         if (_grid.CurrentRow?.DataBoundItem is not T row) return;
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
         foreach (var action in _selectedActions)
@@ -128,6 +134,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
                 var allowed = action.Permission is null || await _services.RunAsync(() => action.Permission(row, warehouseId));
                 if (IsDisposed || _busy || !ReferenceEquals(_grid.CurrentRow?.DataBoundItem, row)) return;
                 action.Button.Enabled = allowed;
+                action.Button.Visible = allowed;
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
         }

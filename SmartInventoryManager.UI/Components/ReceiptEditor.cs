@@ -131,7 +131,7 @@ internal sealed class ReceiptEditor : UserControl
         owner.CancelButton = close;
         // Enter trong bảng không thực hiện lưu hoặc hoàn tất phiếu.
         _actions.Controls.AddRange([_save, close]);
-        root.Controls.Add(_lines, 0, 3);
+        root.Controls.Add(LiveUi.TableFrame(_lines), 0, 3);
         root.Controls.Add(_total, 0, 4);
         var footer = ProductUi.Layout(2, 1);
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

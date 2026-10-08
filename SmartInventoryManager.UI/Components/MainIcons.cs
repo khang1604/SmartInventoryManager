@@ -10,7 +10,7 @@ internal static class MainIcons
 
     public static string Get(string name)
     {
-        if (name is "supplier" or "gear" or "person-gear")
+        if (name is "supplier" or "gear" or "person-gear" or "file-earmark-spreadsheet")
         {
             using var stream = typeof(MainIcons).Assembly.GetManifestResourceStream($"SmartInventoryManager.UI.Icon.{name}")
                 ?? throw new InvalidOperationException($"Missing UI icon: {name}");

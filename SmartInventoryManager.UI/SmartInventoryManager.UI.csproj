@@ -32,6 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\Resources\Icons\file-earmark-spreadsheet.svg" LogicalName="SmartInventoryManager.UI.Icon.file-earmark-spreadsheet" />
     <EmbeddedResource Include="..\Resources\Icons\person.svg" LogicalName="SmartInventoryManager.UI.PersonIcon" />
     <EmbeddedResource Include="..\Resources\Icons\shop.svg" LogicalName="SmartInventoryManager.UI.Icon.supplier" />
     <EmbeddedResource Include="..\Resources\Icons\gear.svg" LogicalName="SmartInventoryManager.UI.Icon.gear" />

@@ -43,12 +43,12 @@ internal static class UiDetails
         form.ShowDialog(owner.FindForm());
     }
 
-    public static void AddColumn(DataGridView grid)
+    public static void AddColumn(DataGridView grid, bool insetButton = false)
     {
         grid.Columns.Add(new DataGridViewButtonColumn { Name = "ViewDetails", HeaderText = "Chi tiết",
             Text = "Xem chi tiết", UseColumnTextForButtonValue = true, Width = 125, MinimumWidth = 125,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None, SortMode = DataGridViewColumnSortMode.NotSortable });
-        DecorateDetailsColumn(grid);
+        DecorateDetailsColumn(grid, insetButton);
         grid.CellContentClick += (_, e) =>
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].Name != "ViewDetails") return;
@@ -65,16 +65,30 @@ internal static class UiDetails
         };
     }
 
-    public static void DecorateDetailsColumn(DataGridView grid)
+    public static void DecorateDetailsColumn(DataGridView grid, bool insetButton = false)
     {
         var eye = AntdUI.SvgExtend.SvgToBmp(MainIcons.Get("eye"), 18, 18, AppColors.Text);
         grid.Disposed += (_, _) => eye?.Dispose();
         grid.CellPainting += (_, e) =>
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].Name != "ViewDetails" || eye is null) return;
-            e.Paint(e.ClipBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+            e.Paint(e.ClipBounds, insetButton
+                ? DataGridViewPaintParts.Background | DataGridViewPaintParts.SelectionBackground | DataGridViewPaintParts.Border
+                : DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
             int size = (int)(18 * grid.DeviceDpi / 96F);
             var bounds = e.CellBounds;
+            if (insetButton)
+            {
+                int gap = Math.Max(4, (int)(5 * grid.DeviceDpi / 96F));
+                bounds.Inflate(-gap, -gap);
+                using var outline = new System.Drawing.Drawing2D.GraphicsPath();
+                outline.AddRoundedRectangle(bounds, new Size(gap * 2, gap * 2));
+                // [COLOR CONFIG]: nút chi tiết trắng, viền lavender trong ô được chọn.
+                using var background = new SolidBrush(AppColors.Surface);
+                using var border = new Pen(AppColors.Border);
+                e.Graphics!.FillPath(background, outline);
+                e.Graphics.DrawPath(border, outline);
+            }
             e.Graphics!.DrawImage(eye, new Rectangle(bounds.Left + 6, bounds.Top + (bounds.Height - size) / 2, size, size));
             TextRenderer.DrawText(e.Graphics, "Chi tiết", grid.Font,
                 new Rectangle(bounds.Left + size + 12, bounds.Top, Math.Max(0, bounds.Width - size - 16), bounds.Height),
