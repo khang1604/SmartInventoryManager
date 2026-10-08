@@ -212,7 +212,7 @@ public partial class FrmMain : Form
             if (_accountPopover?.Visible == true) { _accountPopover.Close(); return; }
             _accountPopover?.Dispose();
             _accountPopover = new AccountPopover(_account.Text, Math.Max(189, accountButton.Width), OpenApplicationSettings,
-                () => { using var dialog = new SmartInventoryManager.UI.Forms.Settings.FrmAccountSettings(_session?.CurrentUser, _account.Text); dialog.ShowDialog(this); },
+                () => { using var dialog = new SmartInventoryManager.UI.Forms.Settings.FrmAccountSettings(_session?.CurrentUser, _account.Text, _services); dialog.ShowDialog(this); },
                 () =>
                 {
                     if (MessageBox.Show(this, "Đăng xuất và trở về màn hình đăng nhập?", "Đăng xuất", MessageBoxButtons.OKCancel,

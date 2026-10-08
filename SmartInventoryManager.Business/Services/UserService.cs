@@ -83,6 +83,38 @@ public sealed class UserService
         return user.UserId;
     }
 
+    public async Task UpdateAccountAsync(UserSession session, UpdateAccountRequest request, CancellationToken cancellationToken = default)
+    {
+        var userId = RequireCurrentUser(session);
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.FullName) || request.FullName.Trim().Length > 100)
+            throw new ArgumentException("Họ tên là bắt buộc và không quá 100 ký tự.", nameof(request));
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (email is not null && !MailAddress.TryCreate(email, out _))
+            throw new ArgumentException("Email không đúng định dạng.", nameof(request));
+        if (email is not null && await _dbContext.Users.AnyAsync(item => item.UserId != userId && item.Email == email, cancellationToken))
+            throw new InvalidOperationException("Email đã được sử dụng.");
+        var user = await _dbContext.Users.SingleAsync(item => item.UserId == userId, cancellationToken);
+        user.FullName = request.FullName.Trim();
+        user.Email = email;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ChangePasswordAsync(UserSession session, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var userId = RequireCurrentUser(session);
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+            throw new ArgumentException("Mật khẩu mới phải có ít nhất 8 ký tự.", nameof(request));
+        if (!string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+            throw new ArgumentException("Mật khẩu xác nhận không khớp.", nameof(request));
+        var user = await _dbContext.Users.SingleAsync(item => item.UserId == userId, cancellationToken);
+        if (!_passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Mật khẩu hiện tại không đúng.");
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private void EnsureAdmin(UserSession session)
     {
         if (!_authorization.CanManageUser(session))
@@ -113,4 +145,7 @@ public sealed class UserService
             _ => throw new ArgumentException("Vai trò không hợp lệ.", nameof(roleName))
         };
     }
+
+    private static int RequireCurrentUser(UserSession session) => session.CurrentUser?.UserId
+        ?? throw new UnauthorizedAccessException("Bạn cần đăng nhập để cập nhật tài khoản.");
 }

@@ -9,6 +9,10 @@ public sealed record CreateUserRequest(
     string RoleName,
     bool IsActive = true);
 
+public sealed record UpdateAccountRequest(string FullName, string? Email);
+
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword);
+
 public sealed record UserListItemDto(
     int UserId,
     string Username,

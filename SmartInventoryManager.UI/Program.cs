@@ -55,6 +55,7 @@ namespace SmartInventoryManager.UI
                 new DashboardService(dbContext, authorizationService),
                 new ReportService(dbContext, authorizationService),
                 new UserService(dbContext, authorizationService),
+                new NotificationService(dbContext),
                 () => dbContext.ChangeTracker.Clear());
             while (true)
             {
