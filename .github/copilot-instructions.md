@@ -37,7 +37,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 
 ### Ownership map
 
-- **Bảo Anh — Database + Architecture + Data/EF/ADO.NET Infrastructure:** database, ERD, Entity models, EF DbContext, EF Configurations, EF Core Migrations, repositories/UnitOfWork when justified, ADO.NET infrastructure, architecture, SQL-managed artifacts, constraints, indexes, views, and supporting stored procedures.
+- **Bảo Anh — Database + Architecture + Data/EF/ADO.NET Infrastructure:** database, ERD, Entity models, EF DbContext, EF Configurations, EF Core Migrations, justified repositories/UnitOfWork, ADO.NET infrastructure, architecture, SQL-managed artifacts, constraints, indexes, views, and supporting stored procedures.
 - **Khang — Business/Backend + Warehouse Operations:** Business Services, warehouse operations, imports, exports, inventory workflows, stock-alert backend, business validation, receipt state machine, stock updates, transfer/adjustment workflows, business events, and Business tests.
 - **Khiêm — UI + Dashboard + Analytics + Reports + Notification UI:** Windows Forms UI, Dashboard, Analytics, charts, reports, notification UI, UI interactions, and presentation/query integration within agreed contracts.
 

@@ -11,7 +11,7 @@ namespace SmartInventoryManager.Data.Context
             var optionsBuilder = new DbContextOptionsBuilder<InventoryDbContext>();
 
             optionsBuilder.UseSqlServer(
-                "Server=(localdb)\\MSSQLLocalDB;Database=SmartInventoryManagerDbDesign;Trusted_Connection=True;TrustServerCertificate=True");
+                "Server=.\\SQLEXPRESS;Database=SmartInventoryManagerDbDesign;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True");
 
             return new InventoryDbContext(optionsBuilder.Options);
         }
