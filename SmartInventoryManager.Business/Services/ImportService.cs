@@ -77,6 +77,89 @@ public sealed class ImportService
         return receipt.ImportReceiptId;
     }
 
+    public async Task<IReadOnlyList<ImportReceiptListItemDto>> GetListAsync(
+        int? warehouseId = null,
+        string? status = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.ImportReceipts
+            .AsNoTracking()
+            .AsQueryable();
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(receipt => receipt.WarehouseId == warehouseId.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(receipt => receipt.Status == status.Trim());
+        }
+        if (from.HasValue)
+        {
+            query = query.Where(receipt => receipt.ReceiptDate >= from.Value.Date);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(receipt => receipt.ReceiptDate < to.Value.Date.AddDays(1));
+        }
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(receipt => receipt.ReceiptCode.Contains(normalizedSearch));
+        }
+        return await query
+            .OrderByDescending(receipt => receipt.ReceiptDate)
+            .Select(receipt => new ImportReceiptListItemDto(
+                receipt.ImportReceiptId,
+                receipt.ReceiptCode,
+                receipt.Supplier.SupplierName,
+                receipt.Warehouse.WarehouseName,
+                receipt.Creator.FullName,
+                receipt.ReceiptDate,
+                receipt.TotalAmount,
+                receipt.Status))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ImportReceiptDetailsDto?> GetByIdAsync(
+        int importReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ImportReceipts
+            .AsNoTracking()
+            .Include(item => item.Supplier)
+            .Include(item => item.Warehouse)
+            .Include(item => item.Creator)
+            .Include(item => item.Details)
+                .ThenInclude(detail => detail.Product)
+            .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken);
+        return receipt is null
+            ? null
+            : new ImportReceiptDetailsDto(
+                receipt.ImportReceiptId,
+                receipt.ReceiptCode,
+                receipt.SupplierId,
+                receipt.Supplier.SupplierName,
+                receipt.WarehouseId,
+                receipt.Warehouse.WarehouseName,
+                receipt.CreatedBy,
+                receipt.Creator.FullName,
+                receipt.ReceiptDate,
+                receipt.TotalAmount,
+                receipt.Status,
+                receipt.Note,
+                receipt.Details.Select(detail => new ReceiptDetailViewDto(
+                    detail.ProductId,
+                    detail.Product.ProductCode,
+                    detail.Product.ProductName,
+                    detail.Product.Unit,
+                    detail.Quantity,
+                    detail.UnitPrice,
+                    detail.Quantity * detail.UnitPrice)).ToList());
+    }
+
     public async Task CompleteAsync(
         UserSession session,
         int importReceiptId,
@@ -146,6 +229,55 @@ public sealed class ImportService
         {
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
         }
+    }
+
+    public async Task UpdateDraftAsync(
+        UserSession session,
+        int importReceiptId,
+        ImportReceiptDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var receipt = await _dbContext.ImportReceipts
+            .Include(item => item.Details)
+            .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (receipt.Status != "DRAFT")
+        {
+            throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được sửa.");
+        }
+        if (!await _authorization.CanEditDraftReceiptAsync(session, receipt.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu nhập tại kho này.");
+        }
+        ValidateRequest(request);
+        if (request.WarehouseId != receipt.WarehouseId)
+        {
+            throw new InvalidOperationException("Không được đổi kho của phiếu nhập nháp.");
+        }
+        var supplierExists = await _dbContext.Suppliers.AnyAsync(
+            supplier => supplier.SupplierId == request.SupplierId && supplier.IsActive,
+            cancellationToken);
+        var productIds = request.Details.Select(detail => detail.ProductId).ToArray();
+        var activeProductCount = await _dbContext.Products.CountAsync(
+            product => productIds.Contains(product.ProductId) && product.IsActive,
+            cancellationToken);
+        if (!supplierExists || activeProductCount != productIds.Length)
+        {
+            throw new InvalidOperationException("Nhà cung cấp hoặc sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
+        }
+        receipt.ReceiptCode = request.ReceiptCode.Trim();
+        receipt.SupplierId = request.SupplierId;
+        receipt.Note = request.Note?.Trim();
+        _dbContext.ImportDetails.RemoveRange(receipt.Details);
+        receipt.Details = request.Details.Select(detail => new ImportDetail
+        {
+            ProductId = detail.ProductId,
+            Quantity = detail.Quantity,
+            UnitPrice = detail.UnitPrice
+        }).ToList();
+        receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task CancelDraftAsync(

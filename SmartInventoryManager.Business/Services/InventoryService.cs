@@ -42,6 +42,47 @@ public sealed class InventoryService : IInventoryService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<InventoryHistoryDto>> GetHistoryAsync(
+        int warehouseId,
+        int? productId = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.InventoryTransactions
+            .AsNoTracking()
+            .Where(transaction => transaction.WarehouseId == warehouseId)
+            .AsQueryable();
+        if (productId.HasValue)
+        {
+            query = query.Where(transaction => transaction.ProductId == productId.Value);
+        }
+        if (from.HasValue)
+        {
+            query = query.Where(transaction => transaction.CreatedAt >= from.Value.Date);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(transaction => transaction.CreatedAt < to.Value.Date.AddDays(1));
+        }
+        return await query
+            .OrderByDescending(transaction => transaction.CreatedAt)
+            .Select(transaction => new InventoryHistoryDto(
+                transaction.TransactionId,
+                transaction.ProductId,
+                transaction.Product.ProductCode,
+                transaction.Product.ProductName,
+                transaction.WarehouseId,
+                transaction.TransactionType,
+                transaction.Quantity,
+                transaction.ReferenceType,
+                transaction.ReferenceId,
+                transaction.Creator.FullName,
+                transaction.CreatedAt,
+                transaction.Note))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AdjustAsync(
         UserSession session,
         int warehouseId,

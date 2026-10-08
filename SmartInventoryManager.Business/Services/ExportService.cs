@@ -65,6 +65,85 @@ public sealed class ExportService
         return receipt.ExportReceiptId;
     }
 
+    public async Task<IReadOnlyList<ExportReceiptListItemDto>> GetListAsync(
+        int? warehouseId = null,
+        string? status = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.ExportReceipts
+            .AsNoTracking()
+            .AsQueryable();
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(receipt => receipt.WarehouseId == warehouseId.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(receipt => receipt.Status == status.Trim());
+        }
+        if (from.HasValue)
+        {
+            query = query.Where(receipt => receipt.ReceiptDate >= from.Value.Date);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(receipt => receipt.ReceiptDate < to.Value.Date.AddDays(1));
+        }
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(receipt => receipt.ReceiptCode.Contains(normalizedSearch));
+        }
+        return await query
+            .OrderByDescending(receipt => receipt.ReceiptDate)
+            .Select(receipt => new ExportReceiptListItemDto(
+                receipt.ExportReceiptId,
+                receipt.ReceiptCode,
+                receipt.Warehouse.WarehouseName,
+                receipt.Creator.FullName,
+                receipt.ReceiptDate,
+                receipt.TotalAmount,
+                receipt.Status))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ExportReceiptDetailsDto?> GetByIdAsync(
+        int exportReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ExportReceipts
+            .AsNoTracking()
+            .Include(item => item.Warehouse)
+            .Include(item => item.Creator)
+            .Include(item => item.Details)
+                .ThenInclude(detail => detail.Product)
+            .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken);
+        return receipt is null
+            ? null
+            : new ExportReceiptDetailsDto(
+                receipt.ExportReceiptId,
+                receipt.ReceiptCode,
+                receipt.WarehouseId,
+                receipt.Warehouse.WarehouseName,
+                receipt.CreatedBy,
+                receipt.Creator.FullName,
+                receipt.ReceiptDate,
+                receipt.TotalAmount,
+                receipt.Status,
+                receipt.Note,
+                receipt.Details.Select(detail => new ReceiptDetailViewDto(
+                    detail.ProductId,
+                    detail.Product.ProductCode,
+                    detail.Product.ProductName,
+                    detail.Product.Unit,
+                    detail.Quantity,
+                    detail.UnitPrice,
+                    detail.Quantity * detail.UnitPrice)).ToList());
+    }
+
     public async Task CompleteAsync(
         UserSession session,
         int exportReceiptId,
@@ -137,6 +216,51 @@ public sealed class ExportService
         {
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
         }
+    }
+
+    public async Task UpdateDraftAsync(
+        UserSession session,
+        int exportReceiptId,
+        ExportReceiptDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var receipt = await _dbContext.ExportReceipts
+            .Include(item => item.Details)
+            .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        if (receipt.Status != "DRAFT")
+        {
+            throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được sửa.");
+        }
+        if (!await _authorization.CanEditDraftReceiptAsync(session, receipt.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu xuất tại kho này.");
+        }
+        ValidateRequest(request);
+        if (request.WarehouseId != receipt.WarehouseId)
+        {
+            throw new InvalidOperationException("Không được đổi kho của phiếu xuất nháp.");
+        }
+        var productIds = request.Details.Select(detail => detail.ProductId).ToArray();
+        var activeProductCount = await _dbContext.Products.CountAsync(
+            product => productIds.Contains(product.ProductId) && product.IsActive,
+            cancellationToken);
+        if (activeProductCount != productIds.Length)
+        {
+            throw new InvalidOperationException("Có sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
+        }
+        receipt.ReceiptCode = request.ReceiptCode.Trim();
+        receipt.Note = request.Note?.Trim();
+        _dbContext.ExportDetails.RemoveRange(receipt.Details);
+        receipt.Details = request.Details.Select(detail => new ExportDetail
+        {
+            ProductId = detail.ProductId,
+            Quantity = detail.Quantity,
+            UnitPrice = detail.UnitPrice
+        }).ToList();
+        receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task CancelDraftAsync(

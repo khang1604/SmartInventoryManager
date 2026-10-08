@@ -2,6 +2,8 @@ namespace SmartInventoryManager.Business.DTOs;
 
 public sealed class ImportReceiptDto
 {
+    public int ImportReceiptId { get; init; }
+
     public string ReceiptCode { get; init; } = string.Empty;
 
     public int SupplierId { get; init; }

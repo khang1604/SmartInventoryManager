@@ -1,7 +1,39 @@
-namespace SmartInventoryManager.Business.Services
+using Microsoft.EntityFrameworkCore;
+using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Data.Context;
+
+namespace SmartInventoryManager.Business.Services;
+
+public sealed class ProductService
 {
-    /// <summary>Skeleton ProductService type; implementation is intentionally not defined.</summary>
-    public class ProductService
+    private readonly InventoryDbContext _dbContext;
+
+    public ProductService(InventoryDbContext dbContext)
     {
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+    }
+
+    public async Task<IReadOnlyList<ProductLookupDto>> GetActiveAsync(
+        string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Products.AsNoTracking().Where(product => product.IsActive);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var value = search.Trim();
+            query = query.Where(product => product.ProductCode.Contains(value) || product.ProductName.Contains(value));
+        }
+        return await query
+            .OrderBy(product => product.ProductCode)
+            .Select(product => new ProductLookupDto(
+                product.ProductId,
+                product.ProductCode,
+                product.ProductName,
+                product.Unit,
+                product.PurchasePrice,
+                product.SellingPrice,
+                product.ReorderPoint,
+                product.MaximumStock))
+            .ToListAsync(cancellationToken);
     }
 }
