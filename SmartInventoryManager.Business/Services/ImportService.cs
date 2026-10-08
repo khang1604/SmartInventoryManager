@@ -11,6 +11,7 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class ImportService
 {
+    private const int MaxListResults = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
     private readonly ImportValidator _validator = new();
@@ -78,6 +79,7 @@ public sealed class ImportService
     }
 
     public async Task<IReadOnlyList<ImportReceiptListItemDto>> GetListAsync(
+        UserSession session,
         int? warehouseId = null,
         string? status = null,
         DateTime? from = null,
@@ -85,9 +87,19 @@ public sealed class ImportService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        if (!session.IsAuthenticated)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu nhập.");
+        }
+        var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
+        if (warehouseId.HasValue && !accessibleWarehouseIds.Contains(warehouseId.Value))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem phiếu nhập tại kho này.");
+        }
+
         var query = _dbContext.ImportReceipts
             .AsNoTracking()
-            .AsQueryable();
+            .Where(receipt => accessibleWarehouseIds.Contains(receipt.WarehouseId));
         if (warehouseId.HasValue)
         {
             query = query.Where(receipt => receipt.WarehouseId == warehouseId.Value);
@@ -102,6 +114,10 @@ public sealed class ImportService
         }
         if (to.HasValue)
         {
+            if (from.HasValue && to.Value.Date < from.Value.Date)
+            {
+                throw new ArgumentException("Khoảng ngày không hợp lệ.", nameof(to));
+            }
             query = query.Where(receipt => receipt.ReceiptDate < to.Value.Date.AddDays(1));
         }
         if (!string.IsNullOrWhiteSpace(search))
@@ -120,13 +136,20 @@ public sealed class ImportService
                 receipt.ReceiptDate,
                 receipt.TotalAmount,
                 receipt.Status))
+            .Take(MaxListResults)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<ImportReceiptDetailsDto?> GetByIdAsync(
+        UserSession session,
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        if (!session.IsAuthenticated)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu nhập.");
+        }
+        var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         var receipt = await _dbContext.ImportReceipts
             .AsNoTracking()
             .Include(item => item.Supplier)
@@ -134,7 +157,7 @@ public sealed class ImportService
             .Include(item => item.Creator)
             .Include(item => item.Details)
                 .ThenInclude(detail => detail.Product)
-            .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken);
+            .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId && accessibleWarehouseIds.Contains(item.WarehouseId), cancellationToken);
         return receipt is null
             ? null
             : new ImportReceiptDetailsDto(

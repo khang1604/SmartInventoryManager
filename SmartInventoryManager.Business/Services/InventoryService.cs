@@ -24,9 +24,15 @@ public sealed class InventoryService : IInventoryService
     public event EventHandler<InventoryChangedEvent>? InventoryChanged;
 
     public async Task<IReadOnlyList<InventoryDto>> GetByWarehouseAsync(
+        UserSession session,
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem tồn kho tại kho này.");
+        }
+
         return await _dbContext.Inventories
             .AsNoTracking()
             .Where(inventory => inventory.WarehouseId == warehouseId)
@@ -43,12 +49,18 @@ public sealed class InventoryService : IInventoryService
     }
 
     public async Task<IReadOnlyList<InventoryHistoryDto>> GetHistoryAsync(
+        UserSession session,
         int warehouseId,
         int? productId = null,
         DateTime? from = null,
         DateTime? to = null,
         CancellationToken cancellationToken = default)
     {
+        if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem lịch sử tồn kho tại kho này.");
+        }
+
         var query = _dbContext.InventoryTransactions
             .AsNoTracking()
             .Where(transaction => transaction.WarehouseId == warehouseId)
