@@ -381,6 +381,9 @@ public partial class FrmMain : Form
         "Tồn kho" => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventory(), title),
         "Lịch sử tồn kho" => PrepareForm(new SmartInventoryManager.Forms.Inventory.FrmInventoryHistory(), title),
         "Cảnh báo" => PrepareForm(new SmartInventoryManager.Forms.Alerts.FrmStockAlert(), title),
+        "Báo cáo" when _services is not null => CreateTabs(
+            ("Tồn kho", new SmartInventoryManager.Forms.Reports.FrmInventoryReport(_services)),
+            ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport(_services))),
         "Báo cáo" => CreateTabs(
             ("Tồn kho", new SmartInventoryManager.Forms.Reports.FrmInventoryReport()),
             ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport())),

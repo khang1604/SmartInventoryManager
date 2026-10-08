@@ -25,12 +25,13 @@ public sealed class UiServices : IDisposable
     public CategoryService Categories { get; }
     public DashboardService Dashboard { get; }
     public ReportService Reports { get; }
+    public UserService Users { get; }
 
     public UiServices(UserSession session, AuthorizationService authorization,
         ImportService imports, ExportService exports, InventoryService inventory,
         StockAlertService alerts, ProductService products, WarehouseService warehouses,
         SupplierService suppliers, CategoryService categories, IProductService productManagement, LocationService locations,
-        DashboardService dashboard, ReportService reports, Action resetTracking)
+        DashboardService dashboard, ReportService reports, UserService users, Action resetTracking)
     {
         Session = session;
         Authorization = authorization;
@@ -47,6 +48,7 @@ public sealed class UiServices : IDisposable
         Categories = categories;
         Dashboard = dashboard;
         Reports = reports;
+        Users = users;
         _resetTracking = resetTracking;
     }
 

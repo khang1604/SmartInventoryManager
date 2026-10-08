@@ -48,6 +48,76 @@ internal static class ConnectedPages
         return page;
     }
 
+    public static Control InventoryReport(UiServices services)
+    {
+        var page = new DataListPage<InventoryReportRowDto>(services,
+            "Báo cáo tồn kho",
+            [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"),
+                ("WarehouseName", "Kho"), ("Unit", "Đơn vị"), ("Quantity", "Số lượng tồn"),
+                ("ReorderPoint", "Điểm đặt hàng lại"), ("MaximumStock", "Tồn tối đa"),
+                ("StockStatus", "Trạng thái tồn"), ("UpdatedAt", "Cập nhật")],
+            async (warehouseId, search, _, _) =>
+            {
+                var report = await services.Reports.GetInventoryAsync(services.Session, warehouseId);
+                return report.Rows.Where(row => Match(row.ProductCode, row.ProductName, search)).ToList();
+            }, requiresWarehouse: true);
+        page.Action("Xuất Excel", async () => await ExportInventoryAsync(page, services, false), "file-earmark-spreadsheet");
+        page.Action("Xuất PDF", async () => await ExportInventoryAsync(page, services, true), "file-earmark-pdf");
+        return page;
+    }
+
+    private static async Task ExportInventoryAsync(DataListPage<InventoryReportRowDto> page, UiServices services, bool pdf)
+    {
+        var report = await services.RunAsync(() => services.Reports.GetInventoryAsync(services.Session, page.SelectedWarehouseId));
+        using var dialog = new SaveFileDialog
+        {
+            Filter = pdf ? "PDF (*.pdf)|*.pdf" : "Excel (*.xlsx)|*.xlsx",
+            FileName = pdf ? "bao-cao-ton-kho.pdf" : "bao-cao-ton-kho.xlsx",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
+        if (pdf) ReportExportService.ExportInventoryPdf(dialog.FileName, report);
+        else ReportExportService.ExportInventoryExcel(dialog.FileName, report);
+    }
+
+    public static Control ImportExportReport(UiServices services)
+    {
+        var page = new DataListPage<ImportExportReportRowDto>(services,
+            "Báo cáo nhập xuất",
+            [("ReceiptDate", "Ngày"), ("ReceiptCode", "Mã phiếu"), ("ReceiptType", "Loại phiếu"),
+                ("WarehouseName", "Kho"), ("TotalAmount", "Tổng tiền"), ("Status", "Trạng thái")],
+            async (warehouseId, search, from, to) =>
+            {
+                var report = await services.Reports.GetImportExportAsync(services.Session, warehouseId, from, to);
+                var rows = report.Imports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
+                    "IMPORT", item.WarehouseName, item.TotalAmount, item.Status))
+                    .Concat(report.Exports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
+                        "EXPORT", item.WarehouseName, item.TotalAmount, item.Status)));
+                return rows.Where(row => string.IsNullOrWhiteSpace(search) || row.ReceiptCode.Contains(search, StringComparison.CurrentCultureIgnoreCase))
+                    .OrderByDescending(row => row.ReceiptDate).ToList();
+            }, requiresWarehouse: true, history: true);
+        page.Action("Xuất Excel", async () => await ExportImportExportAsync(page, services, false), "file-earmark-spreadsheet");
+        page.Action("Xuất PDF", async () => await ExportImportExportAsync(page, services, true), "file-earmark-pdf");
+        return page;
+    }
+
+    private static async Task ExportImportExportAsync(DataListPage<ImportExportReportRowDto> page, UiServices services, bool pdf)
+    {
+        var report = await services.RunAsync(() => services.Reports.GetImportExportAsync(services.Session,
+            page.SelectedWarehouseId, page.SelectedFrom, page.SelectedTo));
+        using var dialog = new SaveFileDialog
+        {
+            Filter = pdf ? "PDF (*.pdf)|*.pdf" : "Excel (*.xlsx)|*.xlsx",
+            FileName = pdf ? "bao-cao-nhap-xuat.pdf" : "bao-cao-nhap-xuat.xlsx",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
+        if (pdf) ReportExportService.ExportImportExportPdf(dialog.FileName, report);
+        else ReportExportService.ExportImportExportExcel(dialog.FileName, report);
+    }
+
     public static Control History(UiServices services, int? productId = null) => new DataListPage<InventoryHistoryDto>(services,
         "Lịch sử tồn kho",
         [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("TransactionType", "Loại giao dịch"),

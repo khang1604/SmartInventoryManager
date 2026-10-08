@@ -54,6 +54,7 @@ namespace SmartInventoryManager.UI
                 new LocationService(dbContext, authorizationService),
                 new DashboardService(dbContext, authorizationService),
                 new ReportService(dbContext, authorizationService),
+                new UserService(dbContext, authorizationService),
                 () => dbContext.ChangeTracker.Clear());
             while (true)
             {
