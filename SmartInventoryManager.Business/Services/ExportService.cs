@@ -1,7 +1,177 @@
-namespace SmartInventoryManager.Business.Services
+using Microsoft.EntityFrameworkCore;
+using SmartInventoryManager.Business.Authorization;
+using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Inventory;
+using SmartInventoryManager.Business.Validators;
+using SmartInventoryManager.Data.Context;
+using SmartInventoryManager.Data.Entities;
+
+namespace SmartInventoryManager.Business.Services;
+
+public sealed class ExportService
 {
-    /// <summary>Skeleton ExportService type; implementation is intentionally not defined.</summary>
-    public class ExportService
+    private readonly InventoryDbContext _dbContext;
+    private readonly AuthorizationService _authorization;
+    private readonly ExportValidator _validator = new();
+
+    public ExportService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+    }
+
+    public async Task<int> CreateDraftAsync(
+        UserSession session,
+        ExportReceiptDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!await _authorization.CanCreateDraftReceiptAsync(session, request.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền tạo phiếu xuất tại kho này.");
+        }
+        ValidateRequest(request);
+
+        var warehouseExists = await _dbContext.Warehouses.AnyAsync(
+            warehouse => warehouse.WarehouseId == request.WarehouseId && warehouse.IsActive,
+            cancellationToken);
+        var productIds = request.Details.Select(detail => detail.ProductId).ToArray();
+        var activeProductIds = await _dbContext.Products
+            .Where(product => productIds.Contains(product.ProductId) && product.IsActive)
+            .Select(product => product.ProductId)
+            .ToListAsync(cancellationToken);
+        if (!warehouseExists || activeProductIds.Count != productIds.Length)
+        {
+            throw new InvalidOperationException("Kho hoặc sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
+        }
+
+        var receipt = new ExportReceipt
+        {
+            ReceiptCode = request.ReceiptCode.Trim(),
+            WarehouseId = request.WarehouseId,
+            CreatedBy = session.CurrentUser!.UserId,
+            ReceiptDate = DateTime.Now,
+            Status = "DRAFT",
+            Note = request.Note?.Trim(),
+            Details = request.Details.Select(detail => new ExportDetail
+            {
+                ProductId = detail.ProductId,
+                Quantity = detail.Quantity,
+                UnitPrice = detail.UnitPrice
+            }).ToList()
+        };
+        _dbContext.ExportReceipts.Add(receipt);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return receipt.ExportReceiptId;
+    }
+
+    public async Task CompleteAsync(
+        UserSession session,
+        int exportReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ExportReceipts
+            .Include(exportReceipt => exportReceipt.Details)
+            .SingleOrDefaultAsync(exportReceipt => exportReceipt.ExportReceiptId == exportReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        if (!await _authorization.CanCompleteReceiptAsync(session, receipt.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền hoàn tất phiếu xuất tại kho này.");
+        }
+        if (receipt.Status == "COMPLETED")
+        {
+            return;
+        }
+        if (receipt.Status != "DRAFT")
+        {
+            throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được hoàn tất.");
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            cancellationToken);
+        var alreadyPosted = await _dbContext.InventoryTransactions.AnyAsync(
+            item => item.ReferenceType == InventoryTransactionTypes.ExportReceipt &&
+                item.ReferenceId == exportReceiptId,
+            cancellationToken);
+        if (alreadyPosted)
+        {
+            receipt.Status = "COMPLETED";
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        foreach (var detail in receipt.Details)
+        {
+            var inventory = await _dbContext.Inventories
+                .SingleOrDefaultAsync(item => item.WarehouseId == receipt.WarehouseId && item.ProductId == detail.ProductId, cancellationToken)
+                ?? throw new InvalidOperationException($"Sản phẩm {detail.ProductId} chưa có tồn kho tại kho xuất.");
+            if (inventory.Quantity < detail.Quantity)
+            {
+                throw new InvalidOperationException($"Sản phẩm {detail.ProductId} không đủ tồn kho để xuất.");
+            }
+            inventory.Quantity -= detail.Quantity;
+            inventory.UpdatedAt = DateTime.Now;
+            _dbContext.InventoryTransactions.Add(new InventoryTransaction
+            {
+                ProductId = detail.ProductId,
+                WarehouseId = receipt.WarehouseId,
+                TransactionType = InventoryTransactionTypes.Export,
+                Quantity = detail.Quantity,
+                ReferenceType = InventoryTransactionTypes.ExportReceipt,
+                ReferenceId = exportReceiptId,
+                CreatedBy = session.CurrentUser!.UserId,
+                CreatedAt = DateTime.Now,
+                Note = receipt.Note
+            });
+        }
+
+        receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
+        receipt.Status = "COMPLETED";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        var alertService = new StockAlertService(_dbContext, _authorization);
+        foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
+        {
+            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
+        }
+    }
+
+    public async Task CancelDraftAsync(
+        UserSession session,
+        int exportReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ExportReceipts
+            .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        if (!await _authorization.CanCancelReceiptAsync(session, receipt.WarehouseId))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền hủy phiếu xuất tại kho này.");
+        }
+        if (receipt.Status != "DRAFT")
+        {
+            throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được hủy.");
+        }
+        receipt.Status = "CANCELLED";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ValidateRequest(ExportReceiptDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ReceiptCode) || request.Details.Count == 0 ||
+            request.Details.Select(detail => detail.ProductId).Distinct().Count() != request.Details.Count)
+        {
+            throw new ArgumentException("Mã phiếu và chi tiết phiếu xuất là bắt buộc; sản phẩm không được trùng.", nameof(request));
+        }
+        var errors = request.Details
+            .SelectMany(detail => _validator.ValidateDetail(detail.ProductId, detail.Quantity, detail.UnitPrice))
+            .ToArray();
+        if (errors.Length > 0)
+        {
+            throw new ArgumentException(string.Join(" ", errors), nameof(request));
+        }
     }
 }

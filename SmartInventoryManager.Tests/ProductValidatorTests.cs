@@ -41,6 +41,28 @@ public class ProductValidatorTests
     }
 
     [TestMethod]
+    public void ValidateThresholds_RejectsNegativeReorderPointAndNonPositiveMaximum()
+    {
+        var errors = StockStatusCalculator.ValidateThresholds(-1, 0);
+
+        Assert.AreEqual(2, errors.Count);
+    }
+
+    [TestMethod]
+    public void Calculate_RejectsInvalidThresholds()
+    {
+        Assert.Throws<ArgumentException>(() => StockStatusCalculator.Calculate(5, 10, 10));
+    }
+
+    [TestMethod]
+    public void Calculate_ReturnsLowStockImmediatelyAboveZeroWhenReorderPointIsPositive()
+    {
+        var result = StockStatusCalculator.Calculate(1, 10, 100);
+
+        Assert.AreEqual(StockStatus.LowStock, result);
+    }
+
+    [TestMethod]
     public void ProductValidator_AcceptsValidProduct()
     {
         var isValid = new ProductValidator().IsValid(

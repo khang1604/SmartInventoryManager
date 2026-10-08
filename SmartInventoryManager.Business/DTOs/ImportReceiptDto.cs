@@ -1,7 +1,14 @@
-namespace SmartInventoryManager.Business.DTOs
+namespace SmartInventoryManager.Business.DTOs;
+
+public sealed class ImportReceiptDto
 {
-    /// <summary>Skeleton ImportReceiptDto type; implementation is intentionally not defined.</summary>
-    public class ImportReceiptDto
-    {
-    }
+    public string ReceiptCode { get; init; } = string.Empty;
+
+    public int SupplierId { get; init; }
+
+    public int WarehouseId { get; init; }
+
+    public string? Note { get; init; }
+
+    public IReadOnlyList<ReceiptDetailDto> Details { get; init; } = Array.Empty<ReceiptDetailDto>();
 }
