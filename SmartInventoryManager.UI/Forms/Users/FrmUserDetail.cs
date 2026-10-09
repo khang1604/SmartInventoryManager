@@ -20,7 +20,7 @@ public sealed class FrmUserDetail : Form
         var fields = PreviewFormUi.Fields(4);
         var username = PreviewFormUi.Field(fields, 0, 0, "txtUsername", "Tên đăng nhập *", 50);
         var fullName = PreviewFormUi.Field(fields, 1, 0, "txtFullName", "Họ tên *", 100);
-        var email = PreviewFormUi.Field(fields, 0, 1, "txtEmail", "Email *", 100);
+        var email = PreviewFormUi.Field(fields, 0, 1, "txtEmail", "Email *", 100, "vd: staff@smartinventory.local");
         fields.Controls.Add(ProductUi.Label("Vai trò *", 10, true), 1, 2);
         var role = LiveUi.Choice("cboRole", "Vai trò người dùng");
         role.Items.AddRange(["Chọn vai trò", "Quản trị viên", "Quản lý kho", "Nhân viên kho"]);
@@ -37,7 +37,7 @@ public sealed class FrmUserDetail : Form
         fields.Controls.Add(warehouse, 0, 7); fields.Controls.Add(location, 1, 7);
         var contextNote = new Label { Text = services is null
                 ? "Biểu mẫu chỉ xem trước khi chưa có phiên làm việc."
-                : "Tài khoản không gắn kho trực tiếp theo quy định hệ thống.",
+                : "Tài khoản được tạo theo vai trò đã chọn.",
             Dock = DockStyle.Top, AutoSize = true, MaximumSize = new Size(700, 0), Padding = new Padding(16, 8, 16, 0) };
         body.Controls.Add(contextNote, 0, 2);
         var password = PreviewFormUi.Field(fields, 0, 2, "txtPassword", "Mật khẩu *");
@@ -62,6 +62,9 @@ public sealed class FrmUserDetail : Form
 
         if (services is not null)
         {
+            var status = FindControl<Label>(root, "formStatus");
+            status.Text = "Đã kết nối dữ liệu";
+            FindControl<Label>(root, "formNote").Text = "Các trường có dấu * là bắt buộc • Nhập email đúng định dạng để lưu tài khoản.";
             var save = FindControl<AntdUI.Button>(root, "btnSave");
             save.Enabled = true;
             save.AccessibleDescription = "Lưu tài khoản nhân viên";

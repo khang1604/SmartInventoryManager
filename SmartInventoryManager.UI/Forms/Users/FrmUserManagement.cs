@@ -1,3 +1,4 @@
+using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.UI.Components;
 using SmartInventoryManager.Business.DTOs;
 
@@ -5,10 +6,9 @@ namespace SmartInventoryManager.Forms.Users;
 
 public partial class FrmUserManagement : Form
 {
-    public FrmUserManagement() : this(null) { }
-
-    public FrmUserManagement(UiServices? services)
+    public FrmUserManagement(UiServices services)
     {
+        ArgumentNullException.ThrowIfNull(services);
         InitializeComponent();
         WorkflowUi.StyleForm(this);
         if(services is not null) {
