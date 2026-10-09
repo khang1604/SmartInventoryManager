@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.UI.Themes;
 
 namespace SmartInventoryManager.UI.Components;
@@ -181,12 +182,14 @@ internal static class LiveUi
         return exception switch
         {
             UnauthorizedAccessException => "Bạn chưa đăng nhập hoặc không có quyền thao tác tại kho này.",
-            ArgumentException => "Thông tin chưa hợp lệ. Kiểm tra các trường bắt buộc, số lượng và đơn giá.",
+            ArgumentException argument when !string.IsNullOrWhiteSpace(argument.Message)
+                => argument.Message,
             KeyNotFoundException => "Dữ liệu không còn tồn tại. Hãy làm mới danh sách.",
             InvalidOperationException when exception.Message.Contains("không đủ", StringComparison.OrdinalIgnoreCase)
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."
                 => "Mức giảm vượt quá tồn hiện tại. Hãy kiểm tra số lượng điều chỉnh.",
+            DbUpdateException => "Cơ sở dữ liệu chưa đồng bộ cấu trúc. Hãy khởi động lại ứng dụng để áp dụng migration rồi thử lại.",
             _ => "Chưa thực hiện được thao tác. Hãy làm mới dữ liệu hoặc thử lại; không gửi lại khi chưa kiểm tra kết quả."
         };
     }
