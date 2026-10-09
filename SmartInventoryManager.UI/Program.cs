@@ -15,7 +15,7 @@ namespace SmartInventoryManager.UI
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static async Task Main()
+        static void Main()
         {
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
@@ -74,7 +74,10 @@ namespace SmartInventoryManager.UI
                 session.SignIn(loginForm.AuthenticatedUser);
                 if (string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
                 {
-                    var assignedWarehouseIds = await authorizationService.GetAccessibleWarehouseIdsAsync(session);
+                    var assignedWarehouseIds = authorizationService
+                        .GetAccessibleWarehouseIdsAsync(session)
+                        .GetAwaiter()
+                        .GetResult();
                     session.SetCurrentWarehouseFromAssignments(assignedWarehouseIds.ToArray());
                     if (assignedWarehouseIds.Count == 0)
                     {

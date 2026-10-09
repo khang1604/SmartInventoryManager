@@ -116,8 +116,18 @@ internal static class ConnectedPages
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
-        if (pdf) ReportExportService.ExportInventoryPdf(dialog.FileName, report);
-        else ReportExportService.ExportInventoryExcel(dialog.FileName, report);
+        try
+        {
+            if (pdf) ReportExportService.ExportInventoryPdf(dialog.FileName, report);
+            else ReportExportService.ExportInventoryExcel(dialog.FileName, report);
+            MessageBox.Show(page.FindForm(), "Đã xuất báo cáo thành công.", "Xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(page.FindForm(), LiveUi.ExportError(exception), "Không thể xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     public static Control ImportExportReport(UiServices services)
@@ -153,8 +163,18 @@ internal static class ConnectedPages
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
-        if (pdf) ReportExportService.ExportImportExportPdf(dialog.FileName, report);
-        else ReportExportService.ExportImportExportExcel(dialog.FileName, report);
+        try
+        {
+            if (pdf) ReportExportService.ExportImportExportPdf(dialog.FileName, report);
+            else ReportExportService.ExportImportExportExcel(dialog.FileName, report);
+            MessageBox.Show(page.FindForm(), "Đã xuất báo cáo thành công.", "Xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(page.FindForm(), LiveUi.ExportError(exception), "Không thể xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     public static Control History(UiServices services, int? productId = null) => new DataListPage<InventoryHistoryDto>(services,

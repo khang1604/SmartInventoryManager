@@ -31,6 +31,18 @@ internal static class LiveUi
         return panel;
     }
 
+    public static string ExportError(Exception exception)
+    {
+        Debug.WriteLine(exception);
+        return exception switch
+        {
+            UnauthorizedAccessException => "Không có quyền ghi vào vị trí đã chọn. Hãy chọn thư mục khác.",
+            IOException => "Không thể ghi tệp. Hãy đóng tệp đang mở hoặc chọn tên tệp khác.",
+            ArgumentException => "Tên hoặc đường dẫn tệp không hợp lệ. Hãy chọn lại nơi lưu.",
+            _ => "Không thể xuất báo cáo. Hãy kiểm tra đường dẫn lưu, quyền ghi và tệp đang mở rồi thử lại."
+        };
+    }
+
     public static FlowLayoutPanel Toolbar() => new()
     {
         Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true, Margin = Padding.Empty
