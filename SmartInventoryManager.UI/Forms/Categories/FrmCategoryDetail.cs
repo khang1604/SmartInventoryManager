@@ -93,7 +93,7 @@ public sealed class FrmCategoryDetail : Form
         footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 246));
-        var note = ProductUi.Label("Xem trước • Chưa lưu dữ liệu", 8.5F);
+        var note = ProductUi.Label(_services is null ? "Chưa có phiên làm việc để lưu dữ liệu." : "Nhập thông tin và kiểm tra trước khi lưu.", 8.5F);
         // [COLOR CONFIG]: ghi chú phụ về trạng thái biểu mẫu.
         note.ForeColor = AppColors.Muted;
         footer.Controls.Add(note, 0, 0);
@@ -107,7 +107,9 @@ public sealed class FrmCategoryDetail : Form
         save.Margin = Padding.Empty;
         save.Enabled = _services is not null;
         save.TabIndex = 4;
-        save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu danh mục đang được hoàn thiện";
+        save.AccessibleDescription = _services is null
+            ? "Chưa sẵn sàng: cần mở biểu mẫu từ phiên làm việc."
+            : "Lưu danh mục sau khi kiểm tra dữ liệu.";
         save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);

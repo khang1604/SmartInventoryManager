@@ -33,11 +33,11 @@ public class ProductValidatorTests
     }
 
     [TestMethod]
-    public void ValidateThresholds_AcceptsEqualReorderPointAndMaximumStock()
+    public void ValidateThresholds_RejectsEqualReorderPointAndMaximumStock()
     {
         var errors = StockStatusCalculator.ValidateThresholds(100, 100);
 
-        Assert.AreEqual(0, errors.Count);
+        Assert.AreEqual(1, errors.Count);
     }
 
     [TestMethod]
@@ -49,9 +49,9 @@ public class ProductValidatorTests
     }
 
     [TestMethod]
-    public void Calculate_AcceptsZeroMaximumWhenReorderPointIsZero()
+    public void Calculate_RejectsZeroMaximumWhenReorderPointIsZero()
     {
-        Assert.AreEqual(StockStatus.Overstock, StockStatusCalculator.Calculate(5, 0, 0));
+        Assert.Throws<ArgumentException>(() => StockStatusCalculator.Calculate(5, 0, 0));
     }
 
     [TestMethod]
@@ -77,17 +77,17 @@ public class ProductValidatorTests
         var errors = new ProductValidator().Validate(
             " ", null, "", -1m, -2m, 100, 100);
 
-        Assert.AreEqual(5, errors.Count);
+        Assert.AreEqual(6, errors.Count);
         CollectionAssert.Contains(errors.ToList(), "Mã sản phẩm không được để trống.");
         CollectionAssert.Contains(errors.ToList(), "Giá nhập không được âm.");
     }
 
     [TestMethod]
-    public void ProductValidator_AcceptsZeroMaximumStockWhenReorderPointIsZero()
+    public void ProductValidator_RejectsZeroMaximumStockWhenReorderPointIsZero()
     {
         var errors = new ProductValidator().Validate(
             "P001", "Sản phẩm", "cái", 1m, 2m, 0, 0);
 
-        Assert.AreEqual(0, errors.Count);
+        Assert.AreEqual(1, errors.Count);
     }
 }

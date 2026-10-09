@@ -10,12 +10,12 @@ public sealed class SupplierService
 {
     private const int MaxLookupResults = 200;
     private readonly InventoryDbContext _dbContext;
-    private readonly AuthorizationService? _authorization;
+    private readonly AuthorizationService _authorization;
 
-    public SupplierService(InventoryDbContext dbContext, AuthorizationService? authorization = null)
+    public SupplierService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-        _authorization = authorization;
+        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
     public async Task<IReadOnlyList<LookupItemDto>> GetActiveAsync(
@@ -82,7 +82,7 @@ public sealed class SupplierService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private void EnsureCanManage(UserSession session) { if (_authorization is null || !_authorization.CanManageSupplier(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý nhà cung cấp."); }
+    private void EnsureCanManage(UserSession session) { if (!_authorization.CanManageSupplier(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý nhà cung cấp."); }
     private static void EnsureAuthenticated(UserSession session) { if (session is null || !session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập."); }
     private static void Validate(SupplierRequestDto request) { ArgumentNullException.ThrowIfNull(request); if (string.IsNullOrWhiteSpace(request.SupplierCode) || string.IsNullOrWhiteSpace(request.SupplierName)) throw new ArgumentException("Mã và tên nhà cung cấp là bắt buộc.", nameof(request)); }
 }

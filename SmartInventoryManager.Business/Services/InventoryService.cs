@@ -152,10 +152,10 @@ public sealed class InventoryService : IInventoryService
             CreatedAt = DateTime.Now,
             Note = reason.Trim()
         });
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
         await new StockAlertService(_dbContext, _authorization)
             .RefreshAsync(productId, warehouseId, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, warehouseId));
     }
 
@@ -231,11 +231,11 @@ public sealed class InventoryService : IInventoryService
                 CreatedAt = now,
                 Note = note.Trim()
             });
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
         var alertService = new StockAlertService(_dbContext, _authorization);
         await alertService.RefreshAsync(productId, sourceWarehouseId, cancellationToken);
         await alertService.RefreshAsync(productId, destinationWarehouseId, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, sourceWarehouseId));
         InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, destinationWarehouseId));
     }

@@ -80,7 +80,7 @@ namespace SmartInventoryManager.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Products", x => x.ProductId);
-                    table.CheckConstraint("CK_Products_MaximumStock", "[MaximumStock] >= [ReorderPoint]");
+                    table.CheckConstraint("CK_Products_MaximumStock", "[MaximumStock] > [ReorderPoint]");
                     table.CheckConstraint("CK_Products_PurchasePrice", "[PurchasePrice] >= 0");
                     table.CheckConstraint("CK_Products_ReorderPoint", "[ReorderPoint] >= 0");
                     table.CheckConstraint("CK_Products_SellingPrice", "[SellingPrice] >= 0");
@@ -590,6 +590,13 @@ namespace SmartInventoryManager.Data.Migrations
                 name: "IX_StockAlerts_WarehouseId",
                 table: "StockAlerts",
                 column: "WarehouseId");
+
+            migrationBuilder.CreateIndex(
+                name: "UX_StockAlerts_Open_ProductWarehouseType",
+                table: "StockAlerts",
+                columns: new[] { "ProductId", "WarehouseId", "AlertType" },
+                unique: true,
+                filter: "[IsResolved] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Suppliers_SupplierCode",

@@ -203,6 +203,25 @@ public sealed class ImportService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task DeleteDraftAsync(
+        UserSession session,
+        int importReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ImportReceipts
+            .Include(item => item.Details)
+            .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (!await _authorization.CanDeleteDraftReceiptAsync(session, receipt.WarehouseId))
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu nhập nháp tại kho này.");
+        if (receipt.Status != "DRAFT")
+            throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được xóa.");
+
+        _dbContext.ImportDetails.RemoveRange(receipt.Details);
+        _dbContext.ImportReceipts.Remove(receipt);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task ApproveAsync(
         UserSession session,
         int importReceiptId,
@@ -285,9 +304,7 @@ public sealed class ImportService
         }
 
         if (receipt.Status == "COMPLETED")
-        {
-            return;
-        }
+            throw new InvalidOperationException("Phiếu nhập đã hoàn tất trước đó.");
 
         if (receipt.Status != "APPROVED")
         {
@@ -302,12 +319,7 @@ public sealed class ImportService
                 item.ReferenceId == importReceiptId,
             cancellationToken);
         if (alreadyPosted)
-        {
-            receipt.Status = "COMPLETED";
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return;
-        }
+            throw new InvalidOperationException("Phiếu nhập đã được ghi nhận tồn kho trước đó.");
 
         foreach (var detail in receipt.Details)
         {
@@ -330,14 +342,11 @@ public sealed class ImportService
 
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "COMPLETED";
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
         var alertService = new StockAlertService(_dbContext, _authorization);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
-        {
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
-        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task UpdateDraftAsync(

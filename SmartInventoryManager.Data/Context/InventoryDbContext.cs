@@ -26,6 +26,8 @@ namespace SmartInventoryManager.Data.Context
 
         public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
+        public DbSet<UserWarehouse> UserWarehouses => Set<UserWarehouse>();
+
         public DbSet<Location> Locations => Set<Location>();
 
         public DbSet<Inventory> Inventories => Set<Inventory>();
@@ -83,6 +85,24 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.HasIndex(r => r.RoleName)
                     .IsUnique();
+            });
+
+            modelBuilder.Entity<UserWarehouse>(entity =>
+            {
+                entity.ToTable("UserWarehouses");
+                entity.HasKey(item => new { item.UserId, item.WarehouseId });
+                entity.Property(item => item.AssignedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("SYSDATETIME()");
+                entity.HasOne(item => item.User)
+                    .WithMany(user => user.WarehouseAssignments)
+                    .HasForeignKey(item => item.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(item => item.Warehouse)
+                    .WithMany(warehouse => warehouse.UserAssignments)
+                    .HasForeignKey(item => item.WarehouseId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(item => item.WarehouseId);
             });
 
 
@@ -353,6 +373,10 @@ namespace SmartInventoryManager.Data.Context
                 entity.Property(i => i.Note)
                     .HasMaxLength(500);
 
+                entity.Property(i => i.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken();
+
                 entity.HasIndex(i => i.ReceiptCode)
                     .IsUnique();
 
@@ -432,6 +456,10 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.Property(e => e.Note)
                     .HasMaxLength(500);
+
+                entity.Property(e => e.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken();
 
                 entity.HasIndex(e => e.ReceiptCode)
                     .IsUnique();
@@ -598,6 +626,11 @@ namespace SmartInventoryManager.Data.Context
                     .WithMany(u => u.ResolvedStockAlerts)
                     .HasForeignKey(a => a.ResolvedBy)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(a => new { a.ProductId, a.WarehouseId, a.AlertType })
+                    .IsUnique()
+                    .HasFilter("[IsResolved] = 0")
+                    .HasDatabaseName("UX_StockAlerts_Open_ProductWarehouseType");
 
                 entity.ToTable("StockAlerts", table =>
                 {

@@ -42,7 +42,6 @@ public sealed class UiServices : IDisposable
         Alerts = alerts;
         Products = products;
         ProductManagement = productManagement;
-        ProductManagement = productManagement;
         Warehouses = warehouses;
         Suppliers = suppliers;
         Locations = locations;

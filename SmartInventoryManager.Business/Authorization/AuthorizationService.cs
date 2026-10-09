@@ -218,15 +218,17 @@ public sealed class AuthorizationService
         }
         else if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
         {
-            if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase) ||
-                !session.CurrentWarehouseId.HasValue)
+            if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
             {
                 return new HashSet<int>();
             }
 
             return await _dbContext.Warehouses
                 .AsNoTracking()
-                .Where(warehouse => warehouse.IsActive && warehouse.WarehouseId == session.CurrentWarehouseId.Value)
+                .Where(warehouse => warehouse.IsActive &&
+                    _dbContext.UserWarehouses.Any(assignment =>
+                        assignment.UserId == session.CurrentUser.UserId &&
+                        assignment.WarehouseId == warehouse.WarehouseId))
                 .Select(warehouse => warehouse.WarehouseId)
                 .ToHashSetAsync(cancellationToken);
         }
@@ -269,14 +271,17 @@ public sealed class AuthorizationService
 
     private async Task<bool> CanAccessCurrentWarehouseAsync(UserSession session, int warehouseId)
     {
-        if (!HasRole(session, RoleNames.Staff) || session.CurrentWarehouseId != warehouseId)
+        if (!HasRole(session, RoleNames.Staff))
         {
             return false;
         }
 
         return await _dbContext.Warehouses
             .AsNoTracking()
-            .AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive);
+            .AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive &&
+                _dbContext.UserWarehouses.Any(assignment =>
+                    assignment.UserId == session.CurrentUser!.UserId && assignment.WarehouseId == warehouseId) &&
+                session.CurrentWarehouseId.HasValue && session.CurrentWarehouseId == warehouseId);
     }
 
     private static bool HasRole(UserSession session, params string[] roles)
