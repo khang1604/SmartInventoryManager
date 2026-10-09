@@ -77,7 +77,7 @@ internal static class PreviewFormUi
     {
         fields.Controls.Add(ProductUi.Label(caption, 10, true), col, row * 2);
         var input = ProductUi.Input(name, placeholder ?? "");
-        input.MaxLength = maxLength;
+        if (maxLength > 0) input.MaxLength = maxLength;
         input.ReadOnly = unavailable;
         input.TabIndex = row * 2 + col;
         input.AccessibleName = caption;

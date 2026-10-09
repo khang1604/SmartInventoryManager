@@ -72,16 +72,11 @@ namespace SmartInventoryManager.UI
                 }
 
                 session.SignIn(loginForm.AuthenticatedUser);
-                if (string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(loginForm.AuthenticatedUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
                 {
-                    var assignedWarehouseIds = authorizationService
-                        .GetAccessibleWarehouseIdsAsync(session)
-                        .GetAwaiter()
-                        .GetResult();
-                    session.SetCurrentWarehouseFromAssignments(assignedWarehouseIds.ToArray());
-                    if (assignedWarehouseIds.Count == 0)
+                    using var warehouseContext = new FrmWarehouseContext(services);
+                    if (warehouseContext.ShowDialog() != DialogResult.OK)
                     {
-                        MessageBox.Show("Tài khoản nhân viên chưa được phân công kho hoạt động.", "Không thể đăng nhập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         session.SignOut();
                         continue;
                     }

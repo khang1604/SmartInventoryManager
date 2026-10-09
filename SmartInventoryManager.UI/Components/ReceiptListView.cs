@@ -45,13 +45,13 @@ internal sealed class ReceiptListView : UserControl
         });
         AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
         AddAction("Xem chi tiết", () => OpenAsync(SelectedId(), false), "eye");
-        AddAction("Sửa nháp", () => OpenAsync(SelectedId(), true), "pencil");
+        AddAction("Sửa phiếu", () => OpenAsync(SelectedId(), true), "pencil");
         AddAction("Gửi duyệt", () => TransitionAsync("submit"));
         AddAction("Duyệt", () => TransitionAsync("approve"));
         AddAction("Từ chối", () => TransitionAsync("reject"));
         AddAction("Gửi lại", () => TransitionAsync("resubmit"));
         AddAction("Hoàn tất", () => TransitionAsync("complete"));
-        AddAction("Hủy nháp", () => PostAsync(true));
+        AddAction("Hủy phiếu", () => PostAsync(true));
         _actions.WrapContents = true;
         _actions.AutoScroll = false;
         foreach (Control button in _actions.Controls) button.Width = 130;
@@ -137,6 +137,7 @@ internal sealed class ReceiptListView : UserControl
                 _warehouse.DisplayMember = nameof(LookupItemDto.Name);
                 _warehouse.ValueMember = nameof(LookupItemDto.Id);
                 _warehouse.DataSource = new[] { new LookupItemDto(0, "", "Tất cả kho") }.Concat(warehouses).ToList();
+                if(_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId.HasValue) _warehouse.SelectedValue=_services.Session.CurrentWarehouseId.Value;
             }
             var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id;
             if (warehouseId == 0) warehouseId = null;
@@ -170,31 +171,33 @@ internal sealed class ReceiptListView : UserControl
     {
         for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
         _actions.Controls[2].Enabled = _services.Authorization.IsAdmin(_services.Session)
-            || _services.Authorization.IsWarehouseManager(_services.Session);
+            || _services.Authorization.IsWarehouseManager(_services.Session)
+            || (_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId.HasValue);
         var id = SelectedId();
         if (!id.HasValue) return;
         try
         {
             var rights = await _services.RunAsync(async () =>
             {
-                int? warehouseId = _import
-                    ? (await _services.Imports.GetByIdAsync(_services.Session, id.Value))?.WarehouseId
-                    : (await _services.Exports.GetByIdAsync(_services.Session, id.Value))?.WarehouseId;
-                if (!warehouseId.HasValue) return (false, false, false, false);
-                return (await _services.Authorization.CanEditReceiptAsync(_services.Session, warehouseId.Value, 0, SelectedStatus() ?? ""),
-                    await _services.Authorization.CanApproveReceiptAsync(_services.Session, warehouseId.Value),
-                    await _services.Authorization.CanCompleteReceiptAsync(_services.Session, warehouseId.Value),
-                    await _services.Authorization.CanCancelReceiptAsync(_services.Session, warehouseId.Value));
+                int warehouseId, creatorId;
+                if (_import) { var receipt = await _services.Imports.GetByIdAsync(_services.Session, id.Value); if (receipt is null) return (false,false,false,false); warehouseId=receipt.WarehouseId; creatorId=receipt.CreatedBy; }
+                else { var receipt = await _services.Exports.GetByIdAsync(_services.Session, id.Value); if (receipt is null) return (false,false,false,false); warehouseId=receipt.WarehouseId; creatorId=receipt.CreatedBy; }
+                return (await _services.Authorization.CanEditReceiptAsync(_services.Session, warehouseId, creatorId, SelectedStatus() ?? ""),
+                    await _services.Authorization.CanApproveReceiptAsync(_services.Session, warehouseId),
+                    await _services.Authorization.CanCompleteReceiptAsync(_services.Session, warehouseId),
+                    await _services.Authorization.CanCancelReceiptAsync(_services.Session, warehouseId, creatorId, SelectedStatus() ?? ""));
             });
             if (IsDisposed || _busy || SelectedId() != id) return;
-            _actions.Controls[3].Enabled = true;
+            void Enable(string text, bool enabled) { foreach(Control button in _actions.Controls) if(button.Text==text) button.Enabled=enabled; }
             var status = SelectedStatus();
-            _actions.Controls[4].Enabled = status == "DRAFT" && rights.Item1;
-            _actions.Controls[5].Enabled = status == "PENDING_APPROVAL" && rights.Item2;
-            _actions.Controls[6].Enabled = status == "PENDING_APPROVAL" && rights.Item2;
-            _actions.Controls[7].Enabled = status == "REJECTED" && rights.Item1;
-            _actions.Controls[8].Enabled = status == "APPROVED" && rights.Item3;
-            _actions.Controls[9].Enabled = (status == "DRAFT" || status == "PENDING_APPROVAL" || status == "APPROVED") && rights.Item4;
+            Enable("Xem chi tiết", true);
+            Enable("Sửa phiếu", (status is "DRAFT" or "REJECTED") && rights.Item1);
+            Enable("Gửi duyệt", status=="DRAFT" && rights.Item1);
+            Enable("Duyệt", status=="PENDING_APPROVAL" && rights.Item2);
+            Enable("Từ chối", status=="PENDING_APPROVAL" && rights.Item2);
+            Enable("Gửi lại", status=="REJECTED" && rights.Item1);
+            Enable("Hoàn tất", status=="APPROVED" && rights.Item3);
+            Enable("Hủy phiếu", status is "DRAFT" or "PENDING_APPROVAL" or "APPROVED" && rights.Item4);
         }
         catch (Exception ex) { if (!IsDisposed) _message.Text = LiveUi.Error(ex); }
     }
@@ -202,8 +205,8 @@ internal sealed class ReceiptListView : UserControl
     private async Task OpenAsync(int? id, bool edit)
     {
         if (!id.HasValue && !edit) { _message.Text = "Chọn phiếu cần xem."; return; }
-        if (id.HasValue && edit && SelectedStatus() != "DRAFT")
-        { _message.Text = "Chỉ phiếu nháp được sửa."; return; }
+        if (id.HasValue && edit && SelectedStatus() is not ("DRAFT" or "REJECTED"))
+        { _message.Text = "Chỉ phiếu nháp hoặc bị từ chối được sửa."; return; }
         using Form detail = _import ? new FrmImportDetail(_services, id, edit) : new FrmExportDetail(_services, id, edit);
         detail.ShowDialog(FindForm());
         await LoadAsync();
@@ -211,11 +214,14 @@ internal sealed class ReceiptListView : UserControl
 
     private async Task TransitionAsync(string transition)
     {
+        if (_busy) return;
         var id = SelectedId();
         if (!id.HasValue) { _message.Text = "Chọn một phiếu để thao tác."; return; }
+        if (transition=="complete" && MessageBox.Show(FindForm(),"Hoàn tất phiếu đã duyệt và cập nhật tồn kho?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.OK) return;
         var reason = transition == "reject" ? Microsoft.VisualBasic.Interaction.InputBox("Nhập lý do từ chối:", "Từ chối phiếu", "") : string.Empty;
         if (transition == "reject" && string.IsNullOrWhiteSpace(reason)) return;
         Busy(true);
+        var updated = false;
         try
         {
             await _services.RunAsync(async () =>
@@ -237,20 +243,27 @@ internal sealed class ReceiptListView : UserControl
                     else await _services.Exports.CompleteAsync(_services.Session, id.Value);
                 }
             });
-            _message.Text = "Đã cập nhật trạng thái phiếu.";
+            updated=true;
         }
-        catch (Exception ex) { _message.Text = LiveUi.Error(ex); }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+            var expected=transition switch { "submit"=>"PENDING_APPROVAL", "approve"=>"APPROVED", "reject"=>"REJECTED", "resubmit"=>"DRAFT", _=>"COMPLETED" };
+            try { var actual=await _services.RunAsync(async()=>_import ? (await _services.Imports.GetByIdAsync(_services.Session,id.Value))?.Status : (await _services.Exports.GetByIdAsync(_services.Session,id.Value))?.Status); updated=actual==expected; }
+            catch(Exception readError) { System.Diagnostics.Debug.WriteLine(readError); }
+            if(!updated && !IsDisposed) _message.Text=LiveUi.Error(ex);
+        }
         finally { if (!IsDisposed) Busy(false); }
-        await LoadAsync();
+        if(updated && !IsDisposed) { await LoadAsync(); if(!IsDisposed) _message.Text="Đã cập nhật trạng thái phiếu. " + _message.Text; }
     }
 
     private async Task PostAsync(bool cancel)
     {
         var id = SelectedId();
-        if (!id.HasValue || (cancel && SelectedStatus() != "DRAFT" && SelectedStatus() != "PENDING_APPROVAL" && SelectedStatus() != "APPROVED"))
+        if (!id.HasValue || (cancel && SelectedStatus() is not ("DRAFT" or "REJECTED") && SelectedStatus() != "PENDING_APPROVAL" && SelectedStatus() != "APPROVED"))
         { _message.Text = "Chọn một phiếu hợp lệ để thao tác."; return; }
         var code = _grid.CurrentRow?.Cells["ReceiptCode"].Value?.ToString();
-        var action = cancel ? "Hủy phiếu nháp" : "Hoàn tất phiếu và cập nhật tồn kho";
+        var action = cancel ? "Hủy phiếu" : "Hoàn tất phiếu và cập nhật tồn kho";
         if (MessageBox.Show(FindForm(), $"{action} {code}?", "Xác nhận", MessageBoxButtons.OKCancel,
             MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
         Busy(true);
@@ -263,12 +276,12 @@ internal sealed class ReceiptListView : UserControl
                 if (_import)
                 {
                     if (cancel) await _services.Imports.CancelDraftAsync(_services.Session, id.Value);
-                    else await _services.Imports.CompleteAsync(_services.Session, id.Value);
+                    else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
                 }
                 else
                 {
                     if (cancel) await _services.Exports.CancelDraftAsync(_services.Session, id.Value);
-                    else await _services.Exports.CompleteAsync(_services.Session, id.Value);
+                    else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
                 }
             });
             committed = true;

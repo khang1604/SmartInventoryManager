@@ -76,12 +76,14 @@ namespace SmartInventoryManager.UI.Forms.Login
             projectLogo.BringToFront();
             ArrangeLoginLayout(projectLogo);
             pnlLeft.SizeChanged += (_, _) => ArrangeLoginLayout(projectLogo);
-            string backgroundPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Images", "background.png");
-            if (File.Exists(backgroundPath))
+            using (var backgroundStream = typeof(FrmLogin).Assembly.GetManifestResourceStream("SmartInventoryManager.UI.LoginBackground")
+                ?? throw new InvalidOperationException("Missing login background resource"))
+            using (var originalBackground = Image.FromStream(backgroundStream))
             {
-                pnlLeft.BackgroundImage = Image.FromFile(backgroundPath);
+                pnlLeft.BackgroundImage = new Bitmap(originalBackground);
                 pnlLeft.BackgroundImageLayout = ImageLayout.Stretch;
             }
+            Disposed += (_, _) => pnlLeft.BackgroundImage?.Dispose();
 
             // Hiệu ứng hover cho button
             btnLogin.MouseEnter += BtnLogin_MouseEnter;

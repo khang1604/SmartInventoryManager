@@ -30,9 +30,16 @@ namespace SmartInventoryManager.Controls
             ArgumentNullException.ThrowIfNull(labels);
             ArgumentNullException.ThrowIfNull(values);
             if (labels.Count != values.Count) throw new ArgumentException("Nhãn và dữ liệu biểu đồ phải cùng số lượng.");
-            _plotHost.Controls.Clear();
+            foreach(Control old in _plotHost.Controls.Cast<Control>().ToArray()) { _plotHost.Controls.Remove(old); old.Dispose(); }
+            if (values.Count == 0)
+            {
+                _plotHost.Controls.Add(SmartInventoryManager.UI.Components.WorkflowUi.Empty(
+                    "Không có biến động trong khoảng ngày", "Thử đổi kho hoặc khoảng ngày.", "bar-chart"));
+                return;
+            }
             var plot = new ScottPlot.WinForms.FormsPlot { Dock = DockStyle.Fill };
             plot.Plot.Add.Bars(values.ToArray());
+            plot.Plot.Axes.Bottom.SetTicks(Enumerable.Range(0,labels.Count).Select(i=>(double)i).ToArray(),labels.ToArray());
             plot.Plot.Axes.Margins(bottom: 0);
             plot.Refresh();
             _plotHost.Controls.Add(plot);

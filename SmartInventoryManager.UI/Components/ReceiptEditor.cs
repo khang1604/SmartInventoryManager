@@ -11,6 +11,7 @@ internal sealed class ReceiptEditor : UserControl
     private readonly bool _requestedEdit;
     private int? _id;
     private string _status = "DRAFT";
+    private int _createdBy;
     private bool _busy;
     private bool _editable;
     private bool _dirty;
@@ -171,7 +172,8 @@ internal sealed class ReceiptEditor : UserControl
             var suppliers = _import ? await _services.RunAsync(() => _services.Suppliers.GetActiveAsync(_services.Session)) : Array.Empty<LookupItemDto>();
             _products = await _services.RunAsync(() => _services.Products.GetActiveAsync(_services.Session));
             IReadOnlyList<ReceiptDetailViewDto> details = Array.Empty<ReceiptDetailViewDto>();
-            int warehouseId = 0, supplierId = 0;
+            int warehouseId = !_id.HasValue && _services.Authorization.IsStaff(_services.Session)
+                ? _services.Session.CurrentWarehouseId ?? 0 : 0, supplierId = 0;
             string warehouseName = "", supplierName = "";
             if (_id.HasValue)
             {
@@ -182,7 +184,7 @@ internal sealed class ReceiptEditor : UserControl
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
                     supplierId = receipt.SupplierId; supplierName = receipt.SupplierName;
-                    _status = receipt.Status; details = receipt.Details;
+                    _status = receipt.Status; _createdBy=receipt.CreatedBy; details = receipt.Details;
                 }
                 else
                 {
@@ -190,7 +192,7 @@ internal sealed class ReceiptEditor : UserControl
                         ?? throw new KeyNotFoundException();
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
-                    _status = receipt.Status; details = receipt.Details;
+                    _status = receipt.Status; _createdBy=receipt.CreatedBy; details = receipt.Details;
                 }
             }
             BindLookup(_warehouse, warehouses, warehouseId, warehouseName, "Chọn kho");
@@ -250,14 +252,14 @@ internal sealed class ReceiptEditor : UserControl
         _save.Enabled = _add.Enabled = _remove.Enabled = false;
         _code.ReadOnly = _note.ReadOnly = _lines.ReadOnly = true;
         var allowed = warehouseId != 0 && await _services.RunAsync(() => _id.HasValue
-            ? _services.Authorization.CanEditDraftReceiptAsync(_services.Session, warehouseId)
+            ? _services.Authorization.CanEditReceiptAsync(_services.Session, warehouseId, _createdBy, _status)
             : _services.Authorization.CanCreateDraftReceiptAsync(_services.Session, warehouseId));
         if (IsDisposed || ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) != warehouseId) return;
-        _editable = _requestedEdit && _status == "DRAFT" && allowed;
+        _editable = _requestedEdit && (_status is "DRAFT" or "REJECTED") && allowed;
         _code.ReadOnly = _note.ReadOnly = !_editable;
         _lines.ReadOnly = !_editable;
         // Cho phép chọn kho trước khi xác định quyền tạo mới; kho phiếu đã lưu không được đổi.
-        _warehouse.Enabled = _requestedEdit && !_id.HasValue;
+        _warehouse.Enabled = _requestedEdit && !_id.HasValue && !_services.Authorization.IsStaff(_services.Session);
         _supplier.Enabled = _editable;
         _save.Enabled = _add.Enabled = _remove.Enabled = _editable && !_busy;
         if (!_busy && _loaded) _message.Text = PermissionHint();
@@ -267,8 +269,8 @@ internal sealed class ReceiptEditor : UserControl
     {
         if (_requestedEdit && !_id.HasValue && ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) == 0)
             return "Chọn kho để bắt đầu tạo phiếu nháp.";
-        if (_editable) return "Nháp • Nhập thông tin và lưu nháp.";
-        if (!_requestedEdit || _status != "DRAFT")
+        if (_editable) return $"{LiveUi.StatusText(_status)} • Nhập thông tin và lưu thay đổi.";
+        if (!_requestedEdit || _status is not ("DRAFT" or "REJECTED"))
             return $"{LiveUi.StatusText(_status)} • Chỉ xem; phiếu không ở chế độ chỉnh sửa.";
         return "Chưa có quyền sửa phiếu tại kho đã chọn.";
     }

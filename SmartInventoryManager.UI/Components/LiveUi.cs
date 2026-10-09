@@ -75,6 +75,11 @@ internal static class LiveUi
                 table.ColumnHeadersDefaultCellStyle.Padding = new Padding(12, 0, 8, 0);
                 table.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
                 ApplyHeaderFont();
+                table.DataSourceChanged += (_,_) =>
+                {
+                    if(table.Parent is TableLayoutPanel area && area.RowCount==2 && area.RowStyles.Count==2)
+                    { area.RowStyles[0].SizeType=SizeType.Percent; area.RowStyles[0].Height=100; area.RowStyles[1].SizeType=SizeType.Absolute; area.RowStyles[1].Height=0; foreach(Control other in area.Controls) if(!ReferenceEquals(other,table)) other.Visible=false; }
+                };
                 table.FontChanged += (_, _) => ApplyHeaderFont();
                 table.Disposed += (_, _) => { headerFont?.Dispose(); bodyFont.Dispose(); };
                 table.BorderStyle = BorderStyle.None;
@@ -181,8 +186,8 @@ internal static class LiveUi
     public static string StatusText(string status) => status switch
     {
         "DRAFT" => "Nháp", "COMPLETED" => "Hoàn tất", "CANCELLED" => "Đã hủy",
-        "OUT_OF_STOCK" => "Hết hàng", "LOW_STOCK" => "Sắp hết",
-        "NORMAL" => "Bình thường", "OVERSTOCK" => "Vượt mức",
+        "OutOfStock" or "OUT_OF_STOCK" => "Hết hàng", "LowStock" or "LOW_STOCK" => "Sắp hết",
+        "Normal" or "NORMAL" => "Bình thường", "Overstock" or "OVERSTOCK" => "Vượt mức",
         "IMPORT" => "Nhập kho", "EXPORT" => "Xuất kho", "ADJUSTMENT" => "Điều chỉnh",
         "TRANSFER_IN" => "Chuyển kho đến", "TRANSFER_OUT" => "Chuyển kho đi",
         _ => "Chưa xác định"

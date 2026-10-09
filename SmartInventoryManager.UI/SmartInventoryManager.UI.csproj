@@ -35,19 +35,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\Resources\Icons\file-earmark-pdf.svg" LogicalName="SmartInventoryManager.UI.Icon.file-earmark-pdf" />
-    <EmbeddedResource Include="..\Resources\Icons\file-earmark-spreadsheet.svg" LogicalName="SmartInventoryManager.UI.Icon.file-earmark-spreadsheet" />
-    <EmbeddedResource Include="..\Resources\Icons\person.svg" LogicalName="SmartInventoryManager.UI.PersonIcon" />
-    <EmbeddedResource Include="..\Resources\Icons\shop.svg" LogicalName="SmartInventoryManager.UI.Icon.supplier" />
-    <EmbeddedResource Include="..\Resources\Icons\gear.svg" LogicalName="SmartInventoryManager.UI.Icon.gear" />
-    <EmbeddedResource Include="..\Resources\Icons\person-gear.svg" LogicalName="SmartInventoryManager.UI.Icon.person-gear" />
-    <EmbeddedResource Include="Resources\Images\vioware.ico" LogicalName="SmartInventoryManager.UI.ApplicationIcon" />
-    <EmbeddedResource Include="..\Resources\Images\smart-inventory-logo.png">
-      <LogicalName>SmartInventoryManager.UI.ProjectLogo</LogicalName>
+    <EmbeddedResource Include="Resources\Icons\*.svg">
+      <LogicalName>SmartInventoryManager.UI.Icon.%(Filename)</LogicalName>
     </EmbeddedResource>
-    <Content Include="..\Resources\Images\background.png" Link="Resources\Images\background.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Resources\Images\vioware.ico" LogicalName="SmartInventoryManager.UI.ApplicationIcon" />
+    <EmbeddedResource Include="Resources\Images\smart-inventory-logo.png" LogicalName="SmartInventoryManager.UI.ProjectLogo" />
+    <EmbeddedResource Include="Resources\Images\background.png" LogicalName="SmartInventoryManager.UI.LoginBackground" />
   </ItemGroup>
 
   <PropertyGroup>
