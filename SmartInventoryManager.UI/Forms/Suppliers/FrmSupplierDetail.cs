@@ -85,7 +85,7 @@ public sealed class FrmSupplierDetail : Form
         footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 276));
-        var note = ProductUi.Label(_services is null ? "Chưa có phiên làm việc để lưu dữ liệu." : "Nhập thông tin và kiểm tra trước khi lưu.", 8.5F);
+        var note = ProductUi.Label("Các trường có dấu * là bắt buộc", 8.5F);
         // [COLOR CONFIG]: ghi chú phụ về trạng thái biểu mẫu.
         note.ForeColor = AppColors.Muted;
         footer.Controls.Add(note, 0, 0);
@@ -99,9 +99,7 @@ public sealed class FrmSupplierDetail : Form
         save.Margin = Padding.Empty;
         save.Enabled = _services is not null;
         save.TabIndex = 8;
-        save.AccessibleDescription = _services is null
-            ? "Chưa sẵn sàng: cần mở biểu mẫu từ phiên làm việc."
-            : "Lưu nhà cung cấp sau khi kiểm tra dữ liệu.";
+        save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu nhà cung cấp đang được hoàn thiện";
         save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
@@ -122,9 +120,14 @@ public sealed class FrmSupplierDetail : Form
         FindControl<CheckBox>("chkIsActive").Checked = supplier.IsActive;
     }
 
+    private bool _saving;
+
     private async Task SaveAsync()
     {
-        if (_services is null) return;
+        if (_services is null || _saving) return;
+        _saving = true;
+        var save = Controls.Find("btnSave", true).First();
+        save.Enabled = false;
         try
         {
             var request = new SupplierRequestDto
@@ -144,6 +147,7 @@ public sealed class FrmSupplierDetail : Form
             Close();
         }
         catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu nhà cung cấp", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
     private T FindControl<T>(string name) where T : Control => Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
@@ -178,7 +182,7 @@ public sealed class FrmSupplierDetail : Form
     {
         var label = ProductUi.Label(caption, 10, true);
         var input = ProductUi.Input(name);
-        input.MaxLength = maxLength;
+        if (maxLength > 0) input.MaxLength = maxLength;
         input.Multiline = multiline;
         input.TabIndex = tabIndex;
         input.AccessibleName = caption.Replace(" *", "");
