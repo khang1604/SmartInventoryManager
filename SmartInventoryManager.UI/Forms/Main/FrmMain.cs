@@ -119,11 +119,13 @@ public partial class FrmMain : Form
     private Control BuildSidebar()
     {
         var sidebar = CreateLayout(1, 3);
+        sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         sidebar.Padding = new Padding(8, 12, 8, 12);
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
         var brand = _brand = CreateLayout(2, 1);
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60));
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         var logo = UiBrand.CreateLogo();
