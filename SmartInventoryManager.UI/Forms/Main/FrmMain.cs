@@ -144,10 +144,13 @@ public partial class FrmMain : Form
             _root.ColumnStyles[0].Width = (_collapsed ? 76 : 205) * DeviceDpi / 96F;
             _brandText.Visible = !_collapsed;
             _account.Visible = !_collapsed;
-            _brand.ColumnStyles[0].Width = 60 * DeviceDpi / 96F;
+            _brand.ColumnStyles[0].SizeType = _collapsed ? SizeType.Percent : SizeType.Absolute;
+            _brand.ColumnStyles[0].Width = _collapsed ? 100 : 60 * DeviceDpi / 96F;
+            _brand.ColumnStyles[1].SizeType = _collapsed ? SizeType.Absolute : SizeType.Percent;
+            _brand.ColumnStyles[1].Width = _collapsed ? 0 : 100;
             toggle.SetIcon(_collapsed ? "chevron-right" : "chevron-left");
             _logout.Dock = DockStyle.Fill;
-            _logout.Size = new Size((int)(52 * DeviceDpi / 96F), (int)(40 * DeviceDpi / 96F));
+            _logout.Visible = true;
             _toolTips.SetToolTip(toggle, _collapsed ? "Mở rộng menu" : "Thu gọn menu");
             foreach (var button in _navigation.Values.Append(_logout))
             {
@@ -156,6 +159,8 @@ public partial class FrmMain : Form
             }
             _root.PerformLayout();
             _brand.PerformLayout();
+            _logout.Parent?.PerformLayout();
+            _logout.Invalidate();
             ResizeMenu();
             _menu.PerformLayout();
             _menu.Refresh();
