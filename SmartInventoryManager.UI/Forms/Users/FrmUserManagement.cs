@@ -1,6 +1,5 @@
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.UI.Components;
-using SmartInventoryManager.Business.DTOs;
 
 namespace SmartInventoryManager.Forms.Users;
 
@@ -20,16 +19,18 @@ public partial class FrmUserManagement : Form
             page.Action("Thêm người dùng",async()=> { using var detail=new FrmUserDetail(services); if(detail.ShowDialog(this)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
             if (services.Authorization.CanManageUser(services.Session))
             {
-                var delete = page.Action("Xóa tài khoản", () => Task.CompletedTask);
-                delete.Name = "btnDeleteUser";
-                delete.Type = AntdUI.TTypeMini.Error;
-                delete.Enabled = false;
-                delete.AccessibleDescription = "Đang chờ chức năng xóa tài khoản; chưa thể thực hiện thao tác.";
-                var pending = ProductUi.Label("Xóa tài khoản: đang chờ chức năng xử lý.", 9);
-                pending.AutoSize = true;
-                pending.Dock = DockStyle.None;
-                pending.Margin = new Padding(0, 12, 0, 0);
-                delete.Parent!.Controls.Add(pending);
+                page.SelectedAction("Xóa tài khoản", async (user, _) =>
+                {
+                    var confirm = MessageBox.Show(this,
+                        $"Vô hiệu hóa tài khoản '{user.Username}'? Dữ liệu lịch sử của tài khoản sẽ được giữ lại.",
+                        "Xác nhận vô hiệu hóa tài khoản",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+                    if (confirm != DialogResult.Yes) return;
+
+                    await services.RunAsync(() => services.Users.DeactivateAsync(services.Session, user.UserId));
+                }, "trash", (user, _) => Task.FromResult(
+                    user.IsActive && user.UserId != services.Session.CurrentUser?.UserId));
             }
             role.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); status.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync();
             Controls.Add(page); return;

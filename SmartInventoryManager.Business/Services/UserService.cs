@@ -83,6 +83,30 @@ public sealed class UserService
         return user.UserId;
     }
 
+    public async Task DeactivateAsync(
+        UserSession session,
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureAdmin(session);
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+
+        var currentUserId = RequireCurrentUser(session);
+        if (currentUserId == userId)
+            throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản đang đăng nhập.");
+
+        var user = await _dbContext.Users
+            .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
+
+        if (!user.IsActive)
+            throw new InvalidOperationException("Tài khoản đã được vô hiệu hóa.");
+
+        user.IsActive = false;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task UpdateAccountAsync(UserSession session, UpdateAccountRequest request, CancellationToken cancellationToken = default)
     {
         var userId = RequireCurrentUser(session);
