@@ -263,12 +263,12 @@ internal sealed class ReceiptListView : UserControl
                 if (_import)
                 {
                     if (cancel) await _services.Imports.CancelDraftAsync(_services.Session, id.Value);
-                    else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
+                    else await _services.Imports.CompleteAsync(_services.Session, id.Value);
                 }
                 else
                 {
                     if (cancel) await _services.Exports.CancelDraftAsync(_services.Session, id.Value);
-                    else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
+                    else await _services.Exports.CompleteAsync(_services.Session, id.Value);
                 }
             });
             committed = true;

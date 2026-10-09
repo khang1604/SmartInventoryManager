@@ -187,6 +187,25 @@ public sealed class ExportService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task DeleteDraftAsync(
+        UserSession session,
+        int exportReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ExportReceipts
+            .Include(item => item.Details)
+            .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        if (!await _authorization.CanDeleteDraftReceiptAsync(session, receipt.WarehouseId))
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu xuất nháp tại kho này.");
+        if (receipt.Status != "DRAFT")
+            throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được xóa.");
+
+        _dbContext.ExportDetails.RemoveRange(receipt.Details);
+        _dbContext.ExportReceipts.Remove(receipt);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task ApproveAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
@@ -257,9 +276,7 @@ public sealed class ExportService
             throw new UnauthorizedAccessException("Bạn không có quyền hoàn tất phiếu xuất tại kho này.");
         }
         if (receipt.Status == "COMPLETED")
-        {
-            return;
-        }
+            throw new InvalidOperationException("Phiếu xuất đã hoàn tất trước đó.");
         if (receipt.Status != "APPROVED")
         {
             throw new InvalidOperationException("Chỉ phiếu xuất đã được duyệt mới được hoàn tất.");
@@ -273,12 +290,7 @@ public sealed class ExportService
                 item.ReferenceId == exportReceiptId,
             cancellationToken);
         if (alreadyPosted)
-        {
-            receipt.Status = "COMPLETED";
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return;
-        }
+            throw new InvalidOperationException("Phiếu xuất đã được ghi nhận tồn kho trước đó.");
 
         foreach (var detail in receipt.Details)
         {
@@ -307,14 +319,11 @@ public sealed class ExportService
 
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "COMPLETED";
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
         var alertService = new StockAlertService(_dbContext, _authorization);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
-        {
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
-        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task UpdateDraftAsync(

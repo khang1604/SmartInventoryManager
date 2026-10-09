@@ -1,4 +1,5 @@
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Forms.Suppliers;
 
 namespace SmartInventoryManager.UI.Components;
 
@@ -6,13 +7,51 @@ internal static class ConnectedPages
 {
     public static Control Products(UiServices services) => new ProductManagementPage(services);
 
-    public static Control Suppliers(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
-        "Nhà cung cấp đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
-        [("Code", "Mã nhà cung cấp"), ("Name", "Tên nhà cung cấp")],
-        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search)), services.Authorization.CanManageSupplier(services.Session), insetButton: true);
+    public static Control Suppliers(UiServices services)
+    {
+        var page = new DataListPage<SupplierDto>(services,
+            "Nhà cung cấp",
+            [("SupplierCode", "Mã nhà cung cấp"), ("SupplierName", "Tên nhà cung cấp"),
+                ("Phone", "Số điện thoại"), ("Email", "Email"), ("IsActive", "Trạng thái")],
+            async (_, search, _, _) =>
+            {
+                var rows = await services.Suppliers.GetAsync(services.Session);
+                if (string.IsNullOrWhiteSpace(search)) return rows;
+                var value = search.Trim();
+                return rows.Where(row =>
+                    row.SupplierCode.Contains(value, StringComparison.CurrentCultureIgnoreCase)
+                    || row.SupplierName.Contains(value, StringComparison.CurrentCultureIgnoreCase)
+                    || (row.Phone?.Contains(value, StringComparison.CurrentCultureIgnoreCase) ?? false)
+                    || (row.Email?.Contains(value, StringComparison.CurrentCultureIgnoreCase) ?? false)).ToList();
+            });
+
+        if (!services.Authorization.CanManageSupplier(services.Session)) return page;
+
+        page.Action("Thêm nhà cung cấp", async () =>
+        {
+            using var detail = new FrmSupplierDetail(services);
+            detail.ShowDialog(page.FindForm());
+            await page.RefreshAsync();
+        }, "plus-lg");
+        page.SelectedAction("Sửa", async (row, _) =>
+        {
+            using var detail = new FrmSupplierDetail(services, row);
+            detail.ShowDialog(page.FindForm());
+            await Task.CompletedTask;
+        }, "pencil", (_, _) => Task.FromResult(services.Authorization.CanManageSupplier(services.Session)));
+        page.SelectedAction("Đổi trạng thái", async (row, _) =>
+        {
+            var action = row.IsActive ? "ngừng hoạt động" : "kích hoạt lại";
+            if (MessageBox.Show(page.FindForm(), $"Bạn có chắc muốn {action} nhà cung cấp {row.SupplierCode}?",
+                    "Xác nhận", MessageBoxButtons.OKCancel, MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
+            await services.RunAsync(() => services.Suppliers.SetActiveAsync(services.Session, row.SupplierId, !row.IsActive));
+        }, "arrow-repeat", (_, _) => Task.FromResult(services.Authorization.CanManageSupplier(services.Session)));
+        return page;
+    }
 
     public static Control Warehouses(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
-        "Kho đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
+        "Kho đang hoạt động",
         [("Code", "Mã kho"), ("Name", "Tên kho")],
         async (_, search, _, _) => (await services.Warehouses.GetActiveAsync(services.Session))
             .Where(row => Match(row.Code, row.Name, search)).ToList()), services.Authorization.CanManageWarehouse(services.Session));

@@ -71,7 +71,7 @@ namespace SmartInventoryManager.Data.Configurations
 
                 table.HasCheckConstraint(
                     "CK_Products_MaximumStock",
-                    "[MaximumStock] >= [ReorderPoint]");
+                    "[MaximumStock] > [ReorderPoint]");
             });
         }
     }

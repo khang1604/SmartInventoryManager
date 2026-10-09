@@ -83,6 +83,18 @@ public class AuthorizationServiceTests
         Assert.AreEqual(8, session.CurrentWarehouseId);
     }
 
+    [TestMethod]
+    public void UserSession_AssignmentInitialization_SelectsOnlySingleStaffWarehouse()
+    {
+        var session = CreateSession(RoleNames.Staff);
+
+        session.SetCurrentWarehouseFromAssignments(new[] { 7 });
+        Assert.AreEqual(7, session.CurrentWarehouseId);
+
+        session.SetCurrentWarehouseFromAssignments(new[] { 7, 8 });
+        Assert.IsNull(session.CurrentWarehouseId);
+    }
+
     private static UserSession CreateSession(string roleName)
     {
         var session = new UserSession();

@@ -22,6 +22,9 @@ namespace SmartInventoryManager.Data.Entities
         public ICollection<Location> Locations { get; set; }
             = new List<Location>();
 
+        public ICollection<UserWarehouse> UserAssignments { get; set; }
+            = new List<UserWarehouse>();
+
         public ICollection<Inventory> Inventories { get; set; }
             = new List<Inventory>();
 

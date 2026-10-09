@@ -495,7 +495,7 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.ToTable("Products", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Products_MaximumStock", "[MaximumStock] >= [ReorderPoint]");
+                            t.HasCheckConstraint("CK_Products_MaximumStock", "[MaximumStock] > [ReorderPoint]");
 
                             t.HasCheckConstraint("CK_Products_PurchasePrice", "[PurchasePrice] >= 0");
 

@@ -52,7 +52,7 @@ internal static class WarehouseUi
         toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
         toolbar.Padding = new Padding(0, 14, 0, 10);
         var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true, Margin = Padding.Empty };
-        if (canManage || location)
+        if (canManage)
         {
             var add = ProductUi.Button("btnAdd", location ? "Thêm vị trí" : "Thêm kho", "plus-lg", true);
             add.AccessibleDescription = "Chỉ mở biểu mẫu xem trước, chưa lưu dữ liệu hoặc cấp quyền quản lý";
@@ -65,7 +65,7 @@ internal static class WarehouseUi
             actions.Controls.Add(add);
         }
         actions.Controls.Add(Unavailable("btnPreview", "Xem chi tiết", "eye", 150));
-        if (canManage || location)
+        if (canManage)
         {
             var edit = Unavailable("btnEdit", "Sửa", "pencil", 100);
             var deactivate = Unavailable("btnDeactivate", "Ngừng hoạt động", "dash-circle", 190);
@@ -140,7 +140,9 @@ internal static class WarehouseUi
         empty.Controls.Add(description, 0, 3);
         area.Controls.Add(empty, 0, 1);
         root.Controls.Add(LiveUi.TableFrame(area), 0, 2);
-        var note = ProductUi.Label(location ? "Xem trước • Chưa lưu dữ liệu • Quyền quản lý vị trí đang chờ xác nhận" : "Chưa kết nối dữ liệu • Biểu mẫu xem trước chưa lưu kho", 9);
+        var note = ProductUi.Label(services is null
+            ? "Chưa kết nối dữ liệu • Danh sách chỉ xem"
+            : location ? "Quản lý vị trí theo kho" : "Quản lý kho", 9);
         // [COLOR CONFIG]: ghi chú phụ.
         note.ForeColor = AppColors.Muted;
         root.Controls.Add(note, 0, 3);
