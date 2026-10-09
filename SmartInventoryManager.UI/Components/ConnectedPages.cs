@@ -25,6 +25,7 @@ internal static class ConnectedPages
                     || (row.Email?.Contains(value, StringComparison.CurrentCultureIgnoreCase) ?? false)).ToList();
             });
 
+        page.AddDetailsColumn(true);
         if (!services.Authorization.CanManageSupplier(services.Session)) return page;
 
         page.Action("Thêm nhà cung cấp", async () =>
@@ -50,11 +51,7 @@ internal static class ConnectedPages
         return page;
     }
 
-    public static Control Warehouses(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
-        "Kho đang hoạt động",
-        [("Code", "Mã kho"), ("Name", "Tên kho")],
-        async (_, search, _, _) => (await services.Warehouses.GetActiveAsync(services.Session))
-            .Where(row => Match(row.Code, row.Name, search)).ToList()), services.Authorization.CanManageWarehouse(services.Session));
+    public static Control Warehouses(UiServices services) => new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(services);
 
     public static Control Inventory(UiServices services)
     {
@@ -89,7 +86,8 @@ internal static class ConnectedPages
 
     public static Control InventoryReport(UiServices services)
     {
-        var page = new DataListPage<InventoryReportRowDto>(services,
+        DataListPage<InventoryReportRowDto>? page = null;
+        page = new DataListPage<InventoryReportRowDto>(services,
             "Báo cáo tồn kho",
             [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"),
                 ("WarehouseName", "Kho"), ("Unit", "Đơn vị"), ("Quantity", "Số lượng tồn"),
@@ -98,6 +96,7 @@ internal static class ConnectedPages
             async (warehouseId, search, _, _) =>
             {
                 var report = await services.Reports.GetInventoryAsync(services.Session, warehouseId);
+                page?.SetSummary($"Tổng tồn toàn kho: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
                 return report.Rows.Where(row => Match(row.ProductCode, row.ProductName, search)).ToList();
             }, requiresWarehouse: true);
         page.Action("Xuất Excel", async () => await ExportInventoryAsync(page, services, false), "file-earmark-spreadsheet");
@@ -116,19 +115,22 @@ internal static class ConnectedPages
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
+        report=report with {Rows=page.DisplayedRows};
         if (pdf) ReportExportService.ExportInventoryPdf(dialog.FileName, report);
         else ReportExportService.ExportInventoryExcel(dialog.FileName, report);
     }
 
     public static Control ImportExportReport(UiServices services)
     {
-        var page = new DataListPage<ImportExportReportRowDto>(services,
+        DataListPage<ImportExportReportRowDto>? page = null;
+        page = new DataListPage<ImportExportReportRowDto>(services,
             "Báo cáo nhập xuất",
             [("ReceiptDate", "Ngày"), ("ReceiptCode", "Mã phiếu"), ("ReceiptType", "Loại phiếu"),
                 ("WarehouseName", "Kho"), ("TotalAmount", "Tổng tiền"), ("Status", "Trạng thái")],
             async (warehouseId, search, from, to) =>
             {
                 var report = await services.Reports.GetImportExportAsync(services.Session, warehouseId, from, to);
+                page?.SetSummary($"Tổng tiền theo kho/ngày: Nhập {report.ImportTotalAmount:N2} đ • Xuất {report.ExportTotalAmount:N2} đ");
                 var rows = report.Imports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
                     "IMPORT", item.WarehouseName, item.TotalAmount, item.Status))
                     .Concat(report.Exports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
@@ -153,6 +155,8 @@ internal static class ConnectedPages
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
+        var displayed=page.DisplayedRows;
+        report=report with {Imports=report.Imports.Where(row=>displayed.Any(item=>item.ReceiptCode==row.ReceiptCode && item.ReceiptType=="IMPORT")).ToList(),Exports=report.Exports.Where(row=>displayed.Any(item=>item.ReceiptCode==row.ReceiptCode && item.ReceiptType=="EXPORT")).ToList()};
         if (pdf) ReportExportService.ExportImportExportPdf(dialog.FileName, report);
         else ReportExportService.ExportImportExportExcel(dialog.FileName, report);
     }

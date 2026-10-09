@@ -30,37 +30,25 @@ public sealed class FrmUserDetail : Form
         fields.Controls.Add(ProductUi.Label("Vị trí trong kho", 10, true), 1, 6);
         var warehouse = LiveUi.Choice("cboUserWarehouse", "Kho phụ trách");
         warehouse.Dock = DockStyle.Fill; warehouse.Enabled = false;
-        warehouse.Items.Add("Chưa có danh sách kho"); warehouse.SelectedIndex = 0;
+        warehouse.Items.Add("Chưa thuộc chức năng tạo tài khoản"); warehouse.SelectedIndex = 0;
         var location = LiveUi.Choice("cboUserLocation", "Vị trí trong kho đã chọn");
         location.Dock = DockStyle.Fill; location.Enabled = false;
-        location.Items.Add("Chọn kho trước"); location.SelectedIndex = 0;
+        location.Items.Add("Chưa thuộc chức năng tạo tài khoản"); location.SelectedIndex = 0;
         fields.Controls.Add(warehouse, 0, 7); fields.Controls.Add(location, 1, 7);
         var contextNote = new Label { Text = services is null
                 ? "Biểu mẫu chỉ xem trước khi chưa có phiên làm việc."
                 : "Tài khoản không gắn kho trực tiếp theo quy định hệ thống.",
             Dock = DockStyle.Top, AutoSize = true, MaximumSize = new Size(700, 0), Padding = new Padding(16, 8, 16, 0) };
-        if (services is not null)
-        {
-            Load += async (_, _) =>
-            {
-                try
-                {
-                    var warehouses = await services.RunAsync(() => services.Warehouses.GetActiveAsync(services.Session));
-                    if (IsDisposed) return;
-                    warehouse.Items.Clear();
-                    warehouse.DisplayMember = nameof(LookupItemDto.Name);
-                    warehouse.ValueMember = nameof(LookupItemDto.Id);
-                    warehouse.DataSource = warehouses.ToList();
-                    warehouse.Enabled = false;
-                }
-                catch (Exception ex) { if (!IsDisposed) contextNote.Text = LiveUi.LoadError(ex); }
-            };
-        }
         body.Controls.Add(contextNote, 0, 2);
         var password = PreviewFormUi.Field(fields, 0, 2, "txtPassword", "Mật khẩu *");
         password.UseSystemPasswordChar = true;
         var confirm = PreviewFormUi.Field(fields, 1, 2, "txtConfirmPassword", "Xác nhận mật khẩu *");
         confirm.UseSystemPasswordChar = true;
+        if(services is not null)
+        {
+            foreach(var label in root.Controls.Cast<Control>().SelectMany(c=>c.Controls.Cast<Control>()).OfType<Label>().Where(l=>l.Text.Contains("Biểu mẫu xem trước"))) label.Text="Các trường có dấu * là bắt buộc";
+            foreach(var label in root.Controls.Cast<Control>().SelectMany(c=>c.Controls.Cast<Control>()).OfType<Label>().Where(l=>l.Text=="Chưa kết nối dữ liệu")) label.Text="Tạo tài khoản mới";
+        }
         body.Controls.Add(fields, 0, 0);
         var active = new CheckBox
         {
@@ -79,6 +67,9 @@ public sealed class FrmUserDetail : Form
             save.AccessibleDescription = "Lưu tài khoản nhân viên";
             save.Click += async (_, _) =>
             {
+                if (!save.Enabled) return;
+                if (string.IsNullOrWhiteSpace(username.Text) || string.IsNullOrWhiteSpace(fullName.Text) || role.SelectedIndex<1 || !System.Net.Mail.MailAddress.TryCreate(email.Text,out _) || string.IsNullOrWhiteSpace(password.Text) || password.Text!=confirm.Text)
+                { MessageBox.Show(this,"Nhập đủ tên đăng nhập, họ tên, email hợp lệ, vai trò và mật khẩu xác nhận khớp nhau.","Kiểm tra thông tin",MessageBoxButtons.OK,MessageBoxIcon.Warning); return; }
                 save.Enabled = false;
                 try
                 {
