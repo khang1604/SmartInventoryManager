@@ -12,9 +12,9 @@ public sealed class FrmUserDetail : Form
     public FrmUserDetail(UiServices? services)
     {
         AutoScaleMode = AutoScaleMode.Font;
-        var root = PreviewFormUi.Root(this, "Thông tin người dùng", new Size(760, 660));
+        var root = PreviewFormUi.Root(this, "Thông tin người dùng", new Size(760, 740));
         var body = ProductUi.Layout(1, 3);
-        body.RowStyles.Add(new RowStyle(SizeType.Absolute, 338));
+        body.RowStyles.Add(new RowStyle(SizeType.Absolute, 434));
         body.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var fields = PreviewFormUi.Fields(4);
@@ -44,6 +44,17 @@ public sealed class FrmUserDetail : Form
         password.UseSystemPasswordChar = true;
         var confirm = PreviewFormUi.Field(fields, 1, 2, "txtConfirmPassword", "Xác nhận mật khẩu *");
         confirm.UseSystemPasswordChar = true;
+        var errors = new AccountFieldErrors();
+        foreach (var input in new Control[] { username, fullName, email, role, password, confirm })
+        {
+            var position = fields.GetPositionFromControl(input);
+            fields.Controls.Remove(input);
+            fields.Controls.Add(errors.Wrap(input), position.Column, position.Row);
+        }
+        foreach (var row in new[] { 1, 3, 5 }) fields.RowStyles[row].Height = 76;
+        contextNote.AutoSize = false; contextNote.Height = 70;
+        // [COLOR CONFIG]: chữ đỏ cho lỗi lưu chung bên dưới biểu mẫu.
+        var normalNoteColor = contextNote.ForeColor;
         if(services is not null)
         {
             foreach(var label in root.Controls.Cast<Control>().SelectMany(c=>c.Controls.Cast<Control>()).OfType<Label>().Where(l=>l.Text.Contains("Biểu mẫu xem trước"))) label.Text="Các trường có dấu * là bắt buộc";
@@ -68,8 +79,14 @@ public sealed class FrmUserDetail : Form
             save.Click += async (_, _) =>
             {
                 if (!save.Enabled) return;
-                if (string.IsNullOrWhiteSpace(username.Text) || string.IsNullOrWhiteSpace(fullName.Text) || role.SelectedIndex<1 || !System.Net.Mail.MailAddress.TryCreate(email.Text,out _) || string.IsNullOrWhiteSpace(password.Text) || password.Text!=confirm.Text)
-                { MessageBox.Show(this,"Nhập đủ tên đăng nhập, họ tên, email hợp lệ, vai trò và mật khẩu xác nhận khớp nhau.","Kiểm tra thông tin",MessageBoxButtons.OK,MessageBoxIcon.Warning); return; }
+                errors.Clear(); contextNote.ForeColor = normalNoteColor;
+                if (string.IsNullOrWhiteSpace(username.Text)) errors.Set(username, "Nhập tên đăng nhập.");
+                if (string.IsNullOrWhiteSpace(fullName.Text)) errors.Set(fullName, "Nhập họ tên.");
+                if (!System.Net.Mail.MailAddress.TryCreate(email.Text.Trim(), out _)) errors.Set(email, "Email không đúng định dạng.");
+                if (role.SelectedIndex < 1) errors.Set(role, "Chọn vai trò.");
+                if (password.Text.Length < 8) errors.Set(password, "Mật khẩu phải có ít nhất 8 ký tự.");
+                if (confirm.Text != password.Text || string.IsNullOrEmpty(confirm.Text)) errors.Set(confirm, "Mật khẩu xác nhận không khớp.");
+                if (errors.FocusInvalid()) return;
                 save.Enabled = false;
                 try
                 {
@@ -91,8 +108,13 @@ public sealed class FrmUserDetail : Form
                 catch (Exception ex)
                 {
                     save.Enabled = true;
-                    MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    errors.Clear();
+                    var message = AccountFieldErrors.SafeMessage(ex);
+                    if (message == "Tên đăng nhập đã tồn tại.") errors.Set(username, message);
+                    else if (message == "Email đã được sử dụng.") errors.Set(email, message);
+                    else if (message == "Vai trò không tồn tại trong hệ thống.") errors.Set(role, message);
+                    else { contextNote.Text = message; contextNote.ForeColor = Color.FromArgb(180, 32, 32); } // [COLOR CONFIG]: lỗi lưu chung màu đỏ.
+                    errors.FocusInvalid();
                 }
             };
         }
