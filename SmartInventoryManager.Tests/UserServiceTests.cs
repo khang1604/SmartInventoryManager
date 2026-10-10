@@ -50,6 +50,60 @@ public class UserServiceTests
     }
 
     [TestMethod]
+    public async Task UpdateUserAsync_AdminUpdatesProfileRoleAndStatus()
+    {
+        await using var context = CreateContext();
+        context.Roles.AddRange(
+            new Role { RoleId = 1, RoleName = RoleNames.Admin },
+            new Role { RoleId = 2, RoleName = RoleNames.Staff });
+        context.Users.AddRange(
+            new User { UserId = 1, Username = "admin", FullName = "Admin", PasswordHash = "hash", RoleId = 1, IsActive = true, CreatedAt = DateTime.Now },
+            new User { UserId = 2, Username = "staff", FullName = "Staff", PasswordHash = "hash", RoleId = 2, IsActive = true, CreatedAt = DateTime.Now });
+        await context.SaveChangesAsync();
+
+        var session = new UserSession();
+        session.SignIn(new AuthenticatedUserDto(1, "admin", "Admin", null, RoleNames.Admin));
+        var service = new UserService(context, new AuthorizationService(context));
+
+        await service.UpdateUserAsync(session, 2, new UpdateUserRequest("Staff Updated", "staff@example.com", RoleNames.Admin, false));
+
+        var stored = await context.Users.SingleAsync(user => user.UserId == 2);
+        Assert.AreEqual("Staff Updated", stored.FullName);
+        Assert.AreEqual("staff@example.com", stored.Email);
+        Assert.AreEqual(1, stored.RoleId);
+        Assert.IsFalse(stored.IsActive);
+    }
+
+    [TestMethod]
+    public async Task ResetPasswordAsync_ReplacesOldPasswordHash()
+    {
+        await using var context = CreateContext();
+        context.Roles.Add(new Role { RoleId = 1, RoleName = RoleNames.Admin });
+        var hasher = new PasswordHasher();
+        context.Users.Add(new User
+        {
+            UserId = 1,
+            Username = "admin",
+            FullName = "Admin",
+            PasswordHash = hasher.HashPassword("OldPassword1"),
+            RoleId = 1,
+            IsActive = true,
+            CreatedAt = DateTime.Now
+        });
+        await context.SaveChangesAsync();
+
+        var session = new UserSession();
+        session.SignIn(new AuthenticatedUserDto(1, "admin", "Admin", null, RoleNames.Admin));
+        var service = new UserService(context, new AuthorizationService(context));
+
+        await service.ResetPasswordAsync(session, 1, new ResetUserPasswordRequest("ResetPassword1", "ResetPassword1"));
+
+        var stored = await context.Users.SingleAsync(user => user.UserId == 1);
+        Assert.IsTrue(hasher.VerifyPassword("ResetPassword1", stored.PasswordHash));
+        Assert.IsFalse(hasher.VerifyPassword("OldPassword1", stored.PasswordHash));
+    }
+
+    [TestMethod]
     public async Task ChangePasswordAsync_UpdatesPasswordHashForCurrentUser()
     {
         await using var context = CreateContext();

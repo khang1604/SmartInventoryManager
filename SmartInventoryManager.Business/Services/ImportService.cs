@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Business.Inventory;
+using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
@@ -9,7 +10,7 @@ using InventoryEntity = SmartInventoryManager.Data.Entities.Inventory;
 
 namespace SmartInventoryManager.Business.Services;
 
-public sealed class ImportService
+public sealed class ImportService : IImportService
 {
     private const int MaxListResults = 500;
     private readonly InventoryDbContext _dbContext;
@@ -65,6 +66,7 @@ public sealed class ImportService
             ReceiptDate = DateTime.Now,
             Status = "DRAFT",
             Note = request.Note?.Trim(),
+            TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice),
             Details = request.Details.Select(detail => new ImportDetail
             {
                 ProductId = detail.ProductId,
@@ -200,6 +202,7 @@ public sealed class ImportService
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được gửi duyệt.");
         }
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
+        receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "PENDING_APPROVAL";
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
