@@ -56,7 +56,7 @@ public sealed class FrmWarehouseDetail : Form
         fields.BackColor = AppColors.Surface;
         if (location)
         {
-            Field(fields, 0, "Mã kho *", Input("cboWarehouse", "Nhập mã kho"));
+            Field(fields, 0, "Kho *", LiveUi.Choice("cboWarehouse", "Kho của vị trí"));
             Field(fields, 1, "Mã vị trí *", Input("txtLocationCode", maxLength: 50));
             Field(fields, 2, "Tên vị trí", Input("txtLocationName", maxLength: 100));
             fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
@@ -94,7 +94,7 @@ public sealed class FrmWarehouseDetail : Form
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 236));
         footer.Padding = new Padding(0, 14, 0, 0);
-        var note = ProductUi.Label(_services is null ? "Chưa có phiên làm việc để lưu dữ liệu." : "Nhập thông tin và kiểm tra trước khi lưu.", 8.5F);
+        var note = ProductUi.Label(_services is null ? "Xem trước • Chưa lưu dữ liệu" : "Các trường có dấu * là bắt buộc", 8.5F);
         // [COLOR CONFIG]: ghi chú phụ.
         note.ForeColor = AppColors.Muted;
         footer.Controls.Add(note, 0, 0);
@@ -108,9 +108,7 @@ public sealed class FrmWarehouseDetail : Form
         save.Enabled = _services is not null;
         save.TabIndex = 6;
         save.Margin = Padding.Empty;
-        save.AccessibleDescription = _services is null
-            ? "Chưa sẵn sàng: cần mở biểu mẫu từ phiên làm việc."
-            : "Lưu dữ liệu sau khi kiểm tra các trường bắt buộc.";
+        save.AccessibleDescription = "Lưu thông tin qua Service";
         save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
@@ -120,46 +118,42 @@ public sealed class FrmWarehouseDetail : Form
         Controls.Add(root);
         if (warehouse is not null) LoadWarehouse(warehouse);
         if (locationDto is not null) LoadLocation(locationDto);
+        if(location && services is not null) Shown+=async(_,_)=> { try { var choices=await services.RunAsync(()=>services.Warehouses.GetActiveAsync(services.Session)); var picker=Controls.Find("cboWarehouse",true).OfType<ComboBox>().Single(); picker.DisplayMember="Name"; picker.ValueMember="Id"; picker.DataSource=new[]{new LookupItemDto(0,"","Chọn kho")}.Concat(choices).ToList(); picker.SelectedValue=locationDto?.WarehouseId ?? 0; } catch(Exception ex) { MessageBox.Show(this,LiveUi.LoadError(ex),"Kho",MessageBoxButtons.OK,MessageBoxIcon.Warning); } };
     }
 
     private void LoadWarehouse(WarehouseDto value) { Input("txtWarehouseCode").Text = value.WarehouseCode; Input("txtWarehouseName").Text = value.WarehouseName; Input("txtAddress").Text = value.Location ?? string.Empty; Check().Checked = value.IsActive; }
-    private void LoadLocation(LocationDto value) { Input("txtLocationCode").Text = value.LocationCode; Input("txtLocationName").Text = value.LocationName ?? string.Empty; Input("cboWarehouse").Text = value.WarehouseId.ToString(); Check().Checked = value.IsActive; }
+    private void LoadLocation(LocationDto value) { Input("txtLocationCode").Text = value.LocationCode; Input("txtLocationName").Text = value.LocationName ?? string.Empty;  Check().Checked = value.IsActive; }
     private AntdUI.Input Input(string name) => Controls.Find(name, true).OfType<AntdUI.Input>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
     private CheckBox Check() => Controls.Find("chkIsActive", true).OfType<CheckBox>().FirstOrDefault() ?? throw new InvalidOperationException("Không tìm thấy trạng thái.");
+    private bool _saving;
+
     private async Task SaveAsync()
     {
-        if (_services is null) return;
+        if (_services is null || _saving) return;
+        _saving = true;
+        var save = Controls.Find("btnSave", true).First();
+        save.Enabled = false;
         try
         {
-            if (_location)
-            {
-                if (!int.TryParse(Input("cboWarehouse").Text.Trim(), out var warehouseId) || warehouseId <= 0)
-                    throw new ArgumentException("Mã kho phải là số nguyên dương.");
-                var request = new LocationRequestDto
-                {
-                    WarehouseId = warehouseId,
-                    LocationCode = Input("txtLocationCode").Text,
-                    LocationName = Input("txtLocationName").Text,
-                    IsActive = Check().Checked
-                };
-                await _services.RunAsync(() => _id.HasValue
-                    ? _services.Locations.UpdateAsync(_services.Session, _id.Value, request)
-                    : _services.Locations.CreateAsync(_services.Session, request));
+            if (_location) {
+                var choice=Controls.Find("cboWarehouse",true).OfType<ComboBox>().Single().SelectedItem as LookupItemDto;
+                if(choice is null || choice.Id==0) { MessageBox.Show(this,"Vui lòng chọn kho.","Kiểm tra thông tin"); return; }
+                var locationRequest=new LocationRequestDto { WarehouseId=choice.Id,LocationCode=Input("txtLocationCode").Text,LocationName=Input("txtLocationName").Text,IsActive=Check().Checked };
+                await _services.RunAsync(()=>_id.HasValue ? _services.Locations.UpdateAsync(_services.Session,_id.Value,locationRequest) : _services.Locations.CreateAsync(_services.Session,locationRequest));
+                DialogResult=DialogResult.OK; Close(); return;
             }
-            else
-            {
-                var request = new WarehouseRequestDto { WarehouseCode = Input("txtWarehouseCode").Text, WarehouseName = Input("txtWarehouseName").Text, Location = Input("txtAddress").Text, IsActive = Check().Checked };
-                await _services.RunAsync(() => _id.HasValue ? _services.Warehouses.UpdateAsync(_services.Session, _id.Value, request) : _services.Warehouses.CreateAsync(_services.Session, request));
-            }
+            var request = new WarehouseRequestDto { WarehouseCode = Input("txtWarehouseCode").Text, WarehouseName = Input("txtWarehouseName").Text, Location = Input("txtAddress").Text, IsActive = Check().Checked };
+            await _services.RunAsync(() => _id.HasValue ? _services.Warehouses.UpdateAsync(_services.Session, _id.Value, request) : _services.Warehouses.CreateAsync(_services.Session, request));
             DialogResult = DialogResult.OK; Close();
         }
         catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
     private static AntdUI.Input Input(string name, string placeholder = "", int maxLength = 0, bool dropdown = false)
     {
         var input = ProductUi.Input(name, placeholder);
-        input.MaxLength = maxLength;
+        if (maxLength > 0) input.MaxLength = maxLength;
         input.ReadOnly = dropdown;
         if (dropdown)
         {

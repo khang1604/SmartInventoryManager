@@ -25,9 +25,6 @@ namespace SmartInventoryManager.Data.Entities
         public ICollection<Warehouse> ManagedWarehouses { get; set; }
             = new List<Warehouse>();
 
-        public ICollection<UserWarehouse> WarehouseAssignments { get; set; }
-            = new List<UserWarehouse>();
-
         // User tạo ImportReceipt
         public ICollection<ImportReceipt> CreatedImportReceipts { get; set; }
             = new List<ImportReceipt>();

@@ -26,6 +26,20 @@ public class AuthorizationServiceTests
     }
 
     [TestMethod]
+    public void RoleChecks_TrimRoleNameForAllSupportedRoles()
+    {
+        var service = CreateAuthorizationService();
+
+        var adminSession = CreateSession($"  {RoleNames.Admin}  ");
+        var managerSession = CreateSession($" {RoleNames.WarehouseManager} ");
+        var staffSession = CreateSession($" {RoleNames.Staff} ");
+
+        Assert.IsTrue(service.IsAdmin(adminSession));
+        Assert.IsTrue(service.IsWarehouseManager(managerSession));
+        Assert.IsTrue(service.IsStaff(staffSession));
+    }
+
+    [TestMethod]
     public void ManagementPermissions_FollowRoleMatrix()
     {
         var service = CreateAuthorizationService();

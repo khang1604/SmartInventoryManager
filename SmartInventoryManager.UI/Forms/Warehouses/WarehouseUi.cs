@@ -8,6 +8,7 @@ internal static class WarehouseUi
 {
     public static void BuildList(Form form, bool location, bool canManage, UiServices? services = null)
     {
+        if (services is not null) { BuildConnected(form, location, canManage, services); return; }
         DataGridView? grid = null;
         UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
@@ -202,6 +203,36 @@ internal static class WarehouseUi
             await LoadAsync();
         }
         if (services is not null) form.Shown += async (_, _) => await LoadAsync();
+    }
+
+    private static void BuildConnected(Form form, bool location, bool canManage, UiServices services)
+    {
+        UiBrand.ApplyIcon(form);
+        var state=LiveUi.Choice("cboStatus","Trạng thái");
+        state.Items.AddRange(["Tất cả trạng thái","Đang hoạt động","Ngừng hoạt động"]); state.SelectedIndex=0;
+        bool Matches(string code,string name,string search,bool active) => (string.IsNullOrEmpty(search) || code.Contains(search,StringComparison.CurrentCultureIgnoreCase) || name.Contains(search,StringComparison.CurrentCultureIgnoreCase)) && (state.SelectedIndex==0 || active==(state.SelectedIndex==1));
+        if(location)
+        {
+            var page=new DataListPage<LocationDto>(services,"Vị trí trong phạm vi được phép",[("WarehouseName","Kho"),("LocationCode","Mã vị trí"),("LocationName","Tên vị trí"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Locations.GetAsync(services.Session)).Where(row=>Matches(row.LocationCode,row.LocationName ?? "",search,row.IsActive)).ToList());
+            page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
+            if(canManage) {
+                page.Action("Thêm vị trí",async()=> { using var detail=new FrmWarehouseDetail(services,true); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
+                page.SelectedAction("Sửa",async(row,_)=> { using var detail=new FrmWarehouseDetail(services,true,row); detail.ShowDialog(form); },"pencil");
+                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái vị trí đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) await services.RunAsync(()=>services.Locations.SetActiveAsync(services.Session,row.LocationId,!row.IsActive)); },"dash-circle");
+            }
+            state.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); form.Controls.Add(page);
+        }
+        else
+        {
+            var page=new DataListPage<WarehouseDto>(services,"Kho trong phạm vi được phép",[("WarehouseCode","Mã kho"),("WarehouseName","Tên kho"),("Location","Địa chỉ"),("ManagerName","Người quản lý"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Warehouses.GetAllAsync(services.Session)).Where(row=>Matches(row.WarehouseCode,row.WarehouseName,search,row.IsActive)).ToList());
+            page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
+            if(canManage) {
+                page.Action("Thêm kho",async()=> { using var detail=new FrmWarehouseDetail(services,false); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
+                page.SelectedAction("Sửa",async(row,_)=> { using var detail=new FrmWarehouseDetail(services,false,row); detail.ShowDialog(form); },"pencil");
+                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái kho đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) await services.RunAsync(()=>services.Warehouses.SetActiveAsync(services.Session,row.WarehouseId,!row.IsActive)); },"dash-circle");
+            }
+            state.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); form.Controls.Add(page);
+        }
     }
 
     private static AntdUI.Button Unavailable(string name, string text, string icon, int width)

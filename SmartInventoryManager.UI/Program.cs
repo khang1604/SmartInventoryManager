@@ -15,7 +15,7 @@ namespace SmartInventoryManager.UI
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static async Task Main()
+        static void Main()
         {
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
@@ -72,13 +72,11 @@ namespace SmartInventoryManager.UI
                 }
 
                 session.SignIn(loginForm.AuthenticatedUser);
-                if (string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(loginForm.AuthenticatedUser.RoleName.Trim(), RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
                 {
-                    var assignedWarehouseIds = await authorizationService.GetAccessibleWarehouseIdsAsync(session);
-                    session.SetCurrentWarehouseFromAssignments(assignedWarehouseIds.ToArray());
-                    if (assignedWarehouseIds.Count == 0)
+                    using var warehouseContext = new FrmWarehouseContext(services);
+                    if (warehouseContext.ShowDialog() != DialogResult.OK)
                     {
-                        MessageBox.Show("Tài khoản nhân viên chưa được phân công kho hoạt động.", "Không thể đăng nhập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         session.SignOut();
                         continue;
                     }

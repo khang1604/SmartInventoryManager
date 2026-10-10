@@ -20,7 +20,8 @@ public partial class FrmProductDetail : Form
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _productId = productId;
         FindControl<AntdUI.Button>("btnSave").Enabled = true;
-        FindControl<AntdUI.Button>("btnSave").AccessibleDescription = "Lưu sản phẩm sau khi kiểm tra dữ liệu.";
+        FindControl<CheckBox>("chkIsActive").Enabled = false;
+        FindControl<CheckBox>("chkIsActive").AccessibleDescription = "Thay đổi trạng thái từ danh sách sản phẩm";
         Shown += async (_, _) => await LoadDataAsync();
     }
 
@@ -61,10 +62,7 @@ public partial class FrmProductDetail : Form
         sections.RowStyles.Add(new RowStyle(SizeType.Absolute, 216));
         sections.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         var general = Section("Thông tin chung");
-        var category = ProductUi.Input("cboCategory", "Chọn danh mục");
-        category.ReadOnly = true;
-        category.SuffixSvg = MainIcons.Get("chevron-down");
-        category.AccessibleDescription = "Danh mục chưa sẵn sàng";
+        var category = LiveUi.Choice("cboCategory", "Danh mục sản phẩm"); category.Dock=DockStyle.Fill;
         AddField(general, 0, 0, "Mã sản phẩm *", ProductUi.Input("txtProductCode"), 0);
         AddField(general, 1, 0, "Tên sản phẩm *", ProductUi.Input("txtProductName"), 1);
         AddField(general, 0, 1, "Danh mục *", category, 2);
@@ -93,7 +91,7 @@ public partial class FrmProductDetail : Form
         footer.Padding = new Padding(0, 10, 0, 0);
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 248));
-        var note = ProductUi.Label("Nhập thông tin và kiểm tra trước khi lưu.", 8.5F);
+        var note = ProductUi.Label("Các trường có dấu * là bắt buộc", 8.5F);
         // [COLOR CONFIG]: ghi chú phụ rõ ràng về trạng thái biểu mẫu.
         note.ForeColor = AppColors.Muted;
         footer.Controls.Add(note, 0, 0);
@@ -107,7 +105,7 @@ public partial class FrmProductDetail : Form
         save.Margin = Padding.Empty;
         save.Enabled = _services is not null;
         save.TabIndex = 10;
-        save.AccessibleDescription = "Chưa sẵn sàng: cần mở biểu mẫu từ phiên làm việc.";
+        save.AccessibleDescription = "Lưu thông tin sản phẩm qua Service";
         save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
@@ -123,14 +121,14 @@ public partial class FrmProductDetail : Form
         try
         {
             var categories = await _services.RunAsync(() => _services.Categories.GetActiveAsync(_services.Session));
-            var category = FindControl<AntdUI.Input>("cboCategory");
-            category.Text = categories.FirstOrDefault()?.Name ?? string.Empty;
+            var category = FindControl<ComboBox>("cboCategory");
+            category.DisplayMember=nameof(LookupItemDto.Name); category.ValueMember=nameof(LookupItemDto.Id); category.DataSource=new[]{new LookupItemDto(0,"","Chọn danh mục")}.Concat(categories).ToList(); category.SelectedIndex=0;
             if (_productId is null) return;
             var product = await _services.RunAsync(() => _services.ProductManagement.GetByIdAsync(_services.Session, _productId.Value));
             if (product is null) throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
             FindControl<AntdUI.Input>("txtProductCode").Text = product.ProductCode;
             FindControl<AntdUI.Input>("txtProductName").Text = product.ProductName;
-            category.Text = product.CategoryName;
+            category.SelectedValue = product.CategoryId;
             FindControl<AntdUI.Input>("txtUnit").Text = product.Unit;
             FindControl<AntdUI.InputNumber>("numPurchasePrice").Value = product.PurchasePrice;
             FindControl<AntdUI.InputNumber>("numSellingPrice").Value = product.SellingPrice;
@@ -141,15 +139,20 @@ public partial class FrmProductDetail : Form
         catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể tải dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 
+    private bool _saving;
+
     private async Task SaveAsync()
     {
-        if (_services is null) return;
+        if (_services is null || _saving) return;
+        _saving = true;
+        var save = Controls.Find("btnSave", true).First();
+        save.Enabled = false;
         try
         {
-            var categoryName = FindControl<AntdUI.Input>("cboCategory").Text.Trim();
+            var selectedCategory = FindControl<ComboBox>("cboCategory").SelectedItem as LookupItemDto;
             var categories = await _services.RunAsync(() => _services.Categories.GetActiveAsync(_services.Session));
-            var category = categories.FirstOrDefault(item => string.Equals(item.Name, categoryName, StringComparison.CurrentCultureIgnoreCase)) ?? categories.FirstOrDefault();
-            if (category is null) throw new InvalidOperationException("Chưa có danh mục hoạt động.");
+            var category = categories.FirstOrDefault(item => item.Id == selectedCategory?.Id);
+            if (category is null) { MessageBox.Show(this,"Vui lòng chọn danh mục sản phẩm.","Kiểm tra thông tin",MessageBoxButtons.OK,MessageBoxIcon.Warning); FindControl<ComboBox>("cboCategory").Focus(); return; }
             var request = new ProductRequestDto
             {
                 ProductCode = FindControl<AntdUI.Input>("txtProductCode").Text,
@@ -168,6 +171,7 @@ public partial class FrmProductDetail : Form
             Close();
         }
         catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu sản phẩm", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
     private T FindControl<T>(string name) where T : Control

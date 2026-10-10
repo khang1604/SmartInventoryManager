@@ -83,6 +83,89 @@ public sealed class UserService
         return user.UserId;
     }
 
+    public async Task DeactivateAsync(
+        UserSession session,
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureAdmin(session);
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+
+        var currentUserId = RequireCurrentUser(session);
+        if (currentUserId == userId)
+            throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản đang đăng nhập.");
+
+        var user = await _dbContext.Users
+            .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
+
+        if (!user.IsActive)
+            throw new InvalidOperationException("Tài khoản đã được vô hiệu hóa.");
+
+        user.IsActive = false;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateUserAsync(
+        UserSession session,
+        int userId,
+        UpdateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureAdmin(session);
+        ArgumentNullException.ThrowIfNull(request);
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+        if (string.IsNullOrWhiteSpace(request.FullName) || request.FullName.Trim().Length > 100)
+            throw new ArgumentException("Họ tên là bắt buộc và không quá 100 ký tự.", nameof(request));
+
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (email is not null && !MailAddress.TryCreate(email, out _))
+            throw new ArgumentException("Email không đúng định dạng.", nameof(request));
+
+        var roleName = NormalizeRole(request.RoleName);
+        var currentUserId = RequireCurrentUser(session);
+        if (currentUserId == userId && !request.IsActive)
+            throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản đang đăng nhập.");
+        var user = await _dbContext.Users.SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
+        if (email is not null && await _dbContext.Users.AnyAsync(
+                item => item.UserId != userId && item.Email == email, cancellationToken))
+            throw new InvalidOperationException("Email đã được sử dụng.");
+
+        var role = await _dbContext.Roles.SingleOrDefaultAsync(
+                item => item.RoleName == roleName, cancellationToken)
+            ?? throw new InvalidOperationException("Vai trò không tồn tại trong hệ thống.");
+
+        user.FullName = request.FullName.Trim();
+        user.Email = email;
+        user.RoleId = role.RoleId;
+        user.IsActive = request.IsActive;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ResetPasswordAsync(
+        UserSession session,
+        int userId,
+        ResetUserPasswordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureAdmin(session);
+        ArgumentNullException.ThrowIfNull(request);
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+            throw new ArgumentException("Mật khẩu mới phải có ít nhất 8 ký tự.", nameof(request));
+        if (!string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+            throw new ArgumentException("Mật khẩu xác nhận không khớp.", nameof(request));
+
+        var user = await _dbContext.Users.SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task UpdateAccountAsync(UserSession session, UpdateAccountRequest request, CancellationToken cancellationToken = default)
     {
         var userId = RequireCurrentUser(session);

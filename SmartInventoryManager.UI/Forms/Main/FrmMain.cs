@@ -104,8 +104,13 @@ public partial class FrmMain : Form
         _content.Padding = new Padding(20, 0, 20, 16);
         workspace.Controls.Add(_content, 0, 1);
         root.Controls.Add(workspace, 1, 0);
-        var status = TextLabel($"{UiBrand.ApplicationName} • {UiBrand.ProjectName} • Chức năng dữ liệu đang được hoàn thiện", 8.5F);
+        var status = TextLabel($"{UiBrand.ApplicationName} • {UiBrand.ProjectName} • Dữ liệu theo quyền tài khoản", 8.5F);
         status.Padding = new Padding(12, 0, 0, 0);
+        if(_services is not null && _session is not null && _authorization?.IsStaff(_session)==true)
+            Shown += async (_,_) => {
+                try { var warehouses=await _services.RunAsync(()=>_services.Warehouses.GetActiveAsync(_session)); var current=warehouses.FirstOrDefault(row=>row.Id==_session.CurrentWarehouseId); if(!IsDisposed) status.Text=$"{UiBrand.ApplicationName} • Kho làm việc: {current?.Name ?? "Chưa chọn kho"}"; }
+                catch(Exception ex) { if(!IsDisposed) status.Text=LiveUi.LoadError(ex); }
+            };
         root.Controls.Add(status, 0, 1);
         root.SetColumnSpan(status, 2);
         Controls.Add(root);
@@ -119,13 +124,21 @@ public partial class FrmMain : Form
     private Control BuildSidebar()
     {
         var sidebar = CreateLayout(1, 3);
+<<<<<<< HEAD
         sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+=======
+        sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+>>>>>>> 385d53e43171ccaa6a70dd6ddfd8a307d1dbd529
         sidebar.Padding = new Padding(8, 12, 8, 12);
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
         var brand = _brand = CreateLayout(2, 1);
+<<<<<<< HEAD
         brand.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+=======
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+>>>>>>> 385d53e43171ccaa6a70dd6ddfd8a307d1dbd529
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60));
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         var logo = UiBrand.CreateLogo();
@@ -146,6 +159,7 @@ public partial class FrmMain : Form
             _root.ColumnStyles[0].Width = (_collapsed ? 76 : 205) * DeviceDpi / 96F;
             _brandText.Visible = !_collapsed;
             _account.Visible = !_collapsed;
+<<<<<<< HEAD
             _brand.ColumnStyles[0].SizeType = _collapsed ? SizeType.Percent : SizeType.Absolute;
             _brand.ColumnStyles[0].Width = _collapsed ? 100 : 60 * DeviceDpi / 96F;
             _brand.ColumnStyles[1].SizeType = _collapsed ? SizeType.Absolute : SizeType.Percent;
@@ -153,6 +167,15 @@ public partial class FrmMain : Form
             toggle.SetIcon(_collapsed ? "chevron-right" : "chevron-left");
             _logout.Dock = DockStyle.Fill;
             _logout.Visible = true;
+=======
+            _brand.ColumnStyles[0].SizeType=_collapsed ? SizeType.Percent : SizeType.Absolute;
+            _brand.ColumnStyles[0].Width=_collapsed ? 100 : 60*DeviceDpi/96F;
+            _brand.ColumnStyles[1].SizeType=_collapsed ? SizeType.Absolute : SizeType.Percent;
+            _brand.ColumnStyles[1].Width=_collapsed ? 0 : 100;
+            toggle.SetIcon(_collapsed ? "chevron-right" : "chevron-left");
+            _logout.Dock = DockStyle.Fill;
+            _logout.Visible=true;
+>>>>>>> 385d53e43171ccaa6a70dd6ddfd8a307d1dbd529
             _toolTips.SetToolTip(toggle, _collapsed ? "Mở rộng menu" : "Thu gọn menu");
             foreach (var button in _navigation.Values.Append(_logout))
             {
@@ -226,6 +249,12 @@ public partial class FrmMain : Form
                         MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
                     LogoutRequested = true; Close();
                 });
+            _accountPopover.Closing += (_, e) =>
+            {
+                if (e.CloseReason == ToolStripDropDownCloseReason.AppClicked
+                    && accountButton.RectangleToScreen(accountButton.ClientRectangle).Contains(Cursor.Position))
+                    e.Cancel = true;
+            };
             _accountPopover.Closed += (_, _) => { accountButton.ChevronExpanded = false; accountButton.Invalidate(); };
             accountButton.ChevronExpanded = true; accountButton.Invalidate();
             _accountPopover.Show(accountButton, new Point(0, -_accountPopover.Height - 6));
@@ -394,7 +423,8 @@ public partial class FrmMain : Form
         "Báo cáo" => CreateTabs(
             ("Tồn kho", new SmartInventoryManager.Forms.Reports.FrmInventoryReport()),
             ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport())),
-        "Người dùng" => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
+        "Người dùng" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
+        "Thông báo" when _services is not null => new NotificationPanel(_services),
         "Thông báo" => new NotificationPanel(),
         _ => throw new ArgumentOutOfRangeException(nameof(title))
     };

@@ -7,7 +7,10 @@ internal sealed class DateRangeControl : UserControl
     private readonly DateTimePicker _from = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", Dock = DockStyle.Top };
     private readonly DateTimePicker _to = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy", Dock = DockStyle.Top };
     private readonly Label _error = new() { Dock = DockStyle.Fill, AutoEllipsis = true };
+    public DateTime From => _from.Value.Date;
+    public DateTime To => _to.Value.Date;
     public bool IsValid => _from.Value.Date <= _to.Value.Date;
+    public event EventHandler? RangeChanged;
     public DateRangeControl()
     {
         Dock = DockStyle.Fill;
@@ -27,5 +30,9 @@ internal sealed class DateRangeControl : UserControl
         _from.ValueChanged += (_, _) => ValidateRange(); _to.ValueChanged += (_, _) => ValidateRange();
         Controls.Add(root);
     }
-    private void ValidateRange() => _error.Text = IsValid ? "" : "Từ ngày phải trước hoặc bằng đến ngày.";
+    private void ValidateRange()
+    {
+        _error.Text = IsValid ? "" : "Từ ngày phải trước hoặc bằng đến ngày.";
+        RangeChanged?.Invoke(this, EventArgs.Empty);
+    }
 }
