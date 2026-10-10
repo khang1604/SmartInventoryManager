@@ -11,6 +11,10 @@ public sealed record CreateUserRequest(
 
 public sealed record UpdateAccountRequest(string FullName, string? Email);
 
+public sealed record UpdateUserRequest(string FullName, string? Email, string RoleName, bool IsActive);
+
+public sealed record ResetUserPasswordRequest(string NewPassword, string ConfirmPassword);
+
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword);
 
 public sealed record UserListItemDto(

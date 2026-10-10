@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Services;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
@@ -11,6 +12,19 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class ReceiptWorkflowTests
 {
+    [TestMethod]
+    public void ReceiptServices_ExposeTheAgreedContracts()
+    {
+        using var context = CreateContext();
+        var authorization = new AuthorizationService(context);
+
+        IImportService importService = new ImportService(context, authorization);
+        IExportService exportService = new ExportService(context, authorization);
+
+        Assert.IsNotNull(importService);
+        Assert.IsNotNull(exportService);
+    }
+
     [TestMethod]
     public async Task CreateDraftAsync_ImportGeneratesCodeAndAllowsEmptyDraft()
     {
@@ -32,6 +46,7 @@ public class ReceiptWorkflowTests
         Assert.IsTrue(receipt.ReceiptCode.StartsWith("PN", StringComparison.Ordinal));
         Assert.AreEqual("DRAFT", receipt.Status);
         Assert.AreEqual(0, receipt.Details.Count);
+        Assert.AreEqual(0m, receipt.TotalAmount);
     }
 
     [TestMethod]
@@ -77,6 +92,25 @@ public class ReceiptWorkflowTests
         var receipt = await context.ExportReceipts.SingleAsync(item => item.ExportReceiptId == id);
         Assert.IsTrue(receipt.ReceiptCode.StartsWith("PX", StringComparison.Ordinal));
         Assert.AreEqual("DRAFT", receipt.Status);
+    }
+
+    [TestMethod]
+    public async Task CreateDraftAsync_CalculatesTotalFromDetails()
+    {
+        await using var context = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        SeedReceiptData(context);
+        var service = new ImportService(context, new AuthorizationService(context));
+
+        var id = await service.CreateDraftAsync(CreateAdminSession(), new ImportReceiptDto
+        {
+            WarehouseId = 7,
+            SupplierId = 3,
+            Details = [new ReceiptDetailDto(11, 2, 125.50m)]
+        });
+
+        var receipt = await context.ImportReceipts.SingleAsync(item => item.ImportReceiptId == id);
+        Assert.AreEqual(251m, receipt.TotalAmount);
     }
 
     [TestMethod]

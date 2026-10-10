@@ -2,13 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Business.Inventory;
+using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
 
 namespace SmartInventoryManager.Business.Services;
 
-public sealed class ExportService
+public sealed class ExportService : IExportService
 {
     private const int MaxListResults = 500;
     private readonly InventoryDbContext _dbContext;
@@ -54,6 +55,7 @@ public sealed class ExportService
             ReceiptDate = DateTime.Now,
             Status = "DRAFT",
             Note = request.Note?.Trim(),
+            TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice),
             Details = request.Details.Select(detail => new ExportDetail
             {
                 ProductId = detail.ProductId,
@@ -184,6 +186,7 @@ public sealed class ExportService
             throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được gửi duyệt.");
         }
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
+        receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "PENDING_APPROVAL";
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
