@@ -9,7 +9,6 @@
 	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 	</PackageReference>
 	<PackageReference Include="QuestPDF" Version="2026.9.1" />
-	<PackageReference Include="ScottPlot.WinForms" Version="5.1.59" />
     <Reference Include="AntdUI">
       <HintPath>Lib\AntdUI.dll</HintPath>
       <Private>true</Private>

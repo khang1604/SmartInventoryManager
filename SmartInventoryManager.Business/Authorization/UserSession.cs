@@ -20,7 +20,7 @@ public sealed class UserSession
     public void SetCurrentWarehouseFromAssignments(IReadOnlyCollection<int> warehouseIds)
     {
         ArgumentNullException.ThrowIfNull(warehouseIds);
-        if (!IsAuthenticated || !string.Equals(CurrentUser!.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+        if (!IsAuthenticated || !string.Equals(CurrentUser!.RoleName.Trim(), RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }

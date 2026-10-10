@@ -209,16 +209,16 @@ public sealed class AuthorizationService
             .Where(warehouse => warehouse.IsActive)
             .Select(warehouse => warehouse.WarehouseId);
 
-        if (string.Equals(session.CurrentUser.RoleName, RoleNames.WarehouseManager, StringComparison.OrdinalIgnoreCase))
+        if (IsWarehouseManager(session))
         {
             query = _dbContext.Warehouses
                 .AsNoTracking()
                 .Where(warehouse => warehouse.IsActive && warehouse.ManagerId == session.CurrentUser.UserId)
                 .Select(warehouse => warehouse.WarehouseId);
         }
-        else if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
+        else if (!IsAdmin(session))
         {
-            if (!string.Equals(session.CurrentUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+            if (!IsStaff(session))
             {
                 return new HashSet<int>();
             }
@@ -254,14 +254,14 @@ public sealed class AuthorizationService
             return false;
         }
 
-        if (string.Equals(session.CurrentUser.RoleName, RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
+        if (IsAdmin(session))
         {
             return await _dbContext.Warehouses
                 .AsNoTracking()
                 .AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive);
         }
 
-        if (!string.Equals(session.CurrentUser.RoleName, RoleNames.WarehouseManager, StringComparison.OrdinalIgnoreCase))
+        if (!IsWarehouseManager(session))
         {
             return false;
         }
@@ -292,7 +292,7 @@ public sealed class AuthorizationService
         return session.IsAuthenticated &&
             session.CurrentUser is not null &&
             roles.Any(role => string.Equals(
-                session.CurrentUser.RoleName,
+                session.CurrentUser.RoleName.Trim(),
                 role,
                 StringComparison.OrdinalIgnoreCase));
     }

@@ -31,7 +31,7 @@ public sealed class ExportService
         {
             throw new UnauthorizedAccessException("Bạn không có quyền tạo phiếu xuất tại kho này.");
         }
-        ValidateRequest(request);
+        ValidateRequest(request, requireDetails: false);
 
         var warehouseExists = await _dbContext.Warehouses.AnyAsync(
             warehouse => warehouse.WarehouseId == request.WarehouseId && warehouse.IsActive,
@@ -48,7 +48,7 @@ public sealed class ExportService
 
         var receipt = new ExportReceipt
         {
-            ReceiptCode = request.ReceiptCode.Trim(),
+            ReceiptCode = GenerateReceiptCode(),
             WarehouseId = request.WarehouseId,
             CreatedBy = session.CurrentUser!.UserId,
             ReceiptDate = DateTime.Now,
@@ -183,6 +183,7 @@ public sealed class ExportService
         {
             throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được gửi duyệt.");
         }
+        await ValidateStoredReceiptAsync(receipt, cancellationToken);
         receipt.Status = "PENDING_APPROVAL";
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -196,7 +197,7 @@ public sealed class ExportService
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
-        if (!await _authorization.CanDeleteDraftReceiptAsync(session, receipt.WarehouseId))
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
             throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu xuất nháp tại kho này.");
         if (receipt.Status != "DRAFT")
             throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được xóa.");
@@ -285,6 +286,7 @@ public sealed class ExportService
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(
             System.Data.IsolationLevel.Serializable,
             cancellationToken);
+        await ValidateStoredReceiptAsync(receipt, cancellationToken);
         var alreadyPosted = await _dbContext.InventoryTransactions.AnyAsync(
             item => item.ReferenceType == InventoryTransactionTypes.ExportReceipt &&
                 item.ReferenceId == exportReceiptId,
@@ -345,7 +347,7 @@ public sealed class ExportService
         {
             throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu xuất tại kho này.");
         }
-        ValidateRequest(request);
+        ValidateRequest(request, requireDetails: false);
         if (request.WarehouseId != receipt.WarehouseId)
         {
             throw new InvalidOperationException("Không được đổi kho của phiếu xuất nháp.");
@@ -358,7 +360,6 @@ public sealed class ExportService
         {
             throw new InvalidOperationException("Có sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
         }
-        receipt.ReceiptCode = request.ReceiptCode.Trim();
         receipt.Note = request.Note?.Trim();
         _dbContext.ExportDetails.RemoveRange(receipt.Details);
         receipt.Details = request.Details.Select(detail => new ExportDetail
@@ -367,6 +368,8 @@ public sealed class ExportService
             Quantity = detail.Quantity,
             UnitPrice = detail.UnitPrice
         }).ToList();
+        if (receipt.Status == "REJECTED")
+            receipt.Status = "DRAFT";
         receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -391,12 +394,32 @@ public sealed class ExportService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private void ValidateRequest(ExportReceiptDto request)
+    private async Task ValidateStoredReceiptAsync(ExportReceipt receipt, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.ReceiptCode) || request.Details.Count == 0 ||
+        if (receipt.Details.Count == 0)
+            throw new InvalidOperationException("Phiếu xuất phải có ít nhất một dòng hàng.");
+
+        var warehouseExists = await _dbContext.Warehouses.AnyAsync(
+            warehouse => warehouse.WarehouseId == receipt.WarehouseId && warehouse.IsActive,
+            cancellationToken);
+        var productIds = receipt.Details.Select(detail => detail.ProductId).ToArray();
+        var activeProductCount = await _dbContext.Products.CountAsync(
+            product => productIds.Contains(product.ProductId) && product.IsActive,
+            cancellationToken);
+        if (!warehouseExists || activeProductCount != productIds.Distinct().Count() ||
+            productIds.Length != productIds.Distinct().Count() ||
+            receipt.Details.Any(detail => detail.Quantity <= 0 || detail.UnitPrice < 0))
+        {
+            throw new InvalidOperationException("Phiếu xuất có kho, sản phẩm hoặc số lượng không hợp lệ.");
+        }
+    }
+
+    private void ValidateRequest(ExportReceiptDto request, bool requireDetails)
+    {
+        if ((requireDetails && request.Details.Count == 0) ||
             request.Details.Select(detail => detail.ProductId).Distinct().Count() != request.Details.Count)
         {
-            throw new ArgumentException("Mã phiếu và chi tiết phiếu xuất là bắt buộc; sản phẩm không được trùng.", nameof(request));
+            throw new ArgumentException("Chi tiết phiếu xuất không được trùng và phải có ít nhất một dòng khi chuyển trạng thái.", nameof(request));
         }
         var errors = request.Details
             .SelectMany(detail => _validator.ValidateDetail(detail.ProductId, detail.Quantity, detail.UnitPrice))
@@ -406,4 +429,6 @@ public sealed class ExportService
             throw new ArgumentException(string.Join(" ", errors), nameof(request));
         }
     }
+
+    private static string GenerateReceiptCode() => $"PX{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..38];
 }
