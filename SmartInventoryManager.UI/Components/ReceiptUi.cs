@@ -14,10 +14,10 @@ internal static class ReceiptUi
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         body.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         var fields = PreviewFormUi.Fields(2);
-        PreviewFormUi.Field(fields, 0, 0, "txtReceiptCode", "Mã phiếu *", 50);
-        PreviewFormUi.Field(fields, 1, 0, "cboWarehouse", "Kho *", placeholder: "Chọn kho", unavailable: true);
+        PreviewFormUi.Field(fields, 0, 0, "txtReceiptCode", "Mã phiếu (tự động)", 50);
+        PreviewFormUi.Field(fields, 1, 0, "cboWarehouse", "Kho *", placeholder: "Chọn kho");
         if (import)
-            PreviewFormUi.Field(fields, 0, 1, "cboSupplier", "Nhà cung cấp *", placeholder: "Chọn nhà cung cấp", unavailable: true);
+            PreviewFormUi.Field(fields, 0, 1, "cboSupplier", "Nhà cung cấp *", placeholder: "Chọn nhà cung cấp");
         else
             PreviewFormUi.Field(fields, 0, 1, "txtNote", "Ghi chú", 500);
         fields.Controls.Add(ProductUi.Label(import ? "Ngày nhập *" : "Ngày xuất *", 10, true), 1, 2);
@@ -34,8 +34,8 @@ internal static class ReceiptUi
         heading.Dock = DockStyle.None;
         heading.Size = new Size(180, 44);
         toolbar.Controls.Add(heading);
-        toolbar.Controls.Add(WorkflowUi.Pending("btnAddLine", "Thêm dòng", "plus-lg"));
-        toolbar.Controls.Add(WorkflowUi.Pending("btnRemoveLine", "Xóa dòng", "dash-circle"));
+        toolbar.Controls.Add(ProductUi.Button("btnAddLine", "Thêm dòng", "plus-lg"));
+        toolbar.Controls.Add(ProductUi.Button("btnRemoveLine", "Xóa dòng", "dash-circle"));
         if (import)
         {
             var note = ProductUi.Input("txtNote", "Ghi chú phiếu");
@@ -50,7 +50,7 @@ internal static class ReceiptUi
             toolbar.Controls.Cast<Control>().Sum(control => control.Width + control.Margin.Horizontal) > toolbar.ClientSize.Width ? 72 : 54;
         body.Controls.Add(WorkflowUi.TableWithEmpty("dgvReceiptLines",
             ["Mã sản phẩm", "Tên sản phẩm", "Đơn vị", "Số lượng", "Đơn giá (đ)", "Thành tiền (đ)"], "boxes"), 0, 2);
-        var totals = ProductUi.Label("Tổng tiền: —    •    Chưa chọn hàng hóa; chức năng lưu và hoàn tất phiếu chưa sẵn sàng", 10, true);
+        var totals = ProductUi.Label("Tổng tiền: —", 10, true);
         // [COLOR CONFIG]: chữ phụ của tổng tiền chưa có dữ liệu.
         totals.ForeColor = AppColors.Muted;
         body.Controls.Add(totals, 0, 3);

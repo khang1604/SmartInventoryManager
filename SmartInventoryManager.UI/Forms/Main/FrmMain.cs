@@ -403,7 +403,7 @@ public partial class FrmMain : Form
         "Báo cáo" => CreateTabs(
             ("Tồn kho", new SmartInventoryManager.Forms.Reports.FrmInventoryReport()),
             ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport())),
-        "Người dùng" => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
+        "Người dùng" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
         "Thông báo" when _services is not null => new NotificationPanel(_services),
         "Thông báo" => new NotificationPanel(),
         _ => throw new ArgumentOutOfRangeException(nameof(title))

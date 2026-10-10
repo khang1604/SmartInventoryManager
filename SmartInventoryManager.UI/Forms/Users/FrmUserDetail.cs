@@ -26,15 +26,6 @@ public sealed class FrmUserDetail : Form
         role.Items.AddRange(["Chọn vai trò", "Quản trị viên", "Quản lý kho", "Nhân viên kho"]);
         role.SelectedIndex = 0; role.Dock = DockStyle.Fill;
         fields.Controls.Add(role, 1, 3);
-        fields.Controls.Add(ProductUi.Label("Kho phụ trách", 10, true), 0, 6);
-        fields.Controls.Add(ProductUi.Label("Vị trí trong kho", 10, true), 1, 6);
-        var warehouse = LiveUi.Choice("cboUserWarehouse", "Kho phụ trách");
-        warehouse.Dock = DockStyle.Fill; warehouse.Enabled = false;
-        warehouse.Items.Add("Chưa thuộc chức năng tạo tài khoản"); warehouse.SelectedIndex = 0;
-        var location = LiveUi.Choice("cboUserLocation", "Vị trí trong kho đã chọn");
-        location.Dock = DockStyle.Fill; location.Enabled = false;
-        location.Items.Add("Chưa thuộc chức năng tạo tài khoản"); location.SelectedIndex = 0;
-        fields.Controls.Add(warehouse, 0, 7); fields.Controls.Add(location, 1, 7);
         var contextNote = new Label { Text = services is null
                 ? "Biểu mẫu chỉ xem trước khi chưa có phiên làm việc."
                 : "Tài khoản được tạo theo vai trò đã chọn.",

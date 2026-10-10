@@ -49,6 +49,61 @@ public class UserServiceTests
         await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.DeactivateAsync(session, 1));
     }
 
+    [TestMethod]
+    public async Task ChangePasswordAsync_UpdatesPasswordHashForCurrentUser()
+    {
+        await using var context = CreateContext();
+        context.Roles.Add(new Role { RoleId = 1, RoleName = RoleNames.Admin });
+        var hasher = new PasswordHasher();
+        context.Users.Add(new User
+        {
+            UserId = 1,
+            Username = "admin",
+            FullName = "Admin",
+            PasswordHash = hasher.HashPassword("OldPassword1"),
+            RoleId = 1,
+            IsActive = true,
+            CreatedAt = DateTime.Now
+        });
+        await context.SaveChangesAsync();
+
+        var session = new UserSession();
+        session.SignIn(new AuthenticatedUserDto(1, "admin", "Admin", null, RoleNames.Admin));
+        var service = new UserService(context, new AuthorizationService(context));
+
+        await service.ChangePasswordAsync(session, new ChangePasswordRequest("OldPassword1", "NewPassword1", "NewPassword1"));
+
+        var stored = await context.Users.SingleAsync(user => user.UserId == 1);
+        Assert.IsTrue(hasher.VerifyPassword("NewPassword1", stored.PasswordHash));
+        Assert.IsFalse(hasher.VerifyPassword("OldPassword1", stored.PasswordHash));
+    }
+
+    [TestMethod]
+    public async Task ChangePasswordAsync_RejectsWrongCurrentPassword()
+    {
+        await using var context = CreateContext();
+        context.Roles.Add(new Role { RoleId = 1, RoleName = RoleNames.Admin });
+        var hasher = new PasswordHasher();
+        context.Users.Add(new User
+        {
+            UserId = 1,
+            Username = "admin",
+            FullName = "Admin",
+            PasswordHash = hasher.HashPassword("OldPassword1"),
+            RoleId = 1,
+            IsActive = true,
+            CreatedAt = DateTime.Now
+        });
+        await context.SaveChangesAsync();
+
+        var session = new UserSession();
+        session.SignIn(new AuthenticatedUserDto(1, "admin", "Admin", null, RoleNames.Admin));
+        var service = new UserService(context, new AuthorizationService(context));
+
+        await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.ChangePasswordAsync(
+            session, new ChangePasswordRequest("WrongPassword1", "NewPassword1", "NewPassword1")));
+    }
+
     private static InventoryDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>()

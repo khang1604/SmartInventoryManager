@@ -120,6 +120,7 @@ internal sealed class FrmAccountSettings : Form
             {
                 await services!.RunAsync(() => services.Users.ChangePasswordAsync(services.Session,
                     new ChangePasswordRequest(currentPassword.Text, newPassword.Text, confirmPassword.Text)));
+                ShowNotice(passwordNotice, "Đã đổi mật khẩu thành công.", false);
                 ExpandPassword(false);
                 // Kết quả vẫn hiện trong phần Bảo mật khi các ô mật khẩu đã thu lại.
                 toggle.Text = "Đổi mật khẩu ▾ · Đã đổi thành công";

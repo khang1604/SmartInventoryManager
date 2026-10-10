@@ -34,7 +34,7 @@ public sealed class ImportService
             throw new UnauthorizedAccessException("Bạn không có quyền tạo phiếu nhập tại kho này.");
         }
 
-        ValidateRequest(request);
+        ValidateRequest(request, requireDetails: false);
         var warehouseExists = await _dbContext.Warehouses.AnyAsync(
             warehouse => warehouse.WarehouseId == request.WarehouseId && warehouse.IsActive,
             cancellationToken);
@@ -58,7 +58,7 @@ public sealed class ImportService
 
         var receipt = new ImportReceipt
         {
-            ReceiptCode = request.ReceiptCode.Trim(),
+            ReceiptCode = GenerateReceiptCode(),
             SupplierId = request.SupplierId,
             WarehouseId = request.WarehouseId,
             CreatedBy = session.CurrentUser!.UserId,
@@ -199,6 +199,7 @@ public sealed class ImportService
         {
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được gửi duyệt.");
         }
+        await ValidateStoredReceiptAsync(receipt, cancellationToken);
         receipt.Status = "PENDING_APPROVAL";
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -212,7 +213,7 @@ public sealed class ImportService
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
-        if (!await _authorization.CanDeleteDraftReceiptAsync(session, receipt.WarehouseId))
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
             throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu nhập nháp tại kho này.");
         if (receipt.Status != "DRAFT")
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được xóa.");
@@ -314,6 +315,7 @@ public sealed class ImportService
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(
             System.Data.IsolationLevel.Serializable,
             cancellationToken);
+        await ValidateStoredReceiptAsync(receipt, cancellationToken);
         var alreadyPosted = await _dbContext.InventoryTransactions.AnyAsync(
             item => item.ReferenceType == InventoryTransactionTypes.ImportReceipt &&
                 item.ReferenceId == importReceiptId,
@@ -368,7 +370,7 @@ public sealed class ImportService
         {
             throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu nhập tại kho này.");
         }
-        ValidateRequest(request);
+        ValidateRequest(request, requireDetails: false);
         if (request.WarehouseId != receipt.WarehouseId)
         {
             throw new InvalidOperationException("Không được đổi kho của phiếu nhập nháp.");
@@ -384,7 +386,6 @@ public sealed class ImportService
         {
             throw new InvalidOperationException("Nhà cung cấp hoặc sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
         }
-        receipt.ReceiptCode = request.ReceiptCode.Trim();
         receipt.SupplierId = request.SupplierId;
         receipt.Note = request.Note?.Trim();
         _dbContext.ImportDetails.RemoveRange(receipt.Details);
@@ -394,6 +395,8 @@ public sealed class ImportService
             Quantity = detail.Quantity,
             UnitPrice = detail.UnitPrice
         }).ToList();
+        if (receipt.Status == "REJECTED")
+            receipt.Status = "DRAFT";
         receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -438,12 +441,35 @@ public sealed class ImportService
         return inventory;
     }
 
-    private void ValidateRequest(ImportReceiptDto request)
+    private async Task ValidateStoredReceiptAsync(ImportReceipt receipt, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.ReceiptCode) || request.Details.Count == 0 ||
+        if (receipt.Details.Count == 0)
+            throw new InvalidOperationException("Phiếu nhập phải có ít nhất một dòng hàng.");
+
+        var supplierExists = await _dbContext.Suppliers.AnyAsync(
+            supplier => supplier.SupplierId == receipt.SupplierId && supplier.IsActive,
+            cancellationToken);
+        var warehouseExists = await _dbContext.Warehouses.AnyAsync(
+            warehouse => warehouse.WarehouseId == receipt.WarehouseId && warehouse.IsActive,
+            cancellationToken);
+        var productIds = receipt.Details.Select(detail => detail.ProductId).ToArray();
+        var activeProductCount = await _dbContext.Products.CountAsync(
+            product => productIds.Contains(product.ProductId) && product.IsActive,
+            cancellationToken);
+        if (!supplierExists || !warehouseExists || activeProductCount != productIds.Distinct().Count() ||
+            productIds.Length != productIds.Distinct().Count() ||
+            receipt.Details.Any(detail => detail.Quantity <= 0 || detail.UnitPrice < 0))
+        {
+            throw new InvalidOperationException("Phiếu nhập có kho, nhà cung cấp, sản phẩm hoặc số lượng không hợp lệ.");
+        }
+    }
+
+    private void ValidateRequest(ImportReceiptDto request, bool requireDetails)
+    {
+        if ((requireDetails && request.Details.Count == 0) ||
             request.Details.Select(detail => detail.ProductId).Distinct().Count() != request.Details.Count)
         {
-            throw new ArgumentException("Mã phiếu và chi tiết phiếu nhập là bắt buộc; sản phẩm không được trùng.", nameof(request));
+            throw new ArgumentException("Chi tiết phiếu nhập không được trùng và phải có ít nhất một dòng khi chuyển trạng thái.", nameof(request));
         }
         var errors = request.Details
             .SelectMany(detail => _validator.ValidateDetail(detail.ProductId, detail.Quantity, detail.UnitPrice))
@@ -453,4 +479,6 @@ public sealed class ImportService
             throw new ArgumentException(string.Join(" ", errors), nameof(request));
         }
     }
+
+    private static string GenerateReceiptCode() => $"PN{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..38];
 }

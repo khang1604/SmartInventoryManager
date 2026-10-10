@@ -17,9 +17,11 @@ internal sealed class ReceiptListView : UserControl
     private readonly DataGridView _grid;
     private readonly FlowLayoutPanel _filters = LiveUi.Toolbar();
     private readonly FlowLayoutPanel _actions = LiveUi.Toolbar();
+    private AntdUI.Button _create = null!;
     private bool _busy;
     private bool _initialized;
     private bool _hiddenAfterLoad;
+    private int _actionsVersion;
 
     public ReceiptListView(UiServices services, bool import)
     {
@@ -43,7 +45,7 @@ internal sealed class ReceiptListView : UserControl
             _from.Checked = _to.Checked = false;
             await LoadAsync();
         });
-        AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
+        _create = AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
         AddAction("Xem chi tiết", () => OpenAsync(SelectedId(), false), "eye");
         AddAction("Sửa phiếu", () => OpenAsync(SelectedId(), true), "pencil");
         AddAction("Gửi duyệt", () => TransitionAsync("submit"));
@@ -52,6 +54,7 @@ internal sealed class ReceiptListView : UserControl
         AddAction("Gửi lại", () => TransitionAsync("resubmit"));
         AddAction("Hoàn tất", () => TransitionAsync("complete"));
         AddAction("Hủy phiếu", () => PostAsync(true));
+        AddAction("Xóa nháp", () => DeleteDraftAsync(), "trash");
         _actions.WrapContents = true;
         _actions.AutoScroll = false;
         foreach (Control button in _actions.Controls) button.Width = 130;
@@ -74,7 +77,13 @@ internal sealed class ReceiptListView : UserControl
             if (_grid.Columns[e.ColumnIndex].Name == "Status" && e.Value is string value)
                 e.Value = LiveUi.StatusText(value);
         };
-        _grid.SelectionChanged += async (_, _) => { if (!_busy) await UpdateActionsAsync(); };
+        _grid.SelectionChanged += async (_, _) =>
+        {
+            if (!_busy)
+            {
+                await UpdateActionsAsync();
+            }
+        };
         for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
         root.Controls.Add(_filters, 0, 0);
         root.Controls.Add(_actions, 0, 1);
@@ -93,11 +102,12 @@ internal sealed class ReceiptListView : UserControl
         };
     }
 
-    private void AddAction(string text, Func<Task> action, string? icon = null)
+    private AntdUI.Button AddAction(string text, Func<Task> action, string? icon = null)
     {
         var button = ProductUi.Button("btn" + _actions.Controls.Count, text, icon);
         button.Click += async (_, _) => { if (!_busy) await action(); };
         _actions.Controls.Add(button);
+        return button;
     }
 
     private int? SelectedId() => _grid.CurrentRow?.DataBoundItem switch
@@ -169,12 +179,15 @@ internal sealed class ReceiptListView : UserControl
 
     private async Task UpdateActionsAsync()
     {
+        var version = ++_actionsVersion;
         for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
-        _actions.Controls[2].Enabled = _services.Authorization.IsAdmin(_services.Session)
+        _create.Enabled = _services.Authorization.IsAdmin(_services.Session)
             || _services.Authorization.IsWarehouseManager(_services.Session)
             || (_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId.HasValue);
         var id = SelectedId();
         if (!id.HasValue) return;
+
+        EnableAction("Xem chi tiết", true);
         try
         {
             var rights = await _services.RunAsync(async () =>
@@ -187,19 +200,29 @@ internal sealed class ReceiptListView : UserControl
                     await _services.Authorization.CanCompleteReceiptAsync(_services.Session, warehouseId),
                     await _services.Authorization.CanCancelReceiptAsync(_services.Session, warehouseId, creatorId, SelectedStatus() ?? ""));
             });
-            if (IsDisposed || _busy || SelectedId() != id) return;
-            void Enable(string text, bool enabled) { foreach(Control button in _actions.Controls) if(button.Text==text) button.Enabled=enabled; }
-            var status = SelectedStatus();
-            Enable("Xem chi tiết", true);
-            Enable("Sửa phiếu", (status is "DRAFT" or "REJECTED") && rights.Item1);
-            Enable("Gửi duyệt", status=="DRAFT" && rights.Item1);
-            Enable("Duyệt", status=="PENDING_APPROVAL" && rights.Item2);
-            Enable("Từ chối", status=="PENDING_APPROVAL" && rights.Item2);
-            Enable("Gửi lại", status=="REJECTED" && rights.Item1);
-            Enable("Hoàn tất", status=="APPROVED" && rights.Item3);
-            Enable("Hủy phiếu", status is "DRAFT" or "PENDING_APPROVAL" or "APPROVED" && rights.Item4);
+            if (IsDisposed || _busy || version != _actionsVersion || SelectedId() != id) return;
+            var status = SelectedStatus()?.Trim().ToUpperInvariant();
+            EnableAction("Sửa phiếu", (status is "DRAFT" or "REJECTED") && rights.Item1);
+            EnableAction("Gửi duyệt", status == "DRAFT" && rights.Item1);
+            EnableAction("Duyệt", status == "PENDING_APPROVAL" && rights.Item2);
+            EnableAction("Từ chối", status == "PENDING_APPROVAL" && rights.Item2);
+            EnableAction("Gửi lại", status == "REJECTED" && rights.Item1);
+            EnableAction("Hoàn tất", status == "APPROVED" && rights.Item3);
+            EnableAction("Hủy phiếu", status is "DRAFT" or "PENDING_APPROVAL" or "APPROVED" && rights.Item4);
+            EnableAction("Xóa nháp", status == "DRAFT" && rights.Item1);
         }
         catch (Exception ex) { if (!IsDisposed) _message.Text = LiveUi.Error(ex); }
+    }
+
+    private void EnableAction(string text, bool enabled)
+    {
+        foreach (Control button in _actions.Controls)
+        {
+            if (button.Text == text)
+            {
+                button.Enabled = enabled;
+            }
+        }
     }
 
     private async Task OpenAsync(int? id, bool edit)
@@ -304,5 +327,39 @@ internal sealed class ReceiptListView : UserControl
         if (IsDisposed || !committed) return;
         await LoadAsync();
         if (!IsDisposed) _message.Text = $"Phiếu đã {(cancel ? "hủy" : "hoàn tất")}. " + _message.Text;
+    }
+
+    private async Task DeleteDraftAsync()
+    {
+        var id = SelectedId();
+        if (!id.HasValue || SelectedStatus() != "DRAFT")
+        {
+            _message.Text = "Chỉ được xóa phiếu đang ở trạng thái nháp.";
+            return;
+        }
+
+        var code = _grid.CurrentRow?.Cells["ReceiptCode"].Value?.ToString();
+        if (MessageBox.Show(FindForm(), $"Xóa vĩnh viễn phiếu nháp {code}?", "Xác nhận xóa phiếu",
+            MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.OK)
+            return;
+
+        Busy(true);
+        try
+        {
+            await _services.RunAsync(() => _import
+                ? _services.Imports.DeleteDraftAsync(_services.Session, id.Value)
+                : _services.Exports.DeleteDraftAsync(_services.Session, id.Value));
+            Busy(false);
+            await LoadAsync();
+            if (!IsDisposed) _message.Text = "Đã xóa phiếu nháp.";
+        }
+        catch (Exception ex)
+        {
+            if (!IsDisposed) _message.Text = LiveUi.Error(ex);
+        }
+        finally
+        {
+            if (!IsDisposed) Busy(false);
+        }
     }
 }

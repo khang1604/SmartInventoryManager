@@ -72,7 +72,7 @@ namespace SmartInventoryManager.UI
                 }
 
                 session.SignIn(loginForm.AuthenticatedUser);
-                if (string.Equals(loginForm.AuthenticatedUser.RoleName, RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(loginForm.AuthenticatedUser.RoleName.Trim(), RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
                 {
                     using var warehouseContext = new FrmWarehouseContext(services);
                     if (warehouseContext.ShowDialog() != DialogResult.OK)

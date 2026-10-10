@@ -7,7 +7,7 @@ RULE.md and copilot-instructions.md must contain identical English instructions.
 - Build a multi-warehouse desktop application with C#, Windows Forms, Visual Studio, SQL Server, Entity Framework, ADO.NET, and LINQ.
 - Inspect the solution, relevant code, .csproj, global.json, Directory.Build.props, and Directory.Packages.props when present before editing. Repository configuration determines actual versions.
 - New solution default: Visual Studio 2026, .NET 10, EF Core 10.x. Preserve existing .NET 8/EF Core 8.x or .NET Framework/EF6 configurations. Do not mix EF6 and EF Core or migrate frameworks without a request.
-- Keep Microsoft.EntityFrameworkCore.\* packages at the same exact compatible stable version; do not automatically upgrade major versions.
+- Keep Microsoft.EntityFrameworkCore.* packages at the same exact compatible stable version; do not automatically upgrade major versions.
 - Do not introduce web stacks, web APIs, or a different UI framework without a requirement.
 
 ### Technology authorization
@@ -219,13 +219,6 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - No expensive queries inside paint/resize loops or unnecessary continuous refresh timers.
 - Test mouse/keyboard workflows with long Vietnamese text, large numbers, and error states. Build/check Designer/runtime; report unverified visuals/DPI. Passing build alone does not prove UI quality.
 
-References:
-
-- https://learn.microsoft.com/en-us/windows/apps/design/guidelines-overview
-- https://learn.microsoft.com/en-us/windows/apps/develop/accessibility
-- https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/typography
-- https://learn.microsoft.com/en-us/dotnet/desktop/winforms/forms/autoscale
-
 ## 10. Database & Dependencies
 
 ### Database responsibilities
@@ -233,9 +226,10 @@ References:
 - EF Core Migration is the authoritative mechanism for EF-managed schema evolution (tables, columns, types, PK/FK, UNIQUE, CHECK, NOT NULL, defaults, indexes, and EF relationships). Existing table/constraint/index SQL scripts must not compete with Migration as a second schema authority.
 - Preserve multi-warehouse keys, foreign keys, constraints, indexes, delete behavior, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
 - Repository and UnitOfWork are optional: use them only when they add clear value or are established project contracts. Do not build wrappers just to fill folders; EF already provides related capabilities. Do not remove established contracts without authorization.
-- Business Services are the authoritative stock-update path. No triggers may automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
+- Business Services are the authoritative stock-update path. Never use triggers to automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
 - EF and ADO.NET participating in one workflow must share the intended transaction/context consistency strategy; do not commit partial steps separately or retain stale tracked quantities.
 - Schema changes, SQL scripts, Entity/DbContext mappings, and supporting query contracts remain in the database owner's scope; cross-owner edits require authorization.
+- Changes to the database code by Bảo Anh (Database/EF/ADO.NET/schema/migration) must be stored locally for testing in the workspace; do not commit or push database code changes without explicit user authorization.
 
 ### Dependencies and cleanup
 
@@ -279,18 +273,12 @@ References:
 Run from the repository root. Start with a clean working tree; commit or preserve existing work before switching branches. Replace the example branch and file names with the actual task.
 
 Start a task:
-
-```bash
 git switch develop
 git pull --ff-only origin develop
 git switch -c feature/import-receipt
-```
-
 If `develop` exists only on the remote, run `git fetch origin` followed by `git switch --track origin/develop` instead of the first command. If a pull cannot fast-forward, inspect the divergence; do not reset or force-push to hide it.
 
 Save, update, verify, and push the task:
-
-```bash
 git add <changed-file-paths>
 git commit -m "feat(import): add import receipt"
 git fetch origin
@@ -298,18 +286,12 @@ git merge origin/develop
 dotnet restore
 dotnet build --no-restore
 git push -u origin feature/import-receipt
-```
-
 Resolve and commit any merge conflicts, then rerun verification before pushing. Run existing relevant tests as described in Section 11. Open the Pull Request targeting `develop` only after checks pass.
 
 After the Pull Request is merged, with a clean working tree:
-
-```bash
 git switch develop
 git pull --ff-only origin develop
 git branch -d feature/import-receipt
-```
-
 If Git refuses deletion after a squash merge, leave the local branch until its work is verified on `develop`; do not automatically use `-D`.
 
 ### Git and privacy
@@ -365,3 +347,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Preserve logs and available backups.
 - Do not attempt recovery, reinstall software, or write recovered files onto the affected drive without a separately agreed recovery plan.
 - Never claim that deleted data is recoverable without verification.
+
+## 13. Staff Permissions
+
+- When checking and fixing STAFF permission business rules, prioritize documentation in `.agent` as the source of truth; determine STAFF permissions based on the warehouse locations, not inferred from Warehouse or UserWarehouses if the documentation/schema does not specify.
