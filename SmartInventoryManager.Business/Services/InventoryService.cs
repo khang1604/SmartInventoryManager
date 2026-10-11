@@ -15,11 +15,13 @@ public sealed class InventoryService : IInventoryService
     private const int MaxReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
+    private readonly StockMutationService _stockMutation;
 
     public InventoryService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _stockMutation = new StockMutationService(_dbContext);
     }
 
     public event EventHandler<InventoryChangedEvent>? InventoryChanged;
@@ -149,7 +151,7 @@ public sealed class InventoryService : IInventoryService
             throw new KeyNotFoundException("Sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
         }
 
-        var inventory = await GetOrCreateInventoryAsync(warehouseId, productId, cancellationToken);
+        var inventory = await _stockMutation.GetOrCreateAsync(warehouseId, productId, cancellationToken);
         var newQuantity = checked(inventory.Quantity + quantityDelta);
         if (newQuantity < 0)
         {
@@ -226,11 +228,8 @@ public sealed class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("Tồn kho tại kho nguồn không đủ để chuyển.");
         }
-        var destination = await GetOrCreateInventoryAsync(destinationWarehouseId, productId, cancellationToken);
-        source.Quantity -= quantity;
-        source.UpdatedAt = DateTime.Now;
-        destination.Quantity = checked(destination.Quantity + quantity);
-        destination.UpdatedAt = DateTime.Now;
+        await _stockMutation.DecreaseAsync(sourceWarehouseId, productId, quantity, cancellationToken);
+        var destination = await _stockMutation.IncreaseAsync(destinationWarehouseId, productId, quantity, cancellationToken);
         var now = DateTime.Now;
         _dbContext.InventoryTransactions.AddRange(
             new InventoryTransaction

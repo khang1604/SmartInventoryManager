@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Events;
 using SmartInventoryManager.Business.Services;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
@@ -74,6 +75,83 @@ public class BackendWorkflowHardeningTests
         await service.RefreshAsync(11, 7);
 
         Assert.IsTrue(await context.StockAlerts.Where(item => item.AlertId == alert.AlertId).Select(item => item.IsResolved).SingleAsync());
+    }
+
+    [TestMethod]
+    public async Task StockAlert_RefreshTwiceKeepsOneOpenAlertAndChangesType()
+    {
+        await using var context = CreateContext();
+        SeedWarehouseAndProduct(context, 7, 11, reorderPoint: 5, maximumStock: 20);
+        context.Inventories.Add(new Inventory { WarehouseId = 7, ProductId = 11, Quantity = 0, UpdatedAt = DateTime.Now });
+        await context.SaveChangesAsync();
+        var service = new StockAlertService(context, new AuthorizationService(context));
+
+        await service.RefreshAsync(11, 7);
+        await service.RefreshAsync(11, 7);
+        Assert.AreEqual(1, await context.StockAlerts.CountAsync(item => !item.IsResolved));
+        Assert.AreEqual("OUT_OF_STOCK", (await context.StockAlerts.SingleAsync(item => !item.IsResolved)).AlertType);
+
+        context.Inventories.Single().Quantity = 2;
+        await context.SaveChangesAsync();
+        await service.RefreshAsync(11, 7);
+
+        Assert.AreEqual(1, await context.StockAlerts.CountAsync(item => !item.IsResolved));
+        Assert.AreEqual("LOW_STOCK", (await context.StockAlerts.SingleAsync(item => !item.IsResolved)).AlertType);
+        Assert.AreEqual(2, await context.StockAlerts.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task ImportComplete_EmitsEventAfterCommitAndRejectsDuplicatePost()
+    {
+        await using var context = CreateContext();
+        SeedWarehouseAndProduct(context, 7, 11);
+        context.Suppliers.Add(new Supplier { SupplierId = 3, SupplierCode = "NCC-3", SupplierName = "Nhà cung cấp", IsActive = true });
+        await context.SaveChangesAsync();
+        var service = new ImportService(context, new AuthorizationService(context));
+        ReceiptCompletedEvent? completed = null;
+        service.ReceiptCompleted += (_, args) => completed = args;
+        var id = await service.CreateDraftAsync(CreateSession(RoleNames.Admin), new ImportReceiptDto
+        {
+            WarehouseId = 7, SupplierId = 3, Details = [new ReceiptDetailDto(11, 2, 10)]
+        });
+        await service.SubmitAsync(CreateSession(RoleNames.Admin), id);
+        await service.ApproveAsync(CreateSession(RoleNames.Admin), id);
+        await service.CompleteAsync(CreateSession(RoleNames.Admin), id);
+
+        Assert.IsNotNull(completed);
+        Assert.AreEqual(id, completed!.ReceiptId);
+        Assert.AreEqual(2, await context.Inventories.Where(item => item.ProductId == 11).Select(item => item.Quantity).SingleAsync());
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.CompleteAsync(CreateSession(RoleNames.Admin), id));
+    }
+
+    [TestMethod]
+    public async Task ExportComplete_InsufficientStockDoesNotEmitEventOrWriteHistory()
+    {
+        await using var context = CreateContext();
+        SeedWarehouseAndProduct(context, 7, 11);
+        context.ExportReceipts.Add(new ExportReceipt
+        {
+            ExportReceiptId = 1,
+            ReceiptCode = "PX-1",
+            WarehouseId = 7,
+            CreatedBy = 1,
+            ReceiptDate = DateTime.Now,
+            Status = "APPROVED",
+            Details = [new ExportDetail { ProductId = 11, Quantity = 5, UnitPrice = 10 }]
+        });
+        context.Inventories.Add(new Inventory { WarehouseId = 7, ProductId = 11, Quantity = 2, UpdatedAt = DateTime.Now });
+        await context.SaveChangesAsync();
+        var service = new ExportService(context, new AuthorizationService(context));
+        var eventCount = 0;
+        service.ReceiptCompleted += (_, _) => eventCount++;
+
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+            () => service.CompleteAsync(CreateSession(RoleNames.Admin), 1));
+
+        Assert.AreEqual(0, eventCount);
+        Assert.AreEqual(2, (await context.Inventories.SingleAsync()).Quantity);
+        Assert.AreEqual(0, await context.InventoryTransactions.CountAsync());
+        Assert.AreEqual("APPROVED", await context.ExportReceipts.Select(item => item.Status).SingleAsync());
     }
 
     [TestMethod]
