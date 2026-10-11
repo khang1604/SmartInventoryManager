@@ -7,7 +7,6 @@ using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
-using InventoryEntity = SmartInventoryManager.Data.Entities.Inventory;
 
 namespace SmartInventoryManager.Business.Services;
 
@@ -320,6 +319,11 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            cancellationToken);
         var receipt = await _dbContext.ImportReceipts
             .Include(importReceipt => importReceipt.Details)
             .SingleOrDefaultAsync(importReceipt => importReceipt.ImportReceiptId == importReceiptId, cancellationToken)
@@ -338,9 +342,6 @@ public sealed class ImportService : IImportService
             throw new InvalidOperationException("Chỉ phiếu nhập đã được duyệt mới được hoàn tất.");
         }
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable,
-            cancellationToken);
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
         var alreadyPosted = await _dbContext.InventoryTransactions.AnyAsync(
             item => item.ReferenceType == InventoryTransactionTypes.ImportReceipt &&
@@ -395,8 +396,6 @@ public sealed class ImportService : IImportService
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
         if (receipt.Status != "DRAFT" && receipt.Status != "REJECTED")
         {
-        ValidateSession(session);
-        ValidateReceiptId(importReceiptId);
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được sửa.");
         }
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
@@ -439,6 +438,8 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         var receipt = await _dbContext.ImportReceipts
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
@@ -452,26 +453,6 @@ public sealed class ImportService : IImportService
         }
         receipt.Status = "CANCELLED";
         await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task<InventoryEntity> GetOrCreateInventoryAsync(int warehouseId, int productId, CancellationToken cancellationToken)
-    {
-        var inventory = await _dbContext.Inventories
-            .SingleOrDefaultAsync(item => item.WarehouseId == warehouseId && item.ProductId == productId, cancellationToken);
-        if (inventory is not null)
-        {
-            return inventory;
-        }
-
-        inventory = new InventoryEntity
-        {
-            WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 0,
-            UpdatedAt = DateTime.Now
-        };
-        _dbContext.Inventories.Add(inventory);
-        return inventory;
     }
 
     private async Task ValidateStoredReceiptAsync(ImportReceipt receipt, CancellationToken cancellationToken)

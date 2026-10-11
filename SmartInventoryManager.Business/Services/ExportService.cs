@@ -188,8 +188,6 @@ public sealed class ExportService : IExportService
         }
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
-        ValidateSession(session);
-        ValidateReceiptId(exportReceiptId);
             throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu xuất.");
         }
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
@@ -273,8 +271,6 @@ public sealed class ExportService : IExportService
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
-        ValidateSession(session);
-        ValidateReceiptId(exportReceiptId);
             throw new UnauthorizedAccessException("Bạn không có quyền gửi lại phiếu xuất.");
         }
         if (receipt.Status != "REJECTED")
@@ -290,6 +286,11 @@ public sealed class ExportService : IExportService
         int exportReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            cancellationToken);
         var receipt = await _dbContext.ExportReceipts
             .Include(exportReceipt => exportReceipt.Details)
             .SingleOrDefaultAsync(exportReceipt => exportReceipt.ExportReceiptId == exportReceiptId, cancellationToken)
@@ -305,9 +306,6 @@ public sealed class ExportService : IExportService
             throw new InvalidOperationException("Chỉ phiếu xuất đã được duyệt mới được hoàn tất.");
         }
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable,
-            cancellationToken);
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
         var alreadyPosted = await _dbContext.InventoryTransactions.AnyAsync(
             item => item.ReferenceType == InventoryTransactionTypes.ExportReceipt &&
@@ -418,6 +416,8 @@ public sealed class ExportService : IExportService
         int exportReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
         var receipt = await _dbContext.ExportReceipts
             .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
