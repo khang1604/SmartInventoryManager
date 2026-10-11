@@ -155,7 +155,13 @@ public sealed class StockAlertService : IStockAlertService
         alert.ResolvedAt = DateTime.Now;
         alert.ResolvedBy = session.CurrentUser!.UserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
-        AlertChanged?.Invoke(this, new StockAlertEvent(alert.ProductId, alert.WarehouseId, alert.AlertType));
+        AlertChanged?.Invoke(this, new StockAlertEvent(
+            alert.ProductId,
+            alert.WarehouseId,
+            alert.AlertType,
+            alert.AlertId,
+            alert.CurrentQuantity,
+            alert.ResolvedAt ?? DateTime.Now));
     }
 
     public async Task ResolveForProductAsync(
@@ -188,7 +194,13 @@ public sealed class StockAlertService : IStockAlertService
         {
             foreach (var alert in alerts)
             {
-                AlertChanged?.Invoke(this, new StockAlertEvent(alert.ProductId, alert.WarehouseId, alert.AlertType));
+                AlertChanged?.Invoke(this, new StockAlertEvent(
+                    alert.ProductId,
+                    alert.WarehouseId,
+                    alert.AlertType,
+                    alert.AlertId,
+                    alert.CurrentQuantity,
+                    alert.ResolvedAt ?? now));
             }
         }
     }
