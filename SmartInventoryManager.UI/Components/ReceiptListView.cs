@@ -283,7 +283,8 @@ internal sealed class ReceiptListView : UserControl
     private async Task PostAsync(bool cancel)
     {
         var id = SelectedId();
-        if (!id.HasValue || (cancel && SelectedStatus() is not ("DRAFT" or "REJECTED") && SelectedStatus() != "PENDING_APPROVAL" && SelectedStatus() != "APPROVED"))
+        var status = SelectedStatus()?.Trim().ToUpperInvariant();
+        if (!id.HasValue || (cancel && status is not ("DRAFT" or "PENDING_APPROVAL" or "APPROVED")))
         { _message.Text = "Chọn một phiếu hợp lệ để thao tác."; return; }
         var code = _grid.CurrentRow?.Cells["ReceiptCode"].Value?.ToString();
         var action = cancel ? "Hủy phiếu" : "Hoàn tất phiếu và cập nhật tồn kho";
@@ -332,7 +333,7 @@ internal sealed class ReceiptListView : UserControl
     private async Task DeleteDraftAsync()
     {
         var id = SelectedId();
-        if (!id.HasValue || SelectedStatus() != "DRAFT")
+        if (!id.HasValue || !string.Equals(SelectedStatus()?.Trim(), "DRAFT", StringComparison.OrdinalIgnoreCase))
         {
             _message.Text = "Chỉ được xóa phiếu đang ở trạng thái nháp.";
             return;

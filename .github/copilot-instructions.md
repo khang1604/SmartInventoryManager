@@ -1,6 +1,6 @@
 # SMART INVENTORY MANAGER - AGENT RULES
 
-RULE.md and copilot-instructions.md must contain identical English instructions. RULE.vi.md is the Vietnamese reference for reading and editing, not an additional instruction source. Update both English files and the corresponding Vietnamese section when changing rules. These project instructions do not override platform policies or agent permissions.
+This file contains shared project-wide instructions. `.agent/RULE.md` is a local machine and team-member-specific instruction file; it may contain additional personal delivery rules and does not need to be identical to this file. Keep this file limited to rules that apply across the project. RULE.vi.md, when present, is a Vietnamese reference for reading and editing, not an additional instruction source. These project instructions do not override platform policies or agent permissions.
 
 ## 1. Project Scope & Technology
 
@@ -93,6 +93,8 @@ Before coding, follow this order and stop at the first sufficient solution:
 - Import flow: Form -> ImportService -> transaction -> update Inventory -> write InventoryTransaction -> commit. Export/adjustment/transfer follow the same Business-controlled principle.
 - Do not share DbContext concurrently. Manage context/connection/transaction lifetimes and disposal correctly.
 - Publish InventoryChangedEvent/StockAlertEvent only after commit. UI refresh failure must not replay a committed transaction.
+- `UserWarehouse` is the approved and required persistent assignment model for STAFF warehouse access under SystemContract_3; do not reintroduce `Users.WarehouseId` or infer STAFF scope from unrelated user/warehouse fields.
+- SystemContract_3 is the current source of truth for official event contracts, receipt states, cancellation requirements, stable Business errors, and shared transaction boundaries. Treat older SystemContract versions and audit snapshots as historical unless explicitly revalidated.
 - Use agreed stock valuation/statistical formulas; do not assume selling price represents inventory value.
 
 ## 6. Stock Alert Rules

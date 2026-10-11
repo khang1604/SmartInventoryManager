@@ -152,6 +152,7 @@ public sealed class InventoryService : IInventoryService
         }
 
         var inventory = await _stockMutation.GetOrCreateAsync(warehouseId, productId, cancellationToken);
+        var previousQuantity = inventory.Quantity;
         var newQuantity = checked(inventory.Quantity + quantityDelta);
         if (newQuantity < 0)
         {
@@ -174,7 +175,13 @@ public sealed class InventoryService : IInventoryService
             .RefreshAsync(productId, warehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, warehouseId));
+        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+            productId,
+            warehouseId,
+            previousQuantity,
+            newQuantity,
+            InventoryTransactionTypes.Adjustment,
+            session.CurrentUser!.UserId));
     }
 
     public async Task TransferAsync(
@@ -228,8 +235,14 @@ public sealed class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("Tồn kho tại kho nguồn không đủ để chuyển.");
         }
+        var previousSourceQuantity = source.Quantity;
+        var destinationInventory = await _dbContext.Inventories
+            .SingleOrDefaultAsync(item => item.WarehouseId == destinationWarehouseId && item.ProductId == productId, cancellationToken);
+        var previousDestinationQuantity = destinationInventory?.Quantity ?? 0;
         await _stockMutation.DecreaseAsync(sourceWarehouseId, productId, quantity, cancellationToken);
-        var destination = await _stockMutation.IncreaseAsync(destinationWarehouseId, productId, quantity, cancellationToken);
+        destinationInventory ??= await _stockMutation.GetOrCreateAsync(destinationWarehouseId, productId, cancellationToken);
+        destinationInventory.Quantity = checked(destinationInventory.Quantity + quantity);
+        destinationInventory.UpdatedAt = DateTime.Now;
         var now = DateTime.Now;
         _dbContext.InventoryTransactions.AddRange(
             new InventoryTransaction
@@ -259,8 +272,20 @@ public sealed class InventoryService : IInventoryService
         await alertService.RefreshAsync(productId, destinationWarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, sourceWarehouseId));
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, destinationWarehouseId));
+        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+            productId,
+            sourceWarehouseId,
+            previousSourceQuantity,
+            previousSourceQuantity - quantity,
+            InventoryTransactionTypes.TransferOut,
+            session.CurrentUser!.UserId));
+        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+            productId,
+            destinationWarehouseId,
+            previousDestinationQuantity,
+            previousDestinationQuantity + quantity,
+            InventoryTransactionTypes.TransferIn,
+            session.CurrentUser!.UserId));
     }
 
     private async Task<InventoryEntity> GetOrCreateInventoryAsync(int warehouseId, int productId, CancellationToken cancellationToken)

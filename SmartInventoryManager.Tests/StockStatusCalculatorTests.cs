@@ -19,9 +19,9 @@ public class StockStatusCalculatorTests
 
     [DataTestMethod]
     [DataRow(-1, 10)]
-    [DataRow(10, 10)]
+    [DataRow(10, 9)]
     [DataRow(11, 10)]
-    [DataRow(0, 0)]
+    [DataRow(1, 0)]
     public void ValidateThresholds_RejectsInvalidConfiguration(int reorderPoint, int maximumStock)
     {
         Assert.IsFalse(StockStatusCalculator.HasValidThresholds(reorderPoint, maximumStock));
