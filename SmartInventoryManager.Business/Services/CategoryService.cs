@@ -55,6 +55,7 @@ public sealed class CategoryService
 
     public async Task UpdateAsync(UserSession session, int categoryId, CategoryRequestDto request, CancellationToken cancellationToken = default)
     {
+        ValidateId(categoryId, nameof(categoryId));
         EnsureCanManage(session);
         Validate(request);
         var entity = await _dbContext.Categories.SingleOrDefaultAsync(item => item.CategoryId == categoryId, cancellationToken)
@@ -69,6 +70,7 @@ public sealed class CategoryService
 
     public async Task SetActiveAsync(UserSession session, int categoryId, bool isActive, CancellationToken cancellationToken = default)
     {
+        ValidateId(categoryId, nameof(categoryId));
         EnsureCanManage(session);
         var entity = await _dbContext.Categories.SingleOrDefaultAsync(item => item.CategoryId == categoryId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy danh mục.");
@@ -91,6 +93,14 @@ public sealed class CategoryService
     private static void Validate(CategoryRequestDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (string.IsNullOrWhiteSpace(request.CategoryName)) throw new ArgumentException("Tên danh mục là bắt buộc.", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.CategoryName) || request.CategoryName.Trim().Length > 100)
+            throw new ArgumentException("Tên danh mục là bắt buộc và không quá 100 ký tự.", nameof(request));
+        if (request.Description?.Trim().Length > 255)
+            throw new ArgumentException("Mô tả danh mục không quá 255 ký tự.", nameof(request));
+    }
+
+    private static void ValidateId(int id, string parameterName)
+    {
+        if (id <= 0) throw new ArgumentOutOfRangeException(parameterName);
     }
 }

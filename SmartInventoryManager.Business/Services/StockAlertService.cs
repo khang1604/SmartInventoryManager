@@ -27,6 +27,8 @@ public sealed class StockAlertService : IStockAlertService
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
         if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem cảnh báo tại kho này.");
@@ -56,6 +58,15 @@ public sealed class StockAlertService : IStockAlertService
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+        if (warehouseId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(warehouseId));
+        }
+
         var product = await _dbContext.Products
             .AsNoTracking()
             .SingleOrDefaultAsync(item => item.ProductId == productId && item.IsActive, cancellationToken)
@@ -108,6 +119,12 @@ public sealed class StockAlertService : IStockAlertService
         long alertId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        if (alertId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(alertId));
+        }
+
         var alert = await _dbContext.StockAlerts
             .SingleOrDefaultAsync(item => item.AlertId == alertId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy cảnh báo tồn kho.");
@@ -136,5 +153,22 @@ public sealed class StockAlertService : IStockAlertService
             StockStatus.Overstock => "OVERSTOCK",
             _ => throw new ArgumentOutOfRangeException(nameof(status))
         };
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xử lý cảnh báo tồn kho.");
+        }
+    }
+
+    private static void ValidateWarehouseId(int warehouseId)
+    {
+        if (warehouseId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(warehouseId));
+        }
     }
 }

@@ -13,6 +13,8 @@ namespace SmartInventoryManager.Business.Services;
 public sealed class ImportService : IImportService
 {
     private const int MaxListResults = 500;
+    private const int MaxReceiptNoteLength = 500;
+    private const int MaxRejectReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
     private readonly ImportValidator _validator = new();
@@ -29,6 +31,13 @@ public sealed class ImportService : IImportService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateSession(session);
+        ValidateReceiptId(request.WarehouseId);
+        if (request.SupplierId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request.SupplierId));
+        }
+        ValidateNote(request.Note);
 
         if (!await _authorization.CanCreateDraftReceiptAsync(session, request.WarehouseId))
         {
@@ -89,6 +98,7 @@ public sealed class ImportService : IImportService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
         if (!session.IsAuthenticated)
         {
             throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu nhập.");
@@ -147,10 +157,8 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
-        if (!session.IsAuthenticated)
-        {
-            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu nhập.");
-        }
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         var receipt = await _dbContext.ImportReceipts
             .AsNoTracking()
@@ -190,16 +198,19 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
+
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
-        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
-        {
-            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu nhập.");
-        }
         if (receipt.Status != "DRAFT")
         {
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được gửi duyệt.");
+        }
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu nhập.");
         }
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
@@ -252,10 +263,17 @@ public sealed class ImportService : IImportService
         string reason,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Lý do từ chối là bắt buộc.", nameof(reason));
         }
+        if (reason.Trim().Length > MaxRejectReasonLength)
+        {
+            throw new ArgumentException("Lý do từ chối quá dài.", nameof(reason));
+        }
+
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
@@ -361,12 +379,16 @@ public sealed class ImportService : IImportService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         var receipt = await _dbContext.ImportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
         if (receipt.Status != "DRAFT" && receipt.Status != "REJECTED")
         {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được sửa.");
         }
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
@@ -484,4 +506,29 @@ public sealed class ImportService : IImportService
     }
 
     private static string GenerateReceiptCode() => $"PN{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..38];
+
+    private static void ValidateReceiptId(int receiptId)
+    {
+        if (receiptId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(receiptId));
+        }
+    }
+
+    private static void ValidateNote(string? note)
+    {
+        if (note?.Trim().Length > MaxReceiptNoteLength)
+        {
+            throw new ArgumentException("Ghi chú phiếu nhập không quá 500 ký tự.", nameof(note));
+        }
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để thực hiện thao tác.");
+        }
+    }
 }

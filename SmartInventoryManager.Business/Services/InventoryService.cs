@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class InventoryService : IInventoryService
 {
+    private const int MaxReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
@@ -28,6 +29,8 @@ public sealed class InventoryService : IInventoryService
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
         if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem tồn kho tại kho này.");
@@ -63,6 +66,16 @@ public sealed class InventoryService : IInventoryService
         DateTime? to = null,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
+        if (productId.HasValue && productId.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+        if (from.HasValue && to.HasValue && to.Value.Date < from.Value.Date)
+        {
+            throw new ArgumentException("Khoảng ngày không hợp lệ.", nameof(to));
+        }
         if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem lịch sử tồn kho tại kho này.");
@@ -110,13 +123,16 @@ public sealed class InventoryService : IInventoryService
         string reason,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
+        ValidateProductId(productId);
         if (quantityDelta == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(quantityDelta), "Số lượng điều chỉnh phải khác 0.");
         }
-        if (string.IsNullOrWhiteSpace(reason))
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > MaxReasonLength)
         {
-            throw new ArgumentException("Lý do điều chỉnh là bắt buộc.", nameof(reason));
+            throw new ArgumentException("Lý do điều chỉnh là bắt buộc và không quá 500 ký tự.", nameof(reason));
         }
         if (!await _authorization.CanAdjustInventoryAsync(session, warehouseId))
         {
@@ -168,6 +184,10 @@ public sealed class InventoryService : IInventoryService
         string note,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(sourceWarehouseId);
+        ValidateWarehouseId(destinationWarehouseId);
+        ValidateProductId(productId);
         if (sourceWarehouseId == destinationWarehouseId)
         {
             throw new ArgumentException("Kho nguồn và kho đích phải khác nhau.");
@@ -179,6 +199,10 @@ public sealed class InventoryService : IInventoryService
         if (string.IsNullOrWhiteSpace(note))
         {
             throw new ArgumentException("Lý do chuyển kho là bắt buộc.", nameof(note));
+        }
+        if (note.Trim().Length > 500)
+        {
+            throw new ArgumentException("Ghi chú chuyển kho không quá 500 ký tự.", nameof(note));
         }
         if (!await _authorization.CanTransferInventoryAsync(session, sourceWarehouseId, destinationWarehouseId))
         {
@@ -257,5 +281,30 @@ public sealed class InventoryService : IInventoryService
         };
         _dbContext.Inventories.Add(inventory);
         return inventory;
+    }
+
+    private static void ValidateProductId(int productId)
+    {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+    }
+
+    private static void ValidateWarehouseId(int warehouseId)
+    {
+        if (warehouseId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(warehouseId));
+        }
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để thực hiện thao tác.");
+        }
     }
 }
