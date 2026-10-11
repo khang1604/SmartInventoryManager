@@ -82,6 +82,7 @@ public sealed class StockAlertService : IStockAlertService
         var openAlerts = await _dbContext.StockAlerts
             .Where(alert => alert.ProductId == productId && alert.WarehouseId == warehouseId && !alert.IsResolved)
             .ToListAsync(cancellationToken);
+        StockAlertEntity? currentAlert = null;
 
         foreach (var staleAlert in openAlerts.Where(alert => alert.AlertType != alertType || alertType == "NORMAL"))
         {
@@ -91,10 +92,10 @@ public sealed class StockAlertService : IStockAlertService
 
         if (alertType != "NORMAL")
         {
-            var currentAlert = openAlerts.FirstOrDefault(alert => alert.AlertType == alertType);
+            currentAlert = openAlerts.FirstOrDefault(alert => alert.AlertType == alertType);
             if (currentAlert is null)
             {
-                _dbContext.StockAlerts.Add(new StockAlertEntity
+                currentAlert = new StockAlertEntity
                 {
                     ProductId = productId,
                     WarehouseId = warehouseId,
@@ -103,7 +104,8 @@ public sealed class StockAlertService : IStockAlertService
                     Threshold = status == StockStatus.Overstock ? product.MaximumStock : product.ReorderPoint,
                     IsResolved = false,
                     CreatedAt = DateTime.Now
-                });
+                };
+                _dbContext.StockAlerts.Add(currentAlert);
             }
             else
             {
@@ -118,7 +120,12 @@ public sealed class StockAlertService : IStockAlertService
         }
         if (publishEvent)
         {
-            AlertChanged?.Invoke(this, new StockAlertEvent(productId, warehouseId, alertType));
+            AlertChanged?.Invoke(this, new StockAlertEvent(
+                productId,
+                warehouseId,
+                alertType,
+                currentAlert?.AlertId ?? 0,
+                quantity));
         }
     }
 
