@@ -92,6 +92,53 @@ public class BackendWorkflowHardeningTests
     }
 
     [TestMethod]
+    public async Task ProductUpdate_RefreshesAlertsWhenThresholdChanges()
+    {
+        await using var context = CreateContext();
+        SeedWarehouseAndProduct(context, 7, 11, reorderPoint: 5, maximumStock: 20);
+        context.Inventories.Add(new Inventory { WarehouseId = 7, ProductId = 11, Quantity = 8, UpdatedAt = DateTime.Now });
+        context.Categories.Add(new Category { CategoryId = 1, CategoryName = "Nhóm 1", IsActive = true });
+        var user = new User { UserId = 1, Username = "admin", PasswordHash = "hash", FullName = "Quản trị viên", IsActive = true };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        var service = new ProductManagementService(context, new AuthorizationService(context));
+        var request = new ProductRequestDto
+        {
+            ProductCode = "SP-11",
+            ProductName = "Sản phẩm 11",
+            CategoryId = 1,
+            Unit = "Cái",
+            PurchasePrice = 10,
+            SellingPrice = 15,
+            ReorderPoint = 10,
+            MaximumStock = 20
+        };
+
+        await service.UpdateAsync(CreateSession(RoleNames.Admin), 11, request);
+
+        var alert = await context.StockAlerts.SingleAsync();
+        Assert.AreEqual("LOW_STOCK", alert.AlertType);
+        Assert.AreEqual(10, alert.Threshold);
+    }
+
+    [TestMethod]
+    public async Task ProductDeactivate_ResolvesOpenAlerts()
+    {
+        await using var context = CreateContext();
+        SeedWarehouseAndProduct(context, 7, 11, reorderPoint: 5, maximumStock: 20);
+        context.Inventories.Add(new Inventory { WarehouseId = 7, ProductId = 11, Quantity = 1, UpdatedAt = DateTime.Now });
+        context.Categories.Add(new Category { CategoryId = 1, CategoryName = "Nhóm 1", IsActive = true });
+        context.Users.Add(new User { UserId = 1, Username = "admin", PasswordHash = "hash", FullName = "Quản trị viên", IsActive = true });
+        await context.SaveChangesAsync();
+        await new StockAlertService(context, new AuthorizationService(context)).RefreshAsync(11, 7);
+        var service = new ProductManagementService(context, new AuthorizationService(context));
+
+        await service.SetActiveAsync(CreateSession(RoleNames.Admin), 11, false);
+
+        Assert.IsTrue(await context.StockAlerts.Select(item => item.IsResolved).SingleAsync());
+    }
+
+    [TestMethod]
     public async Task ExportComplete_WhenLaterDetailFails_RestoresTrackedState()
     {
         await using var context = CreateContext();

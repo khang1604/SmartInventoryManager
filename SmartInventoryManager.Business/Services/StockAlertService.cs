@@ -56,7 +56,9 @@ public sealed class StockAlertService : IStockAlertService
     public async Task RefreshAsync(
         int productId,
         int warehouseId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool persistChanges = true,
+        bool publishEvent = true)
     {
         if (productId <= 0)
         {
@@ -110,8 +112,14 @@ public sealed class StockAlertService : IStockAlertService
             }
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        AlertChanged?.Invoke(this, new StockAlertEvent(productId, warehouseId, alertType));
+        if (persistChanges)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        if (publishEvent)
+        {
+            AlertChanged?.Invoke(this, new StockAlertEvent(productId, warehouseId, alertType));
+        }
     }
 
     public async Task ResolveAsync(
@@ -141,6 +149,41 @@ public sealed class StockAlertService : IStockAlertService
         alert.ResolvedBy = session.CurrentUser!.UserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
         AlertChanged?.Invoke(this, new StockAlertEvent(alert.ProductId, alert.WarehouseId, alert.AlertType));
+    }
+
+    public async Task ResolveForProductAsync(
+        int productId,
+        CancellationToken cancellationToken = default,
+        bool persistChanges = true,
+        bool publishEvent = true)
+    {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+
+        var alerts = await _dbContext.StockAlerts
+            .Where(alert => alert.ProductId == productId && !alert.IsResolved)
+            .ToListAsync(cancellationToken);
+        var now = DateTime.Now;
+        foreach (var alert in alerts)
+        {
+            alert.IsResolved = true;
+            alert.ResolvedAt = now;
+        }
+
+        if (persistChanges)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (publishEvent)
+        {
+            foreach (var alert in alerts)
+            {
+                AlertChanged?.Invoke(this, new StockAlertEvent(alert.ProductId, alert.WarehouseId, alert.AlertType));
+            }
+        }
     }
 
     private static string ToAlertType(StockStatus status)

@@ -367,7 +367,7 @@ public sealed class ImportService : IImportService
         receipt.Status = "COMPLETED";
         var alertService = new StockAlertService(_dbContext, _authorization);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
-            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
+            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
