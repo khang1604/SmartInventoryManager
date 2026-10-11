@@ -351,3 +351,6 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 ## 13. Staff Permissions
 
 - When checking and fixing STAFF permission business rules, prioritize documentation in `.agent` as the source of truth; determine STAFF permissions based on the warehouse locations, not inferred from Warehouse or UserWarehouses if the documentation/schema does not specify.
+
+### Audit Reporting
+- When reporting audit progress, users want a concise report listing only completed F codes; users are allowed to commit changes made and continue reconciling remaining F codes that can be handled independently.
