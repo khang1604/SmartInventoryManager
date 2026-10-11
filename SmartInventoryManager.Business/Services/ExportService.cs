@@ -28,6 +28,9 @@ public sealed class ExportService : IExportService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateSession(session);
+        ValidateReceiptId(request.WarehouseId);
+        ValidateNote(request.Note);
         if (!await _authorization.CanCreateDraftReceiptAsync(session, request.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền tạo phiếu xuất tại kho này.");
@@ -77,10 +80,7 @@ public sealed class ExportService : IExportService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
-        if (!session.IsAuthenticated)
-        {
-            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu xuất.");
-        }
+        ValidateSession(session);
         var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         if (warehouseId.HasValue && !accessibleWarehouseIds.Contains(warehouseId.Value))
         {
@@ -134,10 +134,8 @@ public sealed class ExportService : IExportService
         int exportReceiptId,
         CancellationToken cancellationToken = default)
     {
-        if (!session.IsAuthenticated)
-        {
-            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu xuất.");
-        }
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
         var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         var receipt = await _dbContext.ExportReceipts
             .AsNoTracking()
@@ -174,16 +172,20 @@ public sealed class ExportService : IExportService
         int exportReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
-        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
-        {
-            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu xuất.");
-        }
         if (receipt.Status != "DRAFT")
         {
             throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được gửi duyệt.");
+        }
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
+        {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
+            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu xuất.");
         }
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
@@ -212,6 +214,8 @@ public sealed class ExportService : IExportService
 
     public async Task ApproveAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
@@ -229,9 +233,15 @@ public sealed class ExportService : IExportService
 
     public async Task RejectAsync(UserSession session, int exportReceiptId, string reason, CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Lý do từ chối là bắt buộc.", nameof(reason));
+        }
+        if (reason.Trim().Length > 500)
+        {
+            throw new ArgumentException("Lý do từ chối quá dài.", nameof(reason));
         }
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
@@ -251,11 +261,15 @@ public sealed class ExportService : IExportService
 
     public async Task ResubmitAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
             throw new UnauthorizedAccessException("Bạn không có quyền gửi lại phiếu xuất.");
         }
         if (receipt.Status != "REJECTED")
@@ -299,6 +313,22 @@ public sealed class ExportService : IExportService
 
         foreach (var detail in receipt.Details)
         {
+            var availableQuantity = await _dbContext.Inventories
+                .Where(item => item.WarehouseId == receipt.WarehouseId && item.ProductId == detail.ProductId)
+                .Select(item => (int?)item.Quantity)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (!availableQuantity.HasValue)
+            {
+                throw new InvalidOperationException($"Sản phẩm {detail.ProductId} chưa có tồn kho tại kho xuất.");
+            }
+            if (availableQuantity.Value < detail.Quantity)
+            {
+                throw new InvalidOperationException($"Sản phẩm {detail.ProductId} không đủ tồn kho để xuất.");
+            }
+        }
+
+        foreach (var detail in receipt.Details)
+        {
             var inventory = await _dbContext.Inventories
                 .SingleOrDefaultAsync(item => item.WarehouseId == receipt.WarehouseId && item.ProductId == detail.ProductId, cancellationToken)
                 ?? throw new InvalidOperationException($"Sản phẩm {detail.ProductId} chưa có tồn kho tại kho xuất.");
@@ -338,6 +368,9 @@ public sealed class ExportService : IExportService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateSession(session);
+        ValidateReceiptId(exportReceiptId);
+        ValidateNote(request.Note);
         var receipt = await _dbContext.ExportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
@@ -350,6 +383,7 @@ public sealed class ExportService : IExportService
         {
             throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu xuất tại kho này.");
         }
+
         ValidateRequest(request, requireDetails: false);
         if (request.WarehouseId != receipt.WarehouseId)
         {
@@ -414,6 +448,31 @@ public sealed class ExportService : IExportService
             receipt.Details.Any(detail => detail.Quantity <= 0 || detail.UnitPrice < 0))
         {
             throw new InvalidOperationException("Phiếu xuất có kho, sản phẩm hoặc số lượng không hợp lệ.");
+        }
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để thực hiện thao tác.");
+        }
+    }
+
+    private static void ValidateReceiptId(int receiptId)
+    {
+        if (receiptId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(receiptId));
+        }
+    }
+
+    private static void ValidateNote(string? note)
+    {
+        if (note?.Trim().Length > 500)
+        {
+            throw new ArgumentException("Ghi chú không quá 500 ký tự.", nameof(note));
         }
     }
 

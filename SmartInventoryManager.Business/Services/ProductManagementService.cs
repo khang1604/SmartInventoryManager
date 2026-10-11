@@ -61,6 +61,7 @@ public sealed class ProductManagementService : IProductService
         CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated(session);
+        if (productId <= 0) throw new ArgumentOutOfRangeException(nameof(productId));
         var product = await _dbContext.Products
             .AsNoTracking()
             .Include(item => item.Category)
@@ -100,6 +101,7 @@ public sealed class ProductManagementService : IProductService
         ProductRequestDto request,
         CancellationToken cancellationToken = default)
     {
+        if (productId <= 0) throw new ArgumentOutOfRangeException(nameof(productId));
         EnsureCanManage(session);
         ValidateRequest(request);
         var product = await _dbContext.Products
@@ -123,6 +125,10 @@ public sealed class ProductManagementService : IProductService
         bool isActive,
         CancellationToken cancellationToken = default)
     {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
         EnsureCanManage(session);
         var product = await _dbContext.Products
             .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken)

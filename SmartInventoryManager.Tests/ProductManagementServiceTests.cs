@@ -115,6 +115,16 @@ public class ProductManagementServiceTests
         Assert.AreEqual(DeleteBehavior.Restrict, relationship.DeleteBehavior);
     }
 
+    [TestMethod]
+    public async Task SetActive_RejectsInvalidProductId()
+    {
+        using var db = CreateDbContext();
+        var service = CreateService(db);
+
+        await Assert.ThrowsExceptionAsync<ArgumentOutOfRangeException>(() =>
+            service.SetActiveAsync(CreateSession(), 0, false));
+    }
+
     private static InventoryDbContext CreateDbContext() => new(
         new DbContextOptionsBuilder<InventoryDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);

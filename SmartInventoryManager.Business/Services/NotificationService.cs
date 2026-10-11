@@ -23,6 +23,10 @@ public sealed class NotificationService
         CancellationToken cancellationToken = default)
     {
         var userId = RequireUserId(session);
+        if (from.HasValue && to.HasValue && to.Value.Date < from.Value.Date)
+        {
+            throw new ArgumentException("Khoảng ngày không hợp lệ.", nameof(to));
+        }
         var query = _dbContext.Notifications.AsNoTracking().Where(item => item.UserId == userId);
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -40,6 +44,10 @@ public sealed class NotificationService
 
     public async Task MarkAsReadAsync(UserSession session, long notificationId, CancellationToken cancellationToken = default)
     {
+        if (notificationId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(notificationId));
+        }
         var userId = RequireUserId(session);
         var notification = await _dbContext.Notifications.SingleOrDefaultAsync(
             item => item.NotificationId == notificationId && item.UserId == userId, cancellationToken)
@@ -61,6 +69,7 @@ public sealed class NotificationService
 
     private static int RequireUserId(UserSession session)
     {
+        ArgumentNullException.ThrowIfNull(session);
         return session.CurrentUser?.UserId
             ?? throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem thông báo.");
     }
