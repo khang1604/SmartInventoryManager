@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Events;
 using SmartInventoryManager.Business.Inventory;
 using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
@@ -14,13 +15,17 @@ public sealed class ExportService : IExportService
     private const int MaxListResults = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
+    private readonly StockMutationService _stockMutation;
     private readonly ExportValidator _validator = new();
 
     public ExportService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _stockMutation = new StockMutationService(_dbContext);
     }
+
+    public event EventHandler<ReceiptCompletedEvent>? ReceiptCompleted;
 
     public async Task<int> CreateDraftAsync(
         UserSession session,
@@ -329,15 +334,7 @@ public sealed class ExportService : IExportService
 
         foreach (var detail in receipt.Details)
         {
-            var inventory = await _dbContext.Inventories
-                .SingleOrDefaultAsync(item => item.WarehouseId == receipt.WarehouseId && item.ProductId == detail.ProductId, cancellationToken)
-                ?? throw new InvalidOperationException($"Sản phẩm {detail.ProductId} chưa có tồn kho tại kho xuất.");
-            if (inventory.Quantity < detail.Quantity)
-            {
-                throw new InvalidOperationException($"Sản phẩm {detail.ProductId} không đủ tồn kho để xuất.");
-            }
-            inventory.Quantity -= detail.Quantity;
-            inventory.UpdatedAt = DateTime.Now;
+            await _stockMutation.DecreaseAsync(receipt.WarehouseId, detail.ProductId, detail.Quantity, cancellationToken);
             _dbContext.InventoryTransactions.Add(new InventoryTransaction
             {
                 ProductId = detail.ProductId,
@@ -356,9 +353,14 @@ public sealed class ExportService : IExportService
         receipt.Status = "COMPLETED";
         var alertService = new StockAlertService(_dbContext, _authorization);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
-            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
+            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        ReceiptCompleted?.Invoke(this, new ReceiptCompletedEvent(
+            exportReceiptId,
+            import: false,
+            receipt.WarehouseId,
+            receipt.Details.Select(detail => detail.ProductId).Distinct().ToArray()));
     }
 
     public async Task UpdateDraftAsync(

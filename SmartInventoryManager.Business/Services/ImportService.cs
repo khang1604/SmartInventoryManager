@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Events;
 using SmartInventoryManager.Business.Inventory;
 using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
@@ -17,13 +18,17 @@ public sealed class ImportService : IImportService
     private const int MaxRejectReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
+    private readonly StockMutationService _stockMutation;
     private readonly ImportValidator _validator = new();
 
     public ImportService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _stockMutation = new StockMutationService(_dbContext);
     }
+
+    public event EventHandler<ReceiptCompletedEvent>? ReceiptCompleted;
 
     public async Task<int> CreateDraftAsync(
         UserSession session,
@@ -346,9 +351,7 @@ public sealed class ImportService : IImportService
 
         foreach (var detail in receipt.Details)
         {
-            var inventory = await GetOrCreateInventoryAsync(receipt.WarehouseId, detail.ProductId, cancellationToken);
-            inventory.Quantity = checked(inventory.Quantity + detail.Quantity);
-            inventory.UpdatedAt = DateTime.Now;
+            await _stockMutation.IncreaseAsync(receipt.WarehouseId, detail.ProductId, detail.Quantity, cancellationToken);
             _dbContext.InventoryTransactions.Add(new InventoryTransaction
             {
                 ProductId = detail.ProductId,
@@ -367,9 +370,14 @@ public sealed class ImportService : IImportService
         receipt.Status = "COMPLETED";
         var alertService = new StockAlertService(_dbContext, _authorization);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
-            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
+            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        ReceiptCompleted?.Invoke(this, new ReceiptCompletedEvent(
+            importReceiptId,
+            import: true,
+            receipt.WarehouseId,
+            receipt.Details.Select(detail => detail.ProductId).Distinct().ToArray()));
     }
 
     public async Task UpdateDraftAsync(
