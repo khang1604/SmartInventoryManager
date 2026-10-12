@@ -212,8 +212,7 @@ internal static class ConnectedPages
         {
             foreach (var caption in new[] { "Thêm", "Sửa", "Ngừng hoạt động" })
             {
-                var button = page.Action(caption, () => Task.CompletedTask);
-                button.Enabled = false;
+                var button = page.Action(caption, () => { ActionFeedback.Show(page); return Task.CompletedTask; });
                 button.AccessibleDescription = "Chưa có chức năng lưu dữ liệu cho mục này.";
             }
         }

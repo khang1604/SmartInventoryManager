@@ -97,7 +97,7 @@ public sealed class FrmSupplierDetail : Form
         var save = ProductUi.Button("btnSave", "Lưu nhà cung cấp", primary: true);
         save.Width = 175;
         save.Margin = Padding.Empty;
-        save.Enabled = _services is not null;
+        save.Enabled = true;
         save.TabIndex = 8;
         save.AccessibleDescription = "Chưa sẵn sàng: chức năng lưu nhà cung cấp đang được hoàn thiện";
         save.Click += async (_, _) => await SaveAsync();
@@ -124,7 +124,8 @@ public sealed class FrmSupplierDetail : Form
 
     private async Task SaveAsync()
     {
-        if (_services is null || _saving) return;
+        if (_saving) return;
+        if (_services is null) { ActionFeedback.Show(this); return; }
         _saving = true;
         var save = Controls.Find("btnSave", true).First();
         save.Enabled = false;
