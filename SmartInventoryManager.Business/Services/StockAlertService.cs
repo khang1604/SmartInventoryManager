@@ -27,6 +27,8 @@ public sealed class StockAlertService : IStockAlertService
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
         if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem cảnh báo tại kho này.");
@@ -54,8 +56,19 @@ public sealed class StockAlertService : IStockAlertService
     public async Task RefreshAsync(
         int productId,
         int warehouseId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool persistChanges = true,
+        bool publishEvent = true)
     {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+        if (warehouseId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(warehouseId));
+        }
+
         var product = await _dbContext.Products
             .AsNoTracking()
             .SingleOrDefaultAsync(item => item.ProductId == productId && item.IsActive, cancellationToken)
@@ -69,6 +82,7 @@ public sealed class StockAlertService : IStockAlertService
         var openAlerts = await _dbContext.StockAlerts
             .Where(alert => alert.ProductId == productId && alert.WarehouseId == warehouseId && !alert.IsResolved)
             .ToListAsync(cancellationToken);
+        StockAlertEntity? currentAlert = null;
 
         foreach (var staleAlert in openAlerts.Where(alert => alert.AlertType != alertType || alertType == "NORMAL"))
         {
@@ -78,10 +92,10 @@ public sealed class StockAlertService : IStockAlertService
 
         if (alertType != "NORMAL")
         {
-            var currentAlert = openAlerts.FirstOrDefault(alert => alert.AlertType == alertType);
+            currentAlert = openAlerts.FirstOrDefault(alert => alert.AlertType == alertType);
             if (currentAlert is null)
             {
-                _dbContext.StockAlerts.Add(new StockAlertEntity
+                currentAlert = new StockAlertEntity
                 {
                     ProductId = productId,
                     WarehouseId = warehouseId,
@@ -90,7 +104,8 @@ public sealed class StockAlertService : IStockAlertService
                     Threshold = status == StockStatus.Overstock ? product.MaximumStock : product.ReorderPoint,
                     IsResolved = false,
                     CreatedAt = DateTime.Now
-                });
+                };
+                _dbContext.StockAlerts.Add(currentAlert);
             }
             else
             {
@@ -99,8 +114,19 @@ public sealed class StockAlertService : IStockAlertService
             }
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        AlertChanged?.Invoke(this, new StockAlertEvent(productId, warehouseId, alertType));
+        if (persistChanges)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        if (publishEvent)
+        {
+            AlertChanged?.Invoke(this, new StockAlertEvent(
+                productId,
+                warehouseId,
+                alertType,
+                currentAlert?.AlertId ?? 0,
+                quantity));
+        }
     }
 
     public async Task ResolveAsync(
@@ -108,6 +134,12 @@ public sealed class StockAlertService : IStockAlertService
         long alertId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        if (alertId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(alertId));
+        }
+
         var alert = await _dbContext.StockAlerts
             .SingleOrDefaultAsync(item => item.AlertId == alertId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy cảnh báo tồn kho.");
@@ -126,6 +158,41 @@ public sealed class StockAlertService : IStockAlertService
         AlertChanged?.Invoke(this, new StockAlertEvent(alert.ProductId, alert.WarehouseId, alert.AlertType));
     }
 
+    public async Task ResolveForProductAsync(
+        int productId,
+        CancellationToken cancellationToken = default,
+        bool persistChanges = true,
+        bool publishEvent = true)
+    {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+
+        var alerts = await _dbContext.StockAlerts
+            .Where(alert => alert.ProductId == productId && !alert.IsResolved)
+            .ToListAsync(cancellationToken);
+        var now = DateTime.Now;
+        foreach (var alert in alerts)
+        {
+            alert.IsResolved = true;
+            alert.ResolvedAt = now;
+        }
+
+        if (persistChanges)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (publishEvent)
+        {
+            foreach (var alert in alerts)
+            {
+                AlertChanged?.Invoke(this, new StockAlertEvent(alert.ProductId, alert.WarehouseId, alert.AlertType));
+            }
+        }
+    }
+
     private static string ToAlertType(StockStatus status)
     {
         return status switch
@@ -136,5 +203,22 @@ public sealed class StockAlertService : IStockAlertService
             StockStatus.Overstock => "OVERSTOCK",
             _ => throw new ArgumentOutOfRangeException(nameof(status))
         };
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xử lý cảnh báo tồn kho.");
+        }
+    }
+
+    private static void ValidateWarehouseId(int warehouseId)
+    {
+        if (warehouseId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(warehouseId));
+        }
     }
 }

@@ -13,19 +13,19 @@ namespace SmartInventoryManager.Business.Validators
         {
             var errors = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(productCode))
+            if (string.IsNullOrWhiteSpace(productCode) || productCode.Trim().Length > 50)
             {
-                errors.Add("Mã sản phẩm không được để trống.");
+                errors.Add("Mã sản phẩm là bắt buộc và không quá 50 ký tự.");
             }
 
-            if (string.IsNullOrWhiteSpace(productName))
+            if (string.IsNullOrWhiteSpace(productName) || productName.Trim().Length > 200)
             {
-                errors.Add("Tên sản phẩm không được để trống.");
+                errors.Add("Tên sản phẩm là bắt buộc và không quá 200 ký tự.");
             }
 
-            if (string.IsNullOrWhiteSpace(unit))
+            if (string.IsNullOrWhiteSpace(unit) || unit.Trim().Length > 50)
             {
-                errors.Add("Đơn vị tính không được để trống.");
+                errors.Add("Đơn vị tính là bắt buộc và không quá 50 ký tự.");
             }
 
             if (purchasePrice < 0)

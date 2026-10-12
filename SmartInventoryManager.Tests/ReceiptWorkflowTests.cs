@@ -164,6 +164,27 @@ public class ReceiptWorkflowTests
     }
 
     [TestMethod]
+    public async Task RejectedReceiptCannotBeCancelled()
+    {
+        await using var context = CreateContext();
+        SeedReceiptData(context);
+        var service = new ImportService(context, new AuthorizationService(context));
+        var id = await service.CreateDraftAsync(CreateAdminSession(), new ImportReceiptDto
+        {
+            WarehouseId = 7,
+            SupplierId = 3,
+            Details = [new ReceiptDetailDto(11, 1, 100)]
+        });
+
+        await service.SubmitAsync(CreateAdminSession(), id);
+        await service.RejectAsync(CreateAdminSession(), id, "Cần bổ sung chứng từ");
+
+        await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() =>
+            service.CancelDraftAsync(CreateAdminSession(), id));
+        Assert.AreEqual("REJECTED", (await context.ImportReceipts.SingleAsync(item => item.ImportReceiptId == id)).Status);
+    }
+
+    [TestMethod]
     public async Task AdminCanAccessAllActiveWarehouses()
     {
         await using var context = CreateContext();
