@@ -17,7 +17,7 @@ internal sealed class AccountFieldErrors
             AccessibleName = "Lỗi " + input.AccessibleName };
         // [COLOR CONFIG]: chữ đỏ tối để lỗi dễ đọc trên nền trắng, luôn kèm nội dung.
         label.ForeColor = Color.FromArgb(180, 32, 32);
-        input.Margin = Padding.Empty; input.Dock = DockStyle.Top;
+        input.Margin = Padding.Empty; input.Dock = DockStyle.Fill;
         panel.Controls.Add(input, 0, 0); panel.Controls.Add(label, 0, 1);
         _labels.Add(input, label);
         input.TextChanged += (_, _) => { label.Text = ""; };

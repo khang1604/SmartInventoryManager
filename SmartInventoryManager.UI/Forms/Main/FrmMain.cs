@@ -124,21 +124,13 @@ public partial class FrmMain : Form
     private Control BuildSidebar()
     {
         var sidebar = CreateLayout(1, 3);
-<<<<<<< HEAD
         sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-=======
-        sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
->>>>>>> 385d53e43171ccaa6a70dd6ddfd8a307d1dbd529
         sidebar.Padding = new Padding(8, 12, 8, 12);
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
         var brand = _brand = CreateLayout(2, 1);
-<<<<<<< HEAD
         brand.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-=======
-        brand.RowStyles.Add(new RowStyle(SizeType.Percent,100));
->>>>>>> 385d53e43171ccaa6a70dd6ddfd8a307d1dbd529
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60));
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         var logo = UiBrand.CreateLogo();
@@ -159,7 +151,6 @@ public partial class FrmMain : Form
             _root.ColumnStyles[0].Width = (_collapsed ? 76 : 205) * DeviceDpi / 96F;
             _brandText.Visible = !_collapsed;
             _account.Visible = !_collapsed;
-<<<<<<< HEAD
             _brand.ColumnStyles[0].SizeType = _collapsed ? SizeType.Percent : SizeType.Absolute;
             _brand.ColumnStyles[0].Width = _collapsed ? 100 : 60 * DeviceDpi / 96F;
             _brand.ColumnStyles[1].SizeType = _collapsed ? SizeType.Absolute : SizeType.Percent;
@@ -167,15 +158,6 @@ public partial class FrmMain : Form
             toggle.SetIcon(_collapsed ? "chevron-right" : "chevron-left");
             _logout.Dock = DockStyle.Fill;
             _logout.Visible = true;
-=======
-            _brand.ColumnStyles[0].SizeType=_collapsed ? SizeType.Percent : SizeType.Absolute;
-            _brand.ColumnStyles[0].Width=_collapsed ? 100 : 60*DeviceDpi/96F;
-            _brand.ColumnStyles[1].SizeType=_collapsed ? SizeType.Absolute : SizeType.Percent;
-            _brand.ColumnStyles[1].Width=_collapsed ? 0 : 100;
-            toggle.SetIcon(_collapsed ? "chevron-right" : "chevron-left");
-            _logout.Dock = DockStyle.Fill;
-            _logout.Visible=true;
->>>>>>> 385d53e43171ccaa6a70dd6ddfd8a307d1dbd529
             _toolTips.SetToolTip(toggle, _collapsed ? "Mở rộng menu" : "Thu gọn menu");
             foreach (var button in _navigation.Values.Append(_logout))
             {

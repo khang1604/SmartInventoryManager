@@ -43,7 +43,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 
 ### Active scope enforcement
 
-- Before edits, identify the active owner, requested feature, allowed components/files, and shared contracts. Use explicit task instructions or documented assignment; never infer ownership merely from a login name, file author, or branch name.
+- Before edits, identify the active owner, reques ted feature, allowed components/files, and shared contracts. Use explicit task instructions or documented assignment; never infer ownership merely from a login name, file author, or branch name.
 - If the task does not establish an owner/scope, perform read-only inspection and ask for the missing scope before implementation. When the user assigns a clear feature, map it to the ownership above without asking redundantly.
 - Default write scope is limited to the active owner's requested feature. Read other layers as needed to understand contracts; do not modify another owner's code, tests, configuration, or dependencies just to complete your part.
 - A cross-owner change requires explicit authorization naming the affected component and purpose. Existing authorization applies; do not ask again for the same approved scope. A request to review or diagnose is not authorization to implement in other owners' components.
