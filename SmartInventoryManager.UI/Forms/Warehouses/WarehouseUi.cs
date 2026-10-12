@@ -14,19 +14,20 @@ internal static class WarehouseUi
         form.Font = new Font("Segoe UI", 10F);
         var root = ProductUi.Layout(1, 4);
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 106));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         int count = location ? 3 : 2;
-        var filters = ProductUi.Layout(count, 2);
+        var filters = ProductUi.Layout(count + 1, 2);
         filters.Padding = new Padding(16, 10, 4, 12);
         // [COLOR CONFIG]: nền trắng của vùng lọc.
         filters.BackColor = AppColors.Surface;
-        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, location ? 44 : 60));
-        for (int i = 1; i < count; i++) filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, location ? 28 : 40));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+        for (int i = 1; i < count; i++) filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, location ? 10 : 35));
         filters.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
-        filters.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        filters.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         filters.Controls.Add(ProductUi.Label("Tìm kiếm", 10, true), 0, 0);
         var search = ProductUi.Input("txtSearch", location ? "Nhập mã hoặc tên vị trí" : "Nhập mã hoặc tên kho");
         search.PrefixSvg = MainIcons.Get("search");
