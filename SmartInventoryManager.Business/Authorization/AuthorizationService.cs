@@ -239,6 +239,12 @@ public sealed class AuthorizationService
             await CanViewWarehouseAsync(session, warehouseId);
     }
 
+    internal async Task EnsureActiveActorAsync(UserSession session, CancellationToken cancellationToken = default)
+    {
+        if (!await IsActorActiveAsync(session, cancellationToken))
+            throw new UnauthorizedAccessException("Phiên làm việc không còn hợp lệ. Vui lòng đăng nhập lại.");
+    }
+
     private async Task<bool> IsActorActiveAsync(UserSession session, CancellationToken cancellationToken)
     {
         if (session is null || !session.IsAuthenticated || session.CurrentUser is null) return false;

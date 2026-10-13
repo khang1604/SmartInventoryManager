@@ -73,10 +73,17 @@ public sealed class StockAlertService : IStockAlertService
             .AsNoTracking()
             .SingleOrDefaultAsync(item => item.ProductId == productId && item.IsActive, cancellationToken)
             ?? throw new KeyNotFoundException("Sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
-        var quantity = await _dbContext.Inventories
-            .Where(item => item.ProductId == productId && item.WarehouseId == warehouseId)
-            .Select(item => (int?)item.Quantity)
-            .SingleOrDefaultAsync(cancellationToken) ?? 0;
+        // Include pending stock changes/new inventory rows from the same workflow.
+        // A scalar database projection would read the quantity before SaveChanges.
+        var trackedInventory = _dbContext.ChangeTracker.Entries<SmartInventoryManager.Data.Entities.Inventory>()
+            .SingleOrDefault(entry => entry.State is EntityState.Added or EntityState.Modified
+                && entry.Entity.ProductId == productId && entry.Entity.WarehouseId == warehouseId);
+        var quantity = trackedInventory is not null
+            ? trackedInventory.Entity.Quantity
+            : await _dbContext.Inventories.AsNoTracking()
+                .Where(item => item.ProductId == productId && item.WarehouseId == warehouseId)
+                .Select(item => (int?)item.Quantity)
+                .SingleOrDefaultAsync(cancellationToken) ?? 0;
         var status = StockStatusCalculator.Calculate(quantity, product.ReorderPoint, product.MaximumStock);
         var alertType = ToAlertType(status);
         var openAlerts = await _dbContext.StockAlerts

@@ -8,10 +8,12 @@ namespace SmartInventoryManager.Business.Services;
 public sealed class NotificationService
 {
     private readonly InventoryDbContext _dbContext;
+    private readonly AuthorizationService _authorization;
 
     public NotificationService(InventoryDbContext dbContext)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _authorization = new AuthorizationService(_dbContext);
     }
 
     public async Task<IReadOnlyList<NotificationDto>> GetAsync(
@@ -23,6 +25,7 @@ public sealed class NotificationService
         CancellationToken cancellationToken = default)
     {
         var userId = RequireUserId(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         if (from.HasValue && to.HasValue && to.Value.Date < from.Value.Date)
         {
             throw new ArgumentException("Khoảng ngày không hợp lệ.", nameof(to));
@@ -49,6 +52,7 @@ public sealed class NotificationService
             throw new ArgumentOutOfRangeException(nameof(notificationId));
         }
         var userId = RequireUserId(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         var notification = await _dbContext.Notifications.SingleOrDefaultAsync(
             item => item.NotificationId == notificationId && item.UserId == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy thông báo.");
@@ -60,6 +64,7 @@ public sealed class NotificationService
     public async Task MarkAllAsReadAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         var userId = RequireUserId(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         var notifications = await _dbContext.Notifications
             .Where(item => item.UserId == userId && !item.IsRead).ToListAsync(cancellationToken);
         if (notifications.Count == 0) return;

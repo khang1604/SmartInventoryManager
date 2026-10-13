@@ -125,9 +125,23 @@ public class ProductManagementServiceTests
             service.SetActiveAsync(CreateSession(), 0, false));
     }
 
-    private static InventoryDbContext CreateDbContext() => new(
-        new DbContextOptionsBuilder<InventoryDbContext>()
+    private static InventoryDbContext CreateDbContext()
+    {
+        var db = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.Users.Add(new User
+        {
+            UserId = 1,
+            Username = "admin",
+            FullName = "Admin",
+            PasswordHash = "test",
+            IsActive = true,
+            Role = new Role { RoleId = 1, RoleName = RoleNames.Admin }
+        });
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+        return db;
+    }
 
     private static ProductManagementService CreateService(InventoryDbContext db) => new(db, new AuthorizationService(db));
 

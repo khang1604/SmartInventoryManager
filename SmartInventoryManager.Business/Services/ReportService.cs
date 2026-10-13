@@ -21,8 +21,10 @@ public sealed class ReportService
         CancellationToken cancellationToken = default)
     {
         var warehouseIds = await GetWarehouseScopeAsync(session, warehouseId, cancellationToken);
-        var rows = await _dbContext.Inventories.AsNoTracking()
-            .Where(item => warehouseIds.Contains(item.WarehouseId))
+        var inventory = _dbContext.Inventories.AsNoTracking()
+            .Where(item => warehouseIds.Contains(item.WarehouseId));
+        var totalQuantity = await inventory.Select(item => (long)item.Quantity).SumAsync(cancellationToken);
+        var rows = await inventory
             .OrderBy(item => item.Warehouse.WarehouseName)
             .ThenBy(item => item.Product.ProductCode)
             .Take(5000)
@@ -40,7 +42,7 @@ public sealed class ReportService
             .ToListAsync(cancellationToken);
         var openAlertCount = await _dbContext.StockAlerts.AsNoTracking()
             .CountAsync(item => warehouseIds.Contains(item.WarehouseId) && !item.IsResolved, cancellationToken);
-        return new InventoryReportDto(rows.Sum(item => (long)item.Quantity), openAlertCount, rows);
+        return new InventoryReportDto(totalQuantity, openAlertCount, rows);
     }
 
     public async Task<ImportExportReportDto> GetImportExportAsync(UserSession session, int? warehouseId = null,
@@ -64,6 +66,8 @@ public sealed class ReportService
             imports = imports.Where(item => item.ReceiptDate < end);
             exports = exports.Where(item => item.ReceiptDate < end);
         }
+        var importTotal = await imports.Select(item => item.TotalAmount).SumAsync(cancellationToken);
+        var exportTotal = await exports.Select(item => item.TotalAmount).SumAsync(cancellationToken);
         var importRows = await imports.OrderByDescending(item => item.ReceiptDate).Take(5000)
             .Select(item => new ImportReceiptListItemDto(item.ImportReceiptId, item.ReceiptCode, item.Supplier.SupplierName,
                 item.Warehouse.WarehouseName, item.Creator.FullName, item.ReceiptDate, item.TotalAmount, item.Status))
@@ -73,7 +77,7 @@ public sealed class ReportService
                 item.Warehouse.WarehouseName, item.Creator.FullName, item.ReceiptDate, item.TotalAmount, item.Status))
             .ToListAsync(cancellationToken);
         return new ImportExportReportDto(from, to, warehouseId, importRows, exportRows,
-            importRows.Sum(item => item.TotalAmount), exportRows.Sum(item => item.TotalAmount));
+            importTotal, exportTotal);
     }
 
     private async Task<int[]> GetWarehouseScopeAsync(UserSession session, int? warehouseId, CancellationToken cancellationToken)

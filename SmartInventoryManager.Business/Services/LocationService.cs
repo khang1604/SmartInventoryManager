@@ -29,7 +29,10 @@ public sealed class LocationService
 
     public async Task<int> CreateAsync(UserSession session, LocationRequestDto request, CancellationToken cancellationToken = default)
     {
-        EnsureCanManage(session); Validate(request); await EnsureWarehouseAsync(session, request.WarehouseId, cancellationToken);
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        Validate(request);
+        await EnsureWarehouseAsync(session, request.WarehouseId, cancellationToken);
         if (await _dbContext.Locations.AnyAsync(item => item.WarehouseId == request.WarehouseId && item.LocationCode == request.LocationCode.Trim(), cancellationToken))
             throw new InvalidOperationException("Mã vị trí đã tồn tại trong kho.");
         var entity = new Location { WarehouseId = request.WarehouseId, LocationCode = request.LocationCode.Trim(), LocationName = request.LocationName?.Trim(), IsActive = request.IsActive };
@@ -38,7 +41,10 @@ public sealed class LocationService
 
     public async Task UpdateAsync(UserSession session, int locationId, LocationRequestDto request, CancellationToken cancellationToken = default)
     {
-        EnsureCanManage(session); Validate(request); await EnsureWarehouseAsync(session, request.WarehouseId, cancellationToken);
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        Validate(request);
+        await EnsureWarehouseAsync(session, request.WarehouseId, cancellationToken);
         var entity = await _dbContext.Locations.SingleOrDefaultAsync(item => item.LocationId == locationId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy vị trí.");
         await EnsureWarehouseAsync(session, entity.WarehouseId, cancellationToken);
         if (await _dbContext.Locations.AnyAsync(item => item.LocationId != locationId && item.WarehouseId == request.WarehouseId && item.LocationCode == request.LocationCode.Trim(), cancellationToken))
@@ -49,7 +55,9 @@ public sealed class LocationService
 
     public async Task SetActiveAsync(UserSession session, int locationId, bool isActive, CancellationToken cancellationToken = default)
     {
-        EnsureCanManage(session); var entity = await _dbContext.Locations.SingleOrDefaultAsync(item => item.LocationId == locationId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy vị trí.");
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        var entity = await _dbContext.Locations.SingleOrDefaultAsync(item => item.LocationId == locationId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy vị trí.");
         await EnsureWarehouseAsync(session, entity.WarehouseId, cancellationToken); entity.IsActive = isActive; await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
