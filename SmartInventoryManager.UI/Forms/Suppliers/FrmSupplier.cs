@@ -49,14 +49,14 @@ public partial class FrmSupplier : Form
         filters.Controls.Add(ProductUi.Label("Trạng thái", 10, true), 1, 0);
         var search = ProductUi.Input("txtSearch", "Nhập mã, tên hoặc số điện thoại");
         search.PrefixSvg = MainIcons.Get("search");
-        search.ReadOnly = false;
+        search.ReadOnly = true;
         search.TabIndex = 0;
         search.AccessibleName = "Tìm mã, tên hoặc số điện thoại nhà cung cấp";
         search.AccessibleDescription = "Tìm kiếm chưa sẵn sàng khi chưa có dữ liệu";
         var status = ProductUi.Input("cboStatus");
         status.Text = "Tất cả trạng thái";
         status.SuffixSvg = MainIcons.Get("chevron-down");
-        status.ReadOnly = false;
+        status.ReadOnly = true;
         status.TabIndex = 1;
         status.AccessibleName = "Lọc trạng thái nhà cung cấp";
         status.AccessibleDescription = "Bộ lọc chưa sẵn sàng khi chưa có dữ liệu";
@@ -221,7 +221,7 @@ public partial class FrmSupplier : Form
     private static AntdUI.Button Unavailable(string name, string text, string icon)
     {
         var button = ProductUi.Button(name, text, icon);
-        button.Click += (_, _) => ActionFeedback.Show(button);
+        button.Enabled = false;
         button.AccessibleDescription = "Chưa sẵn sàng: chức năng dữ liệu đang được hoàn thiện";
         return button;
     }

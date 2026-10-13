@@ -8,8 +8,6 @@ public partial class FrmProductDetail : Form
 {
     private readonly UiServices? _services;
     private readonly int? _productId;
-    private int? _savedProductId;
-    private bool _persistedActive = true;
 
     public FrmProductDetail()
     {
@@ -21,9 +19,9 @@ public partial class FrmProductDetail : Form
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _productId = productId;
-        FindControl<AntdUI.Button>("btnSave").Enabled = services.Authorization.CanManageProduct(services.Session);
-        FindControl<CheckBox>("chkIsActive").Enabled = services.Authorization.CanManageProduct(services.Session);
-        FindControl<CheckBox>("chkIsActive").AccessibleDescription = "Lưu trạng thái kinh doanh cùng thông tin sản phẩm";
+        FindControl<AntdUI.Button>("btnSave").Enabled = true;
+        FindControl<CheckBox>("chkIsActive").Enabled = false;
+        FindControl<CheckBox>("chkIsActive").AccessibleDescription = "Thay đổi trạng thái từ danh sách sản phẩm";
         Shown += async (_, _) => await LoadDataAsync();
     }
 
@@ -94,7 +92,6 @@ public partial class FrmProductDetail : Form
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 248));
         var note = ProductUi.Label("Các trường có dấu * là bắt buộc", 8.5F);
-        note.Name = "formStatus";
         // [COLOR CONFIG]: ghi chú phụ rõ ràng về trạng thái biểu mẫu.
         note.ForeColor = AppColors.Muted;
         footer.Controls.Add(note, 0, 0);
@@ -106,11 +103,10 @@ public partial class FrmProductDetail : Form
         var save = ProductUi.Button("btnSave", "Lưu sản phẩm", primary: true);
         save.Width = 145;
         save.Margin = Padding.Empty;
-        save.Enabled = true;
+        save.Enabled = _services is not null;
         save.TabIndex = 10;
         save.AccessibleDescription = "Lưu thông tin sản phẩm qua Service";
         save.Click += async (_, _) => await SaveAsync();
-        FormClosing += (_, e) => { if (_saving) e.Cancel = true; };
         actions.Controls.Add(close);
         actions.Controls.Add(save);
         CancelButton = close;
@@ -139,7 +135,6 @@ public partial class FrmProductDetail : Form
             FindControl<AntdUI.InputNumber>("numReorderPoint").Value = product.ReorderPoint;
             FindControl<AntdUI.InputNumber>("numMaximumStock").Value = product.MaximumStock;
             FindControl<CheckBox>("chkIsActive").Checked = product.IsActive;
-            _persistedActive = product.IsActive;
         }
         catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể tải dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
@@ -148,14 +143,7 @@ public partial class FrmProductDetail : Form
 
     private async Task SaveAsync()
     {
-        if (_saving) return;
-        if (_services is null) { ActionFeedback.Show(this); return; }
-        var desiredActive = FindControl<CheckBox>("chkIsActive").Checked;
-        if (desiredActive != _persistedActive && MessageBox.Show(this,
-            desiredActive ? "Cho sản phẩm kinh doanh trở lại?" : "Ngừng kinh doanh sản phẩm này?",
-            "Xác nhận trạng thái", MessageBoxButtons.OKCancel, MessageBoxIcon.Question,
-            MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
-        bool informationSaved = false;
+        if (_services is null || _saving) return;
         _saving = true;
         var save = Controls.Find("btnSave", true).First();
         save.Enabled = false;
@@ -176,22 +164,13 @@ public partial class FrmProductDetail : Form
                 ReorderPoint = Convert.ToInt32(FindControl<AntdUI.InputNumber>("numReorderPoint").Value),
                 MaximumStock = Convert.ToInt32(FindControl<AntdUI.InputNumber>("numMaximumStock").Value)
             };
-            var id = _savedProductId ?? _productId;
-            if (id.HasValue)
-                await _services.RunAsync(() => _services.ProductManagement.UpdateAsync(_services.Session, id.Value, request));
-            else
-                id = await _services.RunAsync(() => _services.ProductManagement.CreateAsync(_services.Session, request));
-            _savedProductId = id;
-            informationSaved = true;
-            if (desiredActive != _persistedActive)
-            {
-                await _services.RunAsync(() => _services.ProductManagement.SetActiveAsync(_services.Session, id.Value, desiredActive));
-                _persistedActive = desiredActive;
-            }
+            await _services.RunAsync(() => _productId.HasValue
+                ? _services.ProductManagement.UpdateAsync(_services.Session, _productId.Value, request)
+                : _services.ProductManagement.CreateAsync(_services.Session, request));
             DialogResult = DialogResult.OK;
             Close();
         }
-        catch (Exception ex) { ActionFeedback.Show(this, (informationSaved ? "Thông tin đã lưu; đổi trạng thái chưa thành công. " : "") + LiveUi.Error(ex)); }
+        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể lưu sản phẩm", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 

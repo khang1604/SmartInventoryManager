@@ -105,7 +105,7 @@ public sealed class FrmWarehouseDetail : Form
         close.TabIndex = 5;
         var save = ProductUi.Button("btnSave", $"Lưu {subject}", primary: true);
         save.Width = 135;
-        save.Enabled = true;
+        save.Enabled = _services is not null;
         save.TabIndex = 6;
         save.Margin = Padding.Empty;
         save.AccessibleDescription = "Lưu thông tin qua Service";
@@ -129,8 +129,7 @@ public sealed class FrmWarehouseDetail : Form
 
     private async Task SaveAsync()
     {
-        if (_saving) return;
-        if (_services is null) { ActionFeedback.Show(this); return; }
+        if (_services is null || _saving) return;
         _saving = true;
         var save = Controls.Find("btnSave", true).First();
         save.Enabled = false;

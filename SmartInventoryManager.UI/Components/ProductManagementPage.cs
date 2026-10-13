@@ -77,7 +77,7 @@ internal sealed class ProductManagementPage : UserControl
         var detail = new DataGridViewButtonColumn { Name = "ViewDetails", HeaderText = "Chi tiết", Text = "Xem chi tiết",
             UseColumnTextForButtonValue = true, MinimumWidth = 125, Width = 125, AutoSizeMode = DataGridViewAutoSizeColumnMode.None };
         _grid.Columns.Add(detail);
-        UiDetails.DecorateDetailsColumn(_grid, insetButton: true);
+        UiDetails.DecorateDetailsColumn(_grid);
         _grid.CellContentClick += async (_, e) =>
         {
             if (_busy || e.RowIndex < 0 || e.ColumnIndex < 0 || _grid.Columns[e.ColumnIndex].Name != "ViewDetails"
