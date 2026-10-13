@@ -16,9 +16,9 @@ public static class StockStatusCalculator
             errors.Add("Mức tồn tối đa không được âm.");
         }
 
-        if (reorderPoint >= 0 && maximumStock >= 0 && reorderPoint > maximumStock)
+        if (reorderPoint >= 0 && maximumStock >= 0 && reorderPoint >= maximumStock)
         {
-            errors.Add("Điểm đặt hàng lại không được lớn hơn mức tồn tối đa.");
+            errors.Add("Mức tồn tối đa phải lớn hơn điểm đặt hàng lại.");
         }
 
         return errors.AsReadOnly();

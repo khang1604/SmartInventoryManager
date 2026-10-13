@@ -12,6 +12,9 @@ public class StockStatusCalculatorTests
     [DataRow(11, 10, 100, StockStatus.Normal)]
     [DataRow(100, 10, 100, StockStatus.Normal)]
     [DataRow(101, 10, 100, StockStatus.Overstock)]
+    [DataRow(0, 0, 1, StockStatus.OutOfStock)]
+    [DataRow(1, 0, 1, StockStatus.Normal)]
+    [DataRow(2, 0, 1, StockStatus.Overstock)]
     public void Calculate_UsesLockedBoundaries(int quantity, int reorderPoint, int maximumStock, StockStatus expected)
     {
         Assert.AreEqual(expected, StockStatusCalculator.Calculate(quantity, reorderPoint, maximumStock));
@@ -22,6 +25,8 @@ public class StockStatusCalculatorTests
     [DataRow(10, 9)]
     [DataRow(11, 10)]
     [DataRow(1, 0)]
+    [DataRow(0, 0)]
+    [DataRow(10, 10)]
     public void ValidateThresholds_RejectsInvalidConfiguration(int reorderPoint, int maximumStock)
     {
         Assert.IsFalse(StockStatusCalculator.HasValidThresholds(reorderPoint, maximumStock));
@@ -31,5 +36,13 @@ public class StockStatusCalculatorTests
     public void Calculate_RejectsNegativeQuantity()
     {
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => StockStatusCalculator.Calculate(-1, 10, 100));
+    }
+
+    [DataTestMethod]
+    [DataRow(0, 0)]
+    [DataRow(10, 10)]
+    public void Calculate_RejectsEqualConfigurationThresholds(int reorderPoint, int maximumStock)
+    {
+        Assert.ThrowsException<ArgumentException>(() => StockStatusCalculator.Calculate(0, reorderPoint, maximumStock));
     }
 }
