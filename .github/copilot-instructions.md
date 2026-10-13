@@ -7,7 +7,7 @@ This file contains shared project-wide instructions. `.agent/RULE.md` is a local
 - Build a multi-warehouse desktop application with C#, Windows Forms, Visual Studio, SQL Server, Entity Framework, ADO.NET, and LINQ.
 - Inspect the solution, relevant code, .csproj, global.json, Directory.Build.props, and Directory.Packages.props when present before editing. Repository configuration determines actual versions.
 - New solution default: Visual Studio 2026, .NET 10, EF Core 10.x. Preserve existing .NET 8/EF Core 8.x or .NET Framework/EF6 configurations. Do not mix EF6 and EF Core or migrate frameworks without a request.
-- Keep Microsoft.EntityFrameworkCore.* packages at the same exact compatible stable version; do not automatically upgrade major versions.
+- Keep Microsoft.EntityFrameworkCore.\* packages at the same exact compatible stable version; do not automatically upgrade major versions.
 - Do not introduce web stacks, web APIs, or a different UI framework without a requirement.
 
 ### Technology authorization
@@ -37,7 +37,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 
 ### Ownership map
 
-- **Bảo Anh — Database + Architecture + Data/EF/ADO.NET Infrastructure:** database, ERD, Entity models, EF DbContext, EF Configurations, EF Core Migrations, justified repositories/UnitOfWork, ADO.NET infrastructure, architecture, SQL-managed artifacts, constraints, indexes, views, and supporting stored procedures.
+- **Bảo Anh — Database + Architecture + Data/EF/ADO.NET Infrastructure:** database, ERD, Entity models, EF DbContext, EF Configurations, EF Core Migrations, repositories/UnitOfWork when justified, ADO.NET infrastructure, architecture, SQL-managed artifacts, constraints, indexes, views, and supporting stored procedures.
 - **Khang — Business/Backend + Warehouse Operations:** Business Services, warehouse operations, imports, exports, inventory workflows, stock-alert backend, business validation, receipt state machine, stock updates, transfer/adjustment workflows, business events, and Business tests.
 - **Khiêm — UI + Dashboard + Analytics + Reports + Notification UI:** Windows Forms UI, Dashboard, Analytics, charts, reports, notification UI, UI interactions, and presentation/query integration within agreed contracts.
 
@@ -227,6 +227,7 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 
 - EF Core Migration is the authoritative mechanism for EF-managed schema evolution (tables, columns, types, PK/FK, UNIQUE, CHECK, NOT NULL, defaults, indexes, and EF relationships). Existing table/constraint/index SQL scripts must not compete with Migration as a second schema authority.
 - Preserve multi-warehouse keys, foreign keys, constraints, indexes, delete behavior, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
+- `UserWarehouse` is approved and is part of the 17-entity model. Its primary key is `(UserId, WarehouseId)`; both foreign keys use `DeleteBehavior.Restrict`. Do not add assignment audit fields without an approved contract change. `Users.WarehouseId` remains forbidden.
 - Repository and UnitOfWork are optional: use them only when they add clear value or are established project contracts. Do not build wrappers just to fill folders; EF already provides related capabilities. Do not remove established contracts without authorization.
 - Business Services are the authoritative stock-update path. Never use triggers to automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
 - EF and ADO.NET participating in one workflow must share the intended transaction/context consistency strategy; do not commit partial steps separately or retain stale tracked quantities.
@@ -313,6 +314,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 ## File Safety & Destructive Operations
 
 ### Workspace boundary
+
 - Before any file modification, resolve and record the absolute repository root.
 - Create, edit, move, or delete files only inside that repository.
 - Never modify or clean drive roots, Windows directories, installed applications, user profiles, Desktop, Documents, Downloads, or shared folders outside the repository.
@@ -320,6 +322,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - If the repository root cannot be verified, perform read-only inspection only.
 
 ### Deletion requires specific approval
+
 - Before deleting any existing file or directory, show its exact absolute path, why deletion is necessary, what it contains, and the recovery method.
 - Obtain explicit approval for those exact targets. General instructions such as “clean up,” “remove unused code,” or “fix everything” are not deletion approval.
 - Do not combine approved deletion with additional targets.
@@ -328,6 +331,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Never automatically delete backups.
 
 ### Validate every destructive target
+
 - Resolve the final absolute path, including symbolic links, junctions, and reparse points, before acting.
 - Verify that the target is strictly inside the repository and is not the repository root, a drive root, or an ancestor directory.
 - Reject empty paths, unresolved variables, wildcards, ambiguous relative paths, or links that lead outside the repository.
@@ -336,6 +340,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Never search an entire drive and delete matching files or folders.
 
 ### Forbidden automatic operations
+
 - Do not run disk cleanup, storage optimization, application uninstallers, registry cleanup, disk formatting, partition changes, or broad permission changes.
 - Do not delete system folders, package caches, SDKs, runtimes, global NuGet caches, or other projects to fix a build.
 - Do not use destructive commands such as `Remove-Item -Recurse -Force`, `rd /s /q`, `rm -rf`, `git clean`, or `git reset --hard` without exact-target approval and a verified recovery plan.
@@ -344,6 +349,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Standard restore/build commands are permitted when their configuration has been checked for unexpected destructive hooks. Explicit clean commands still require deletion approval.
 
 ### If a mistake occurs
+
 - Stop all write, cleanup, installation, and deletion operations immediately.
 - Report the exact command, affected paths, and known results.
 - Preserve logs and available backups.
@@ -355,4 +361,5 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - When checking and fixing STAFF permission business rules, prioritize documentation in `.agent` as the source of truth; determine STAFF permissions based on the warehouse locations, not inferred from Warehouse or UserWarehouses if the documentation/schema does not specify.
 
 ### Audit Reporting
+
 - When reporting audit progress, users want a concise report listing only completed F codes; users are allowed to commit changes made and continue reconciling remaining F codes that can be handled independently.
