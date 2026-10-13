@@ -571,14 +571,13 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.HasKey("AlertId");
 
-                    b.HasIndex("ProductId");
-
                     b.HasIndex("ResolvedBy");
 
                     b.HasIndex("WarehouseId");
 
                     b.HasIndex("ProductId", "WarehouseId", "AlertType")
                         .IsUnique()
+
                         .HasFilter("[IsResolved] = 0")
                         .HasDatabaseName("UX_StockAlerts_Open_ProductWarehouseType");
 
@@ -740,6 +739,21 @@ namespace SmartInventoryManager.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("SmartInventoryManager.Data.Entities.UserWarehouse", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "WarehouseId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("UserWarehouses", (string)null);
                 });
 
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.Warehouse", b =>
@@ -998,6 +1012,25 @@ namespace SmartInventoryManager.Data.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("SmartInventoryManager.Data.Entities.UserWarehouse", b =>
+                {
+                    b.HasOne("SmartInventoryManager.Data.Entities.User", "User")
+                        .WithMany("UserWarehouses")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartInventoryManager.Data.Entities.Warehouse", "Warehouse")
+                        .WithMany("UserWarehouses")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.Warehouse", b =>
                 {
                     b.HasOne("SmartInventoryManager.Data.Entities.User", "Manager")
@@ -1061,6 +1094,8 @@ namespace SmartInventoryManager.Data.Migrations
                     b.Navigation("ResolvedStockAlerts");
 
                     b.Navigation("SystemLogs");
+
+                    b.Navigation("UserWarehouses");
                 });
 
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.Warehouse", b =>
@@ -1076,6 +1111,8 @@ namespace SmartInventoryManager.Data.Migrations
                     b.Navigation("Locations");
 
                     b.Navigation("StockAlerts");
+
+                    b.Navigation("UserWarehouses");
                 });
 #pragma warning restore 612, 618
         }
