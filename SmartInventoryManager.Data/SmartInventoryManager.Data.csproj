@@ -5,6 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Migrations\InventoryDbContextModelSnapshot_BASE_678.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
