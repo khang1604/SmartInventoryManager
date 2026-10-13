@@ -44,6 +44,10 @@ namespace SmartInventoryManager.Data.Configurations
             builder.Property(i => i.Note)
                 .HasMaxLength(500);
 
+            builder.Property(i => i.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+
             builder.HasIndex(i => i.ReceiptCode)
                 .IsUnique();
         }

@@ -97,7 +97,8 @@ public class ReceiptWorkflowTests
     [TestMethod]
     public async Task CreateDraftAsync_CalculatesTotalFromDetails()
     {
-        await using var context = CreateContext();
+        await using var context = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         SeedReceiptData(context);
         var service = new ImportService(context, new AuthorizationService(context));
 
@@ -228,9 +229,6 @@ public class ReceiptWorkflowTests
         var options = new DbContextOptionsBuilder<InventoryDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        var context = new InventoryDbContext(options);
-        context.Users.Add(new User { UserId = 1, Username = "admin", FullName = "Admin", PasswordHash = "hash", IsActive = true, Role = new Role { RoleId = 1, RoleName = RoleNames.Admin } });
-        context.SaveChanges();
-        return context;
+        return new InventoryDbContext(options);
     }
 }

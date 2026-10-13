@@ -24,7 +24,7 @@ public sealed class WarehouseService
         {
             throw new UnauthorizedAccessException("Bạn cần đăng nhập để tra cứu kho.");
         }
-        var warehouseIds = await _authorization.GetAssignedWarehouseIdsAsync(session, cancellationToken);
+        var warehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         return await _dbContext.Warehouses
             .AsNoTracking()
             .Where(warehouse => warehouse.IsActive && warehouseIds.Contains(warehouse.WarehouseId))

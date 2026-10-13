@@ -176,6 +176,8 @@ public class BackendWorkflowHardeningTests
         SeedWarehouseAndProduct(context, 7, 11, reorderPoint: 5, maximumStock: 20);
         context.Inventories.Add(new Inventory { WarehouseId = 7, ProductId = 11, Quantity = 8, UpdatedAt = DateTime.Now });
         context.Categories.Add(new Category { CategoryId = 1, CategoryName = "Nhóm 1", IsActive = true });
+        var user = new User { UserId = 1, Username = "admin", PasswordHash = "hash", FullName = "Quản trị viên", IsActive = true };
+        context.Users.Add(user);
         await context.SaveChangesAsync();
         var service = new ProductManagementService(context, new AuthorizationService(context));
         var request = new ProductRequestDto
@@ -204,6 +206,7 @@ public class BackendWorkflowHardeningTests
         SeedWarehouseAndProduct(context, 7, 11, reorderPoint: 5, maximumStock: 20);
         context.Inventories.Add(new Inventory { WarehouseId = 7, ProductId = 11, Quantity = 1, UpdatedAt = DateTime.Now });
         context.Categories.Add(new Category { CategoryId = 1, CategoryName = "Nhóm 1", IsActive = true });
+        context.Users.Add(new User { UserId = 1, Username = "admin", PasswordHash = "hash", FullName = "Quản trị viên", IsActive = true });
         await context.SaveChangesAsync();
         await new StockAlertService(context, new AuthorizationService(context)).RefreshAsync(11, 7);
         var service = new ProductManagementService(context, new AuthorizationService(context));
@@ -261,7 +264,7 @@ public class BackendWorkflowHardeningTests
         context.Suppliers.Add(new Supplier { SupplierId = 3, SupplierCode = "NCC-3", SupplierName = "Nhà cung cấp", IsActive = true });
         await context.SaveChangesAsync();
         var service = new ImportService(context, new AuthorizationService(context));
-        var staff = CreateSession(RoleNames.Staff, 3, 7);
+        var staff = CreateSession(RoleNames.Staff, 2, 7);
         var id = await service.CreateDraftAsync(staff, new ImportReceiptDto { WarehouseId = 7, SupplierId = 3, Details = [new ReceiptDetailDto(11, 1, 10)] });
 
         await service.SubmitAsync(staff, id);
@@ -290,11 +293,6 @@ public class BackendWorkflowHardeningTests
 
     private static void SeedWarehouseAndProduct(InventoryDbContext context, int warehouseId, int productId, int? managerId = null, int reorderPoint = 1, int maximumStock = 20)
     {
-        context.Users.AddRange(
-            new User { UserId = 1, Username = "admin", FullName = "Admin", PasswordHash = "hash", IsActive = true, Role = new Role { RoleId = 1, RoleName = RoleNames.Admin } },
-            new User { UserId = 2, Username = "manager", FullName = "Manager", PasswordHash = "hash", IsActive = true, Role = new Role { RoleId = 2, RoleName = RoleNames.WarehouseManager } },
-            new User { UserId = 3, Username = "staff", FullName = "Staff", PasswordHash = "hash", IsActive = true, Role = new Role { RoleId = 3, RoleName = RoleNames.Staff } });
-        context.UserWarehouses.Add(new UserWarehouse { UserId = 3, WarehouseId = warehouseId });
         context.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, WarehouseCode = $"KHO-{warehouseId}", WarehouseName = $"Kho {warehouseId}", IsActive = true, ManagerId = managerId });
         context.Products.Add(new Product { ProductId = productId, ProductCode = $"SP-{productId}", ProductName = $"Sản phẩm {productId}", Unit = "Cái", IsActive = true, ReorderPoint = reorderPoint, MaximumStock = maximumStock });
         context.SaveChanges();

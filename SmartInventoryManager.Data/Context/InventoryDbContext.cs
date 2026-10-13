@@ -352,6 +352,10 @@ namespace SmartInventoryManager.Data.Context
                 entity.Property(i => i.Note)
                     .HasMaxLength(500);
 
+                entity.Property(i => i.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken();
+
                 entity.HasIndex(i => i.ReceiptCode)
                     .IsUnique();
 
@@ -431,6 +435,10 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.Property(e => e.Note)
                     .HasMaxLength(500);
+
+                entity.Property(e => e.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken();
 
                 entity.HasIndex(e => e.ReceiptCode)
                     .IsUnique();

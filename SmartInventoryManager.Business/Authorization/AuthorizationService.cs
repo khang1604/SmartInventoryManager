@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Data.Context;
 
 namespace SmartInventoryManager.Business.Authorization;
@@ -80,11 +80,14 @@ public sealed class AuthorizationService
     {
         ArgumentNullException.ThrowIfNull(assignedWarehouseIds);
 
-        if (!IsStaff(session)) return CanCreateDraftReceiptAsync(session, warehouseId);
-        // Caller-provided IDs may narrow access, but never grant permission.
-        return assignedWarehouseIds.Contains(warehouseId)
-            ? CanCreateDraftReceiptAsync(session, warehouseId)
-            : Task.FromResult(false);
+        if (!HasRole(session, RoleNames.Staff))
+        {
+            return CanCreateDraftReceiptAsync(session, warehouseId);
+        }
+
+        return Task.FromResult(
+            session.IsAuthenticated &&
+            assignedWarehouseIds.Contains(warehouseId));
     }
 
     public Task<bool> CanEditDraftReceiptAsync(UserSession session, int warehouseId)
@@ -194,31 +197,48 @@ public sealed class AuthorizationService
             await CanAccessManagedWarehouseAsync(session, warehouseId);
     }
 
-    // Used only to populate the warehouse selector before STAFF has a context.
-    public async Task<IReadOnlySet<int>> GetAssignedWarehouseIdsAsync(UserSession session, CancellationToken cancellationToken = default)
-    {
-        if (!await IsActorActiveAsync(session, cancellationToken))
-            return new HashSet<int>();
-
-        var query = _dbContext.Warehouses.AsNoTracking().Where(warehouse => warehouse.IsActive);
-        if (IsWarehouseManager(session))
-            query = query.Where(warehouse => warehouse.ManagerId == session.CurrentUser!.UserId);
-        else if (IsStaff(session))
-            query = query.Where(warehouse => _dbContext.UserWarehouses.Any(assignment =>
-                assignment.UserId == session.CurrentUser!.UserId && assignment.WarehouseId == warehouse.WarehouseId));
-        else if (!IsAdmin(session))
-            return new HashSet<int>();
-
-        return (await query.Select(warehouse => warehouse.WarehouseId).ToListAsync(cancellationToken)).ToHashSet();
-    }
-
     public async Task<IReadOnlySet<int>> GetAccessibleWarehouseIdsAsync(UserSession session, CancellationToken cancellationToken = default)
     {
-        var assigned = await GetAssignedWarehouseIdsAsync(session, cancellationToken);
-        if (!IsStaff(session)) return assigned;
-        return session.CurrentWarehouseId is int warehouseId && assigned.Contains(warehouseId)
-            ? new HashSet<int> { warehouseId }
-            : new HashSet<int>();
+        if (session is null || !session.IsAuthenticated || session.CurrentUser is null)
+        {
+            return new HashSet<int>();
+        }
+
+        IQueryable<int> query = _dbContext.Warehouses
+            .AsNoTracking()
+            .Where(warehouse => warehouse.IsActive)
+            .Select(warehouse => warehouse.WarehouseId);
+
+        if (IsWarehouseManager(session))
+        {
+            query = _dbContext.Warehouses
+                .AsNoTracking()
+                .Where(warehouse => warehouse.IsActive && warehouse.ManagerId == session.CurrentUser.UserId)
+                .Select(warehouse => warehouse.WarehouseId);
+        }
+        else if (!IsAdmin(session))
+        {
+            if (!IsStaff(session))
+            {
+                return new HashSet<int>();
+            }
+
+            if (!session.CurrentWarehouseId.HasValue)
+            {
+                return new HashSet<int>();
+            }
+
+            var currentWarehouseId = session.CurrentWarehouseId.Value;
+            var isCurrentWarehouseActive = await _dbContext.Warehouses
+                .AsNoTracking()
+                .AnyAsync(warehouse => warehouse.WarehouseId == currentWarehouseId && warehouse.IsActive, cancellationToken);
+
+            return isCurrentWarehouseActive
+                ? new HashSet<int> { currentWarehouseId }
+                : new HashSet<int>();
+        }
+
+        return (await query.ToListAsync(cancellationToken)).ToHashSet();
     }
 
     public async Task<bool> CanViewWarehouseAsync(UserSession session, int warehouseId, CancellationToken cancellationToken = default)
@@ -229,29 +249,47 @@ public sealed class AuthorizationService
 
     private async Task<bool> CanAccessManagedWarehouseAsync(UserSession session, int warehouseId)
     {
-        return HasRole(session, RoleNames.Admin, RoleNames.WarehouseManager) &&
-            await CanViewWarehouseAsync(session, warehouseId);
+        if (!session.IsAuthenticated || session.CurrentUser is null)
+        {
+            return false;
+        }
+
+        if (IsAdmin(session))
+        {
+            return await _dbContext.Warehouses
+                .AsNoTracking()
+                .AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive);
+        }
+
+        if (!IsWarehouseManager(session))
+        {
+            return false;
+        }
+
+        return await _dbContext.Warehouses
+            .AsNoTracking()
+            .AnyAsync(warehouse =>
+                warehouse.WarehouseId == warehouseId &&
+                warehouse.ManagerId == session.CurrentUser.UserId &&
+                warehouse.IsActive);
     }
 
     private async Task<bool> CanAccessCurrentWarehouseAsync(UserSession session, int warehouseId)
     {
-        return IsStaff(session) && session.CurrentWarehouseId == warehouseId &&
-            await CanViewWarehouseAsync(session, warehouseId);
-    }
+        if (!HasRole(session, RoleNames.Staff))
+        {
+            return false;
+        }
 
-    private async Task<bool> IsActorActiveAsync(UserSession session, CancellationToken cancellationToken)
-    {
-        if (session is null || !session.IsAuthenticated || session.CurrentUser is null) return false;
-        var role = await _dbContext.Users.AsNoTracking()
-            .Where(user => user.UserId == session.CurrentUser.UserId && user.IsActive)
-            .Select(user => user.Role.RoleName)
-            .SingleOrDefaultAsync(cancellationToken);
-        return role is not null && string.Equals(role.Trim(), session.CurrentUser.RoleName.Trim(), StringComparison.OrdinalIgnoreCase);
+        return session.CurrentWarehouseId == warehouseId &&
+            await _dbContext.Warehouses
+                .AsNoTracking()
+                .AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive);
     }
 
     private static bool HasRole(UserSession session, params string[] roles)
     {
-        return session is not null && session.IsAuthenticated &&
+        return session.IsAuthenticated &&
             session.CurrentUser is not null &&
             roles.Any(role => string.Equals(
                 session.CurrentUser.RoleName.Trim(),
