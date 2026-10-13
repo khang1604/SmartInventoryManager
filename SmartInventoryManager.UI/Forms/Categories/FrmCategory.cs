@@ -10,6 +10,8 @@ public partial class FrmCategory : Form
     private readonly UiServices? _services;
     private DataGridView? _grid;
     private AntdUI.Button? _refresh;
+    private bool _loading;
+    private readonly ComboBox _status = LiveUi.Choice("cboStatus", "Trạng thái danh mục");
 
     public FrmCategory() : this(false) { }
 
@@ -23,6 +25,14 @@ public partial class FrmCategory : Form
     public FrmCategory(UiServices services) : this(services.Authorization.CanManageCategory(services.Session))
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
+        if(_refresh is not null) { _refresh.Enabled=true; _refresh.Click+=async(_,_)=>await LoadCategoriesAsync(); }
+        var search = Controls.Find("txtSearch", true).OfType<AntdUI.Input>().Single();
+        search.ReadOnly = false;
+        search.AccessibleDescription = "Nhập tên và nhấn Enter để tìm kiếm";
+        search.KeyDown += async (_, e) => { if(e.KeyCode == Keys.Enter) { e.SuppressKeyPress=true; await LoadCategoriesAsync(); } };
+        _status.SelectedIndexChanged += async (_,_) => await LoadCategoriesAsync();
+        var preview = Controls.Find("btnPreview",true).First();
+        preview.Click += (_,_) => { if(_grid?.CurrentRow?.DataBoundItem is CategoryDto row) UiDetails.Show(this,"Chi tiết danh mục",[("Tên danh mục",row.CategoryName),("Mô tả",row.Description ?? "—"),("Trạng thái",row.IsActive ? "Đang hoạt động" : "Ngừng hoạt động")]); };
         Shown += async (_, _) => await LoadCategoriesAsync();
     }
 
@@ -52,17 +62,15 @@ public partial class FrmCategory : Form
         filters.Controls.Add(ProductUi.Label("Trạng thái", 10, true), 1, 0);
         var search = ProductUi.Input("txtSearch", "Nhập tên danh mục");
         search.PrefixSvg = MainIcons.Get("search");
-        search.ReadOnly = true;
+        search.ReadOnly = false;
         search.TabIndex = 0;
         search.AccessibleName = "Tìm tên danh mục";
         search.AccessibleDescription = "Tìm kiếm chưa sẵn sàng khi chưa có dữ liệu";
-        var status = ProductUi.Input("cboStatus");
-        status.Text = "Tất cả trạng thái";
-        status.SuffixSvg = MainIcons.Get("chevron-down");
-        status.ReadOnly = true;
-        status.TabIndex = 1;
-        status.AccessibleName = "Lọc trạng thái danh mục";
-        status.AccessibleDescription = "Bộ lọc chưa sẵn sàng khi chưa có dữ liệu";
+        var status = _status;
+        status.Items.AddRange(["Tất cả trạng thái", "Đang hoạt động", "Ngừng hoạt động"]);
+        status.SelectedIndex=0;
+        status.Dock=DockStyle.Fill;
+        status.TabIndex=1;
         filters.Controls.Add(search, 0, 1);
         filters.Controls.Add(status, 1, 1);
         root.Controls.Add(filters, 0, 0);
@@ -78,7 +86,7 @@ public partial class FrmCategory : Form
             var add = ProductUi.Button("btnAdd", "Thêm danh mục", "plus-lg", true);
             add.Width = 180;
             add.TabIndex = 2;
-            add.AccessibleDescription = "Mở biểu mẫu xem trước, chưa lưu danh mục";
+            add.AccessibleDescription = "Thêm danh mục qua Service";
             add.Click += async (_, _) =>
             {
                 if (_services is null) return;
@@ -169,8 +177,9 @@ public partial class FrmCategory : Form
         empty.Controls.Add(description, 0, 3);
         tableArea.Controls.Add(empty, 0, 1);
         root.Controls.Add(LiveUi.TableFrame(tableArea), 0, 2);
-        var note = ProductUi.Label("Chưa kết nối dữ liệu • Biểu mẫu xem trước chưa lưu danh mục", 9);
+        var note = ProductUi.Label("Đang tải danh mục…", 9);
         // [COLOR CONFIG]: thông tin trạng thái phụ.
+        note.Name="lblCategoryState";
         note.ForeColor = AppColors.Muted;
         root.Controls.Add(note, 0, 3);
         Controls.Add(root);
@@ -178,18 +187,26 @@ public partial class FrmCategory : Form
 
     private async Task LoadCategoriesAsync()
     {
-        if (_services is null || _grid is null) return;
+        if (_services is null || _grid is null || _loading) return;
+        _loading=true;
+        if (_refresh is not null) _refresh.Enabled=false;
+        var note=Controls.Find("lblCategoryState",true).First();
+        note.Text="Đang tải danh mục…";
         try
         {
             var rows = await _services.RunAsync(() => _services.Categories.GetAsync(_services.Session));
-            _grid.DataSource = rows.ToList();
+            var search=Controls.Find("txtSearch",true).OfType<AntdUI.Input>().Single().Text.Trim();
+            var filtered=rows.Where(row=>(string.IsNullOrEmpty(search) || row.CategoryName.Contains(search,StringComparison.CurrentCultureIgnoreCase)) && (_status.SelectedIndex==0 || row.IsActive==(_status.SelectedIndex==1))).ToList();
+            _grid.DataSource = filtered;
+            note.Text=filtered.Count==0 ? "Không có danh mục phù hợp bộ lọc." : $"{filtered.Count:N0} danh mục";
             foreach (DataGridViewColumn column in _grid.Columns)
                 column.DataPropertyName = column.Name == "Status" ? nameof(CategoryDto.IsActive) : column.Name;
             _grid.CellFormatting -= FormatStatus;
             _grid.CellFormatting += FormatStatus;
             UpdateActions();
         }
-        catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể tải danh mục", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        catch (Exception ex) { note.Text=LiveUi.LoadError(ex); }
+        finally { _loading=false; if(_refresh is not null && !IsDisposed) _refresh.Enabled=true; }
     }
 
     private void FormatStatus(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -200,7 +217,7 @@ public partial class FrmCategory : Form
     private void UpdateActions()
     {
         var selected = _grid?.CurrentRow?.DataBoundItem is CategoryDto;
-        foreach (Control control in Controls.Find("btnEdit", true).Concat(Controls.Find("btnDeactivate", true))) control.Enabled = selected;
+        foreach (Control control in Controls.Find("btnEdit", true).Concat(Controls.Find("btnDeactivate", true)).Concat(Controls.Find("btnPreview",true))) control.Enabled = selected;
     }
 
     private async Task EditSelectedAsync()
@@ -213,14 +230,15 @@ public partial class FrmCategory : Form
     private async Task ToggleSelectedAsync()
     {
         if (_services is null || _grid?.CurrentRow?.DataBoundItem is not CategoryDto category) return;
-        await _services.RunAsync(() => _services.Categories.SetActiveAsync(_services.Session, category.CategoryId, !category.IsActive));
-        await LoadCategoriesAsync();
+        if(MessageBox.Show(this,"Thay đổi trạng thái danh mục đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)!=DialogResult.OK)return;
+        try { await _services.RunAsync(() => _services.Categories.SetActiveAsync(_services.Session, category.CategoryId, !category.IsActive)); await LoadCategoriesAsync(); }
+        catch(Exception ex) { MessageBox.Show(this,LiveUi.Error(ex),"Không thể thay đổi trạng thái",MessageBoxButtons.OK,MessageBoxIcon.Warning); }
     }
 
     private static AntdUI.Button Unavailable(string name, string text, string icon)
     {
         var button = ProductUi.Button(name, text, icon);
-        button.Enabled = false;
+        button.Click += (_, _) => ActionFeedback.Show(button);
         button.AccessibleDescription = "Chưa sẵn sàng: chức năng dữ liệu đang được hoàn thiện";
         return button;
     }

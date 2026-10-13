@@ -8,28 +8,30 @@ internal static class WarehouseUi
 {
     public static void BuildList(Form form, bool location, bool canManage, UiServices? services = null)
     {
+        if (services is not null) { BuildConnected(form, location, canManage, services); return; }
         DataGridView? grid = null;
         UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
         var root = ProductUi.Layout(1, 4);
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 106));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         int count = location ? 3 : 2;
-        var filters = ProductUi.Layout(count, 2);
+        var filters = ProductUi.Layout(count + 1, 2);
         filters.Padding = new Padding(16, 10, 4, 12);
         // [COLOR CONFIG]: nền trắng của vùng lọc.
         filters.BackColor = AppColors.Surface;
-        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, location ? 44 : 60));
-        for (int i = 1; i < count; i++) filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, location ? 28 : 40));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+        for (int i = 1; i < count; i++) filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, location ? 10 : 35));
         filters.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
-        filters.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        filters.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         filters.Controls.Add(ProductUi.Label("Tìm kiếm", 10, true), 0, 0);
         var search = ProductUi.Input("txtSearch", location ? "Nhập mã hoặc tên vị trí" : "Nhập mã hoặc tên kho");
         search.PrefixSvg = MainIcons.Get("search");
-        search.ReadOnly = true;
+        search.ReadOnly = false;
         search.AccessibleName = search.PlaceholderText;
         search.AccessibleDescription = "Tìm kiếm chưa sẵn sàng khi chưa có dữ liệu";
         filters.Controls.Add(search, 0, 1);
@@ -40,7 +42,7 @@ internal static class WarehouseUi
             var filter = ProductUi.Input(warehouseFilter ? "cboWarehouse" : "cboStatus");
             filter.Text = warehouseFilter ? "Tất cả kho" : "Tất cả trạng thái";
             filter.SuffixSvg = MainIcons.Get("chevron-down");
-            filter.ReadOnly = true;
+            filter.ReadOnly = false;
             filter.AccessibleName = filter.Text;
             filter.AccessibleDescription = "Bộ lọc chưa sẵn sàng khi chưa có dữ liệu";
             filters.Controls.Add(filter, i, 1);
@@ -52,7 +54,7 @@ internal static class WarehouseUi
         toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
         toolbar.Padding = new Padding(0, 14, 0, 10);
         var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true, Margin = Padding.Empty };
-        if (canManage || location)
+        if (canManage)
         {
             var add = ProductUi.Button("btnAdd", location ? "Thêm vị trí" : "Thêm kho", "plus-lg", true);
             add.AccessibleDescription = "Chỉ mở biểu mẫu xem trước, chưa lưu dữ liệu hoặc cấp quyền quản lý";
@@ -65,7 +67,7 @@ internal static class WarehouseUi
             actions.Controls.Add(add);
         }
         actions.Controls.Add(Unavailable("btnPreview", "Xem chi tiết", "eye", 150));
-        if (canManage || location)
+        if (canManage)
         {
             var edit = Unavailable("btnEdit", "Sửa", "pencil", 100);
             var deactivate = Unavailable("btnDeactivate", "Ngừng hoạt động", "dash-circle", 190);
@@ -140,7 +142,9 @@ internal static class WarehouseUi
         empty.Controls.Add(description, 0, 3);
         area.Controls.Add(empty, 0, 1);
         root.Controls.Add(LiveUi.TableFrame(area), 0, 2);
-        var note = ProductUi.Label(location ? "Xem trước • Chưa lưu dữ liệu • Quyền quản lý vị trí đang chờ xác nhận" : "Chưa kết nối dữ liệu • Biểu mẫu xem trước chưa lưu kho", 9);
+        var note = ProductUi.Label(services is null
+            ? "Chưa kết nối dữ liệu • Danh sách chỉ xem"
+            : location ? "Quản lý vị trí theo kho" : "Quản lý kho", 9);
         // [COLOR CONFIG]: ghi chú phụ.
         note.ForeColor = AppColors.Muted;
         root.Controls.Add(note, 0, 3);
@@ -201,11 +205,41 @@ internal static class WarehouseUi
         if (services is not null) form.Shown += async (_, _) => await LoadAsync();
     }
 
+    private static void BuildConnected(Form form, bool location, bool canManage, UiServices services)
+    {
+        UiBrand.ApplyIcon(form);
+        var state=LiveUi.Choice("cboStatus","Trạng thái");
+        state.Items.AddRange(["Tất cả trạng thái","Đang hoạt động","Ngừng hoạt động"]); state.SelectedIndex=0;
+        bool Matches(string code,string name,string search,bool active) => (string.IsNullOrEmpty(search) || code.Contains(search,StringComparison.CurrentCultureIgnoreCase) || name.Contains(search,StringComparison.CurrentCultureIgnoreCase)) && (state.SelectedIndex==0 || active==(state.SelectedIndex==1));
+        if(location)
+        {
+            var page=new DataListPage<LocationDto>(services,"Vị trí trong phạm vi được phép",[("WarehouseName","Kho"),("LocationCode","Mã vị trí"),("LocationName","Tên vị trí"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Locations.GetAsync(services.Session)).Where(row=>Matches(row.LocationCode,row.LocationName ?? "",search,row.IsActive)).ToList());
+            page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
+            if(canManage) {
+                page.Action("Thêm vị trí",async()=> { using var detail=new FrmWarehouseDetail(services,true); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
+                page.SelectedAction("Sửa",async(row,_)=> { using var detail=new FrmWarehouseDetail(services,true,row); detail.ShowDialog(form); },"pencil");
+                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái vị trí đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) await services.RunAsync(()=>services.Locations.SetActiveAsync(services.Session,row.LocationId,!row.IsActive)); },"dash-circle");
+            }
+            state.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); form.Controls.Add(page);
+        }
+        else
+        {
+            var page=new DataListPage<WarehouseDto>(services,"Kho trong phạm vi được phép",[("WarehouseCode","Mã kho"),("WarehouseName","Tên kho"),("Location","Địa chỉ"),("ManagerName","Người quản lý"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Warehouses.GetAllAsync(services.Session)).Where(row=>Matches(row.WarehouseCode,row.WarehouseName,search,row.IsActive)).ToList());
+            page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
+            if(canManage) {
+                page.Action("Thêm kho",async()=> { using var detail=new FrmWarehouseDetail(services,false); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
+                page.SelectedAction("Sửa",async(row,_)=> { using var detail=new FrmWarehouseDetail(services,false,row); detail.ShowDialog(form); },"pencil");
+                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái kho đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) await services.RunAsync(()=>services.Warehouses.SetActiveAsync(services.Session,row.WarehouseId,!row.IsActive)); },"dash-circle");
+            }
+            state.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); form.Controls.Add(page);
+        }
+    }
+
     private static AntdUI.Button Unavailable(string name, string text, string icon, int width)
     {
         var button = ProductUi.Button(name, text, icon);
         button.Width = width;
-        button.Enabled = false;
+        button.Click += (_, _) => ActionFeedback.Show(button);
         button.AccessibleDescription = "Chưa sẵn sàng: chưa có dữ liệu được chọn hoặc hợp đồng thao tác";
         return button;
     }

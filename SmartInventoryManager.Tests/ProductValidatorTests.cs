@@ -78,16 +78,25 @@ public class ProductValidatorTests
             " ", null, "", -1m, -2m, 100, 100);
 
         Assert.AreEqual(5, errors.Count);
-        CollectionAssert.Contains(errors.ToList(), "Mã sản phẩm không được để trống.");
+        CollectionAssert.Contains(errors.ToList(), "Mã sản phẩm là bắt buộc và không quá 50 ký tự.");
         CollectionAssert.Contains(errors.ToList(), "Giá nhập không được âm.");
     }
 
     [TestMethod]
-    public void ProductValidator_AcceptsZeroMaximumStockWhenReorderPointIsZero()
+    public void ProductValidator_AcceptsEqualZeroThresholds()
     {
         var errors = new ProductValidator().Validate(
             "P001", "Sản phẩm", "cái", 1m, 2m, 0, 0);
 
         Assert.AreEqual(0, errors.Count);
+    }
+
+    [TestMethod]
+    public void ProductValidator_RejectsFieldsLongerThanDatabaseLimits()
+    {
+        var errors = new ProductValidator().Validate(
+            new string('P', 51), new string('N', 201), new string('U', 51), 1m, 2m, 1, 10);
+
+        Assert.AreEqual(3, errors.Count);
     }
 }

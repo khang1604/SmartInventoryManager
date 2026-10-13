@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Net.Mail;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Data.Context;
@@ -10,12 +11,12 @@ public sealed class SupplierService
 {
     private const int MaxLookupResults = 200;
     private readonly InventoryDbContext _dbContext;
-    private readonly AuthorizationService? _authorization;
+    private readonly AuthorizationService _authorization;
 
-    public SupplierService(InventoryDbContext dbContext, AuthorizationService? authorization = null)
+    public SupplierService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-        _authorization = authorization;
+        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
     public async Task<IReadOnlyList<LookupItemDto>> GetActiveAsync(
@@ -65,6 +66,7 @@ public sealed class SupplierService
 
     public async Task UpdateAsync(UserSession session, int supplierId, SupplierRequestDto request, CancellationToken cancellationToken = default)
     {
+        ValidateId(supplierId, nameof(supplierId));
         EnsureCanManage(session);
         Validate(request);
         var entity = await _dbContext.Suppliers.SingleOrDefaultAsync(item => item.SupplierId == supplierId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
@@ -76,13 +78,35 @@ public sealed class SupplierService
 
     public async Task SetActiveAsync(UserSession session, int supplierId, bool isActive, CancellationToken cancellationToken = default)
     {
+        ValidateId(supplierId, nameof(supplierId));
         EnsureCanManage(session);
         var entity = await _dbContext.Suppliers.SingleOrDefaultAsync(item => item.SupplierId == supplierId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
         entity.IsActive = isActive;
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private void EnsureCanManage(UserSession session) { if (_authorization is null || !_authorization.CanManageSupplier(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý nhà cung cấp."); }
+    private void EnsureCanManage(UserSession session) { if (!_authorization.CanManageSupplier(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý nhà cung cấp."); }
     private static void EnsureAuthenticated(UserSession session) { if (session is null || !session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập."); }
-    private static void Validate(SupplierRequestDto request) { ArgumentNullException.ThrowIfNull(request); if (string.IsNullOrWhiteSpace(request.SupplierCode) || string.IsNullOrWhiteSpace(request.SupplierName)) throw new ArgumentException("Mã và tên nhà cung cấp là bắt buộc.", nameof(request)); }
+    private static void Validate(SupplierRequestDto request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.SupplierCode) || request.SupplierCode.Trim().Length > 50)
+            throw new ArgumentException("Mã nhà cung cấp là bắt buộc và không quá 50 ký tự.", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.SupplierName) || request.SupplierName.Trim().Length > 200)
+            throw new ArgumentException("Tên nhà cung cấp là bắt buộc và không quá 200 ký tự.", nameof(request));
+        if (request.Phone?.Trim().Length > 20)
+            throw new ArgumentException("Số điện thoại không quá 20 ký tự.", nameof(request));
+        if (request.Email?.Trim() is { Length: > 100 } email ||
+            (!string.IsNullOrWhiteSpace(request.Email) && !MailAddress.TryCreate(request.Email.Trim(), out _)))
+            throw new ArgumentException("Email không hợp lệ hoặc vượt quá 100 ký tự.", nameof(request));
+        if (request.Address?.Trim().Length > 255)
+            throw new ArgumentException("Địa chỉ không quá 255 ký tự.", nameof(request));
+        if (request.TaxCode?.Trim().Length > 50)
+            throw new ArgumentException("Mã số thuế không quá 50 ký tự.", nameof(request));
+    }
+
+    private static void ValidateId(int id, string parameterName)
+    {
+        if (id <= 0) throw new ArgumentOutOfRangeException(parameterName);
+    }
 }

@@ -61,6 +61,7 @@ public sealed class ProductManagementService : IProductService
         CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated(session);
+        if (productId <= 0) throw new ArgumentOutOfRangeException(nameof(productId));
         var product = await _dbContext.Products
             .AsNoTracking()
             .Include(item => item.Category)
@@ -100,12 +101,18 @@ public sealed class ProductManagementService : IProductService
         ProductRequestDto request,
         CancellationToken cancellationToken = default)
     {
+        if (productId <= 0) throw new ArgumentOutOfRangeException(nameof(productId));
         EnsureCanManage(session);
         ValidateRequest(request);
         var product = await _dbContext.Products
             .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
         await EnsureReferencesAndCodeAsync(request, productId, cancellationToken);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
+        var thresholdsChanged = product.ReorderPoint != request.ReorderPoint
+            || product.MaximumStock != request.MaximumStock;
         product.ProductCode = request.ProductCode.Trim();
         product.ProductName = request.ProductName.Trim();
         product.CategoryId = request.CategoryId;
@@ -115,6 +122,15 @@ public sealed class ProductManagementService : IProductService
         product.ReorderPoint = request.ReorderPoint;
         product.MaximumStock = request.MaximumStock;
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (thresholdsChanged)
+        {
+            await RefreshProductAlertsAsync(productId, cancellationToken);
+        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
     }
 
     public async Task SetActiveAsync(
@@ -123,12 +139,54 @@ public sealed class ProductManagementService : IProductService
         bool isActive,
         CancellationToken cancellationToken = default)
     {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
         EnsureCanManage(session);
         var product = await _dbContext.Products
             .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         product.IsActive = isActive;
+        if (isActive)
+        {
+            await RefreshProductAlertsAsync(productId, cancellationToken);
+        }
+        else
+        {
+            await new StockAlertService(_dbContext, _authorization)
+                .ResolveForProductAsync(productId, cancellationToken, persistChanges: false, publishEvent: false);
+        }
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+    }
+
+    private async Task RefreshProductAlertsAsync(int productId, CancellationToken cancellationToken)
+    {
+        var warehouseIds = await _dbContext.Inventories
+            .Where(item => item.ProductId == productId)
+            .Select(item => item.WarehouseId)
+            .Union(_dbContext.StockAlerts
+                .Where(item => item.ProductId == productId && !item.IsResolved)
+                .Select(item => item.WarehouseId))
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var alertService = new StockAlertService(_dbContext, _authorization);
+        foreach (var warehouseId in warehouseIds)
+        {
+            await alertService.RefreshAsync(
+                productId,
+                warehouseId,
+                cancellationToken,
+                persistChanges: false,
+                publishEvent: false);
+        }
     }
 
     private async Task EnsureReferencesAndCodeAsync(ProductRequestDto request, int? productId, CancellationToken cancellationToken)

@@ -23,6 +23,7 @@ internal static class PreviewFormUi
         heading.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         heading.Controls.Add(ProductUi.Label(title, 18, true), 0, 0);
         var note = ProductUi.Label("Các trường có dấu * là bắt buộc • Biểu mẫu xem trước chưa lưu dữ liệu", 9);
+        note.Name = "formNote";
         // [COLOR CONFIG]: hướng dẫn phụ.
         note.ForeColor = AppColors.Muted;
         heading.Controls.Add(note, 0, 1);
@@ -33,6 +34,7 @@ internal static class PreviewFormUi
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
         footer.Padding = new Padding(0, 14, 0, 0);
         var status = ProductUi.Label("Chưa kết nối dữ liệu", 9);
+        status.Name = "formStatus";
         // [COLOR CONFIG]: ghi chú phụ cuối biểu mẫu.
         status.ForeColor = AppColors.Muted;
         footer.Controls.Add(status, 0, 0);
@@ -42,7 +44,9 @@ internal static class PreviewFormUi
         close.DialogResult = DialogResult.Cancel;
         close.TabIndex = 90;
         var save = ProductUi.Button("btnSave", "Lưu", primary: true);
-        save.Enabled = false;
+        save.Enabled = true;
+        save.Tag = "preview";
+        save.Click += (_, _) => { if (Equals(save.Tag, "preview")) ActionFeedback.Show(save); };
         save.TabIndex = 91;
         save.AccessibleDescription = "Chưa sẵn sàng: thiếu hợp đồng lưu dữ liệu";
         actions.Controls.Add(close);
@@ -75,7 +79,7 @@ internal static class PreviewFormUi
     {
         fields.Controls.Add(ProductUi.Label(caption, 10, true), col, row * 2);
         var input = ProductUi.Input(name, placeholder ?? "");
-        input.MaxLength = maxLength;
+        if (maxLength > 0) input.MaxLength = maxLength;
         input.ReadOnly = unavailable;
         input.TabIndex = row * 2 + col;
         input.AccessibleName = caption;
@@ -84,6 +88,28 @@ internal static class PreviewFormUi
             input.SuffixSvg = MainIcons.Get("chevron-down");
             input.AccessibleDescription = "Danh sách lựa chọn chưa sẵn sàng";
         }
+        fields.Controls.Add(input, col, row * 2 + 1);
+        return input;
+    }
+
+    public static TextBox TextBoxField(TableLayoutPanel fields, int col, int row, string name, string caption,
+        int maxLength = 0, bool password = false)
+    {
+        fields.Controls.Add(ProductUi.Label(caption, 10, true), col, row * 2);
+        var input = new TextBox
+        {
+            Name = name,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 12, 0),
+            MaxLength = maxLength,
+            TabIndex = row * 2 + col,
+            AccessibleName = caption,
+            UseSystemPasswordChar = password,
+            BorderStyle = BorderStyle.FixedSingle
+        };
+        // [COLOR CONFIG]: nền và chữ của ô mật khẩu native WinForms.
+        input.BackColor = AppColors.Surface;
+        input.ForeColor = AppColors.Text;
         fields.Controls.Add(input, col, row * 2 + 1);
         return input;
     }

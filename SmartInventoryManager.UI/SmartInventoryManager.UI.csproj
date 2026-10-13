@@ -1,18 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-	<PackageReference Include="AntdUI" Version="2.4.12" />
-	<PackageReference Include="ClosedXML" Version="0.105.1" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
-	  <PrivateAssets>all</PrivateAssets>
-	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	</PackageReference>
-	<PackageReference Include="QuestPDF" Version="2026.9.1" />
-	<PackageReference Include="ScottPlot.WinForms" Version="5.1.59" />
-	<ProjectReference Include="..\SmartInventoryManager.Business\SmartInventoryManager.Business.csproj" />
-	<ProjectReference Include="..\SmartInventoryManager.Common\SmartInventoryManager.Common.csproj" />
-  <ProjectReference Include="..\SmartInventoryManager.Data\SmartInventoryManager.Data.csproj" />
+    <PackageReference Include="AntdUI" Version="2.4.12" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="QuestPDF" Version="2026.9.1" />
+
+    <Reference Include="AntdUI">
+      <HintPath>Lib\AntdUI.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <ProjectReference
+      Include="..\SmartInventoryManager.Business\SmartInventoryManager.Business.csproj" />
+    <ProjectReference Include="..\SmartInventoryManager.Common\SmartInventoryManager.Common.csproj" />
+    <ProjectReference Include="..\SmartInventoryManager.Data\SmartInventoryManager.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,26 +37,25 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\Resources\Icons\person.svg" LogicalName="SmartInventoryManager.UI.PersonIcon" />
-    <EmbeddedResource Include="..\Resources\Icons\shop.svg" LogicalName="SmartInventoryManager.UI.Icon.supplier" />
-    <EmbeddedResource Include="..\Resources\Icons\gear.svg" LogicalName="SmartInventoryManager.UI.Icon.gear" />
-    <EmbeddedResource Include="..\Resources\Icons\person-gear.svg" LogicalName="SmartInventoryManager.UI.Icon.person-gear" />
-    <EmbeddedResource Include="Resources\Images\vioware.ico" LogicalName="SmartInventoryManager.UI.ApplicationIcon" />
-    <EmbeddedResource Include="..\Resources\Images\smart-inventory-logo.png">
-      <LogicalName>SmartInventoryManager.UI.ProjectLogo</LogicalName>
+    <EmbeddedResource Include="Resources\Icons\*.svg">
+      <LogicalName>SmartInventoryManager.UI.Icon.%(Filename)</LogicalName>
     </EmbeddedResource>
-    <Content Include="..\Resources\Images\background.png" Link="Resources\Images\background.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Resources\Images\vioware.ico"
+      LogicalName="SmartInventoryManager.UI.ApplicationIcon" />
+    <EmbeddedResource Include="Resources\Images\smart-inventory-logo.png"
+      LogicalName="SmartInventoryManager.UI.ProjectLogo" />
+    <EmbeddedResource Include="Resources\Images\background.png"
+      LogicalName="SmartInventoryManager.UI.LoginBackground" />
   </ItemGroup>
 
   <PropertyGroup>
-	<OutputType>WinExe</OutputType>
+    <OutputType>WinExe</OutputType>
     <ApplicationIcon>Resources/Images/vioware.ico</ApplicationIcon>
-	<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-	<Nullable>enable</Nullable>
-	<UseWindowsForms>true</UseWindowsForms>
-	<ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
 </Project>

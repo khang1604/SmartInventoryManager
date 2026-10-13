@@ -1,4 +1,5 @@
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Forms.Suppliers;
 
 namespace SmartInventoryManager.UI.Components;
 
@@ -6,22 +7,57 @@ internal static class ConnectedPages
 {
     public static Control Products(UiServices services) => new ProductManagementPage(services);
 
-    public static Control Suppliers(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
-        "Nhà cung cấp đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
-        [("Code", "Mã nhà cung cấp"), ("Name", "Tên nhà cung cấp")],
-        (_, search, _, _) => services.Suppliers.GetActiveAsync(services.Session, search)), services.Authorization.CanManageSupplier(services.Session));
+    public static Control Suppliers(UiServices services)
+    {
+        var page = new DataListPage<SupplierDto>(services,
+            "Nhà cung cấp",
+            [("SupplierCode", "Mã nhà cung cấp"), ("SupplierName", "Tên nhà cung cấp"),
+                ("Phone", "Số điện thoại"), ("Email", "Email"), ("IsActive", "Trạng thái")],
+            async (_, search, _, _) =>
+            {
+                var rows = await services.Suppliers.GetAsync(services.Session);
+                if (string.IsNullOrWhiteSpace(search)) return rows;
+                var value = search.Trim();
+                return rows.Where(row =>
+                    row.SupplierCode.Contains(value, StringComparison.CurrentCultureIgnoreCase)
+                    || row.SupplierName.Contains(value, StringComparison.CurrentCultureIgnoreCase)
+                    || (row.Phone?.Contains(value, StringComparison.CurrentCultureIgnoreCase) ?? false)
+                    || (row.Email?.Contains(value, StringComparison.CurrentCultureIgnoreCase) ?? false)).ToList();
+            });
 
-    public static Control Warehouses(UiServices services) => WithDetails(new DataListPage<LookupItemDto>(services,
-        "Kho đang hoạt động • Thông tin mở rộng và thêm/sửa chưa sẵn sàng",
-        [("Code", "Mã kho"), ("Name", "Tên kho")],
-        async (_, search, _, _) => (await services.Warehouses.GetActiveAsync(services.Session))
-            .Where(row => Match(row.Code, row.Name, search)).ToList()), services.Authorization.CanManageWarehouse(services.Session));
+        page.AddDetailsColumn(true);
+        if (!services.Authorization.CanManageSupplier(services.Session)) return page;
+
+        page.Action("Thêm nhà cung cấp", async () =>
+        {
+            using var detail = new FrmSupplierDetail(services);
+            detail.ShowDialog(page.FindForm());
+            await page.RefreshAsync();
+        }, "plus-lg");
+        page.SelectedAction("Sửa", async (row, _) =>
+        {
+            using var detail = new FrmSupplierDetail(services, row);
+            detail.ShowDialog(page.FindForm());
+            await Task.CompletedTask;
+        }, "pencil", (_, _) => Task.FromResult(services.Authorization.CanManageSupplier(services.Session)));
+        page.SelectedAction("Đổi trạng thái", async (row, _) =>
+        {
+            var action = row.IsActive ? "ngừng hoạt động" : "kích hoạt lại";
+            if (MessageBox.Show(page.FindForm(), $"Bạn có chắc muốn {action} nhà cung cấp {row.SupplierCode}?",
+                    "Xác nhận", MessageBoxButtons.OKCancel, MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
+            await services.RunAsync(() => services.Suppliers.SetActiveAsync(services.Session, row.SupplierId, !row.IsActive));
+        }, "arrow-repeat", (_, _) => Task.FromResult(services.Authorization.CanManageSupplier(services.Session)));
+        return page;
+    }
+
+    public static Control Warehouses(UiServices services) => new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(services);
 
     public static Control Inventory(UiServices services)
     {
         var page = new DataListPage<InventoryDto>(services,
-            "Tồn hiện tại • Đơn vị, ngưỡng và trạng thái chưa sẵn sàng",
-            [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"), ("Quantity", "Số lượng tồn"), ("UpdatedAt", "Cập nhật")],
+            "Tồn hiện tại theo kho",
+            [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"), ("Unit", "Đơn vị"), ("Quantity", "Số lượng tồn"), ("ReorderPoint", "Ngưỡng đặt hàng"), ("MaximumStock", "Tồn tối đa"), ("StockStatus", "Trạng thái tồn"), ("UpdatedAt", "Cập nhật")],
             async (warehouseId, search, _, _) => (await services.Inventory.GetByWarehouseAsync(services.Session, warehouseId))
                 .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true);
         page.SelectedAction("Điều chỉnh tồn", async (row, warehouseId) =>
@@ -50,7 +86,8 @@ internal static class ConnectedPages
 
     public static Control InventoryReport(UiServices services)
     {
-        var page = new DataListPage<InventoryReportRowDto>(services,
+        DataListPage<InventoryReportRowDto>? page = null;
+        page = new DataListPage<InventoryReportRowDto>(services,
             "Báo cáo tồn kho",
             [("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"),
                 ("WarehouseName", "Kho"), ("Unit", "Đơn vị"), ("Quantity", "Số lượng tồn"),
@@ -59,6 +96,7 @@ internal static class ConnectedPages
             async (warehouseId, search, _, _) =>
             {
                 var report = await services.Reports.GetInventoryAsync(services.Session, warehouseId);
+                page?.SetSummary($"Tổng tồn toàn kho: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
                 return report.Rows.Where(row => Match(row.ProductCode, row.ProductName, search)).ToList();
             }, requiresWarehouse: true);
         page.Action("Xuất Excel", async () => await ExportInventoryAsync(page, services, false), "file-earmark-spreadsheet");
@@ -77,19 +115,31 @@ internal static class ConnectedPages
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
-        if (pdf) ReportExportService.ExportInventoryPdf(dialog.FileName, report);
-        else ReportExportService.ExportInventoryExcel(dialog.FileName, report);
+        try
+        {
+            if (pdf) ReportExportService.ExportInventoryPdf(dialog.FileName, report);
+            else ReportExportService.ExportInventoryExcel(dialog.FileName, report);
+            MessageBox.Show(page.FindForm(), "Đã xuất báo cáo thành công.", "Xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(page.FindForm(), LiveUi.ExportError(exception), "Không thể xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     public static Control ImportExportReport(UiServices services)
     {
-        var page = new DataListPage<ImportExportReportRowDto>(services,
+        DataListPage<ImportExportReportRowDto>? page = null;
+        page = new DataListPage<ImportExportReportRowDto>(services,
             "Báo cáo nhập xuất",
             [("ReceiptDate", "Ngày"), ("ReceiptCode", "Mã phiếu"), ("ReceiptType", "Loại phiếu"),
                 ("WarehouseName", "Kho"), ("TotalAmount", "Tổng tiền"), ("Status", "Trạng thái")],
             async (warehouseId, search, from, to) =>
             {
                 var report = await services.Reports.GetImportExportAsync(services.Session, warehouseId, from, to);
+                page?.SetSummary($"Tổng tiền theo kho/ngày: Nhập {report.ImportTotalAmount:N2} đ • Xuất {report.ExportTotalAmount:N2} đ");
                 var rows = report.Imports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
                     "IMPORT", item.WarehouseName, item.TotalAmount, item.Status))
                     .Concat(report.Exports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
@@ -114,8 +164,18 @@ internal static class ConnectedPages
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(page.FindForm()) != DialogResult.OK) return;
-        if (pdf) ReportExportService.ExportImportExportPdf(dialog.FileName, report);
-        else ReportExportService.ExportImportExportExcel(dialog.FileName, report);
+        try
+        {
+            if (pdf) ReportExportService.ExportImportExportPdf(dialog.FileName, report);
+            else ReportExportService.ExportImportExportExcel(dialog.FileName, report);
+            MessageBox.Show(page.FindForm(), "Đã xuất báo cáo thành công.", "Xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(page.FindForm(), LiveUi.ExportError(exception), "Không thể xuất báo cáo",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     public static Control History(UiServices services, int? productId = null) => new DataListPage<InventoryHistoryDto>(services,
@@ -145,15 +205,14 @@ internal static class ConnectedPages
         return page;
     }
 
-    private static Control WithDetails(DataListPage<LookupItemDto> page, bool canManage)
+    private static Control WithDetails(DataListPage<LookupItemDto> page, bool canManage, bool insetButton = false)
     {
-        page.AddDetailsColumn();
+        page.AddDetailsColumn(insetButton);
         if (canManage)
         {
             foreach (var caption in new[] { "Thêm", "Sửa", "Ngừng hoạt động" })
             {
-                var button = page.Action(caption, () => Task.CompletedTask);
-                button.Enabled = false;
+                var button = page.Action(caption, () => { ActionFeedback.Show(page); return Task.CompletedTask; });
                 button.AccessibleDescription = "Chưa có chức năng lưu dữ liệu cho mục này.";
             }
         }

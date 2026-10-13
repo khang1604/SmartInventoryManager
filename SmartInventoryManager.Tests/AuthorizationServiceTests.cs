@@ -26,6 +26,20 @@ public class AuthorizationServiceTests
     }
 
     [TestMethod]
+    public void RoleChecks_TrimRoleNameForAllSupportedRoles()
+    {
+        var service = CreateAuthorizationService();
+
+        var adminSession = CreateSession($"  {RoleNames.Admin}  ");
+        var managerSession = CreateSession($" {RoleNames.WarehouseManager} ");
+        var staffSession = CreateSession($" {RoleNames.Staff} ");
+
+        Assert.IsTrue(service.IsAdmin(adminSession));
+        Assert.IsTrue(service.IsWarehouseManager(managerSession));
+        Assert.IsTrue(service.IsStaff(staffSession));
+    }
+
+    [TestMethod]
     public void ManagementPermissions_FollowRoleMatrix()
     {
         var service = CreateAuthorizationService();
@@ -81,6 +95,18 @@ public class AuthorizationServiceTests
 
         session.SetCurrentWarehouse(8);
         Assert.AreEqual(8, session.CurrentWarehouseId);
+    }
+
+    [TestMethod]
+    public void UserSession_AssignmentInitialization_SelectsOnlySingleStaffWarehouse()
+    {
+        var session = CreateSession(RoleNames.Staff);
+
+        session.SetCurrentWarehouseFromAssignments(new[] { 7 });
+        Assert.AreEqual(7, session.CurrentWarehouseId);
+
+        session.SetCurrentWarehouseFromAssignments(new[] { 7, 8 });
+        Assert.IsNull(session.CurrentWarehouseId);
     }
 
     private static UserSession CreateSession(string roleName)

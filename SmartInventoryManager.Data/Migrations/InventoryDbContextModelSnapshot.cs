@@ -492,7 +492,7 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.ToTable("Products", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Products_MaximumStock", "[MaximumStock] >= [ReorderPoint]");
+                            t.HasCheckConstraint("CK_Products_MaximumStock", "[MaximumStock] > [ReorderPoint]");
 
                             t.HasCheckConstraint("CK_Products_PurchasePrice", "[PurchasePrice] >= 0");
 
@@ -577,7 +577,9 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.HasIndex("ProductId", "WarehouseId", "AlertType")
                         .IsUnique()
-                        .HasFilter("[IsResolved] = 0");
+
+                        .HasFilter("[IsResolved] = 0")
+                        .HasDatabaseName("UX_StockAlerts_Open_ProductWarehouseType");
 
                     b.ToTable("StockAlerts", null, t =>
                         {

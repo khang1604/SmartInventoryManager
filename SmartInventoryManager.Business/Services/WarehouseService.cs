@@ -37,7 +37,10 @@ public sealed class WarehouseService
     public async Task<IReadOnlyList<WarehouseDto>> GetAllAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         if (!session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập.");
-        return await _dbContext.Warehouses.AsNoTracking().OrderBy(item => item.WarehouseCode)
+        var warehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
+        return await _dbContext.Warehouses.AsNoTracking()
+            .Where(item => warehouseIds.Contains(item.WarehouseId))
+            .OrderBy(item => item.WarehouseCode)
             .Select(item => new WarehouseDto(item.WarehouseId, item.WarehouseCode, item.WarehouseName, item.Location, item.ManagerId, item.IsActive)).ToListAsync(cancellationToken);
     }
 
@@ -52,6 +55,7 @@ public sealed class WarehouseService
 
     public async Task UpdateAsync(UserSession session, int warehouseId, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
+        ValidateId(warehouseId, nameof(warehouseId));
         EnsureCanManage(session); Validate(request);
         var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho.");
         var code = request.WarehouseCode.Trim();
@@ -61,10 +65,34 @@ public sealed class WarehouseService
 
     public async Task SetActiveAsync(UserSession session, int warehouseId, bool isActive, CancellationToken cancellationToken = default)
     {
+        ValidateId(warehouseId, nameof(warehouseId));
         EnsureCanManage(session); var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho."); entity.IsActive = isActive; await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private static void ValidateId(int id, string parameterName)
+    {
+        if (id <= 0) throw new ArgumentOutOfRangeException(parameterName);
+    }
+
     private void EnsureCanManage(UserSession session) { if (!_authorization.CanManageWarehouse(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý kho."); }
-    private static void Validate(WarehouseRequestDto request) { ArgumentNullException.ThrowIfNull(request); if (string.IsNullOrWhiteSpace(request.WarehouseCode) || string.IsNullOrWhiteSpace(request.WarehouseName)) throw new ArgumentException("Mã và tên kho là bắt buộc.", nameof(request)); }
-    private async Task ValidateManagerAsync(int? managerId, CancellationToken cancellationToken) { if (managerId.HasValue && !await _dbContext.Users.AnyAsync(item => item.UserId == managerId.Value && item.IsActive, cancellationToken)) throw new InvalidOperationException("Người quản lý không tồn tại hoặc đã ngừng hoạt động."); }
+    private static void Validate(WarehouseRequestDto request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.WarehouseCode) || request.WarehouseCode.Trim().Length > 50)
+            throw new ArgumentException("Mã kho là bắt buộc và không quá 50 ký tự.", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.WarehouseName) || request.WarehouseName.Trim().Length > 200)
+            throw new ArgumentException("Tên kho là bắt buộc và không quá 200 ký tự.", nameof(request));
+        if (request.Location?.Trim().Length > 255)
+            throw new ArgumentException("Địa điểm không quá 255 ký tự.", nameof(request));
+    }
+    private async Task ValidateManagerAsync(int? managerId, CancellationToken cancellationToken)
+    {
+        if (!managerId.HasValue) return;
+
+        var isValidManager = await _dbContext.Users
+            .Where(item => item.UserId == managerId.Value && item.IsActive)
+            .AnyAsync(item => item.Role.RoleName == RoleNames.Admin || item.Role.RoleName == RoleNames.WarehouseManager, cancellationToken);
+        if (!isValidManager)
+            throw new InvalidOperationException("Người quản lý phải là tài khoản quản trị hoặc quản lý kho đang hoạt động.");
+    }
 }

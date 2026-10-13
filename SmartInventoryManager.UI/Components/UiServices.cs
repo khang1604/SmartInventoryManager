@@ -13,8 +13,8 @@ public sealed class UiServices : IDisposable
     public bool HasPendingOperations => Volatile.Read(ref _pending) > 0;
     public UserSession Session { get; }
     public AuthorizationService Authorization { get; }
-    public ImportService Imports { get; }
-    public ExportService Exports { get; }
+    public IImportService Imports { get; }
+    public IExportService Exports { get; }
     public InventoryService Inventory { get; }
     public StockAlertService Alerts { get; }
     public ProductService Products { get; }
@@ -29,7 +29,7 @@ public sealed class UiServices : IDisposable
     public NotificationService Notifications { get; }
 
     public UiServices(UserSession session, AuthorizationService authorization,
-        ImportService imports, ExportService exports, InventoryService inventory,
+        IImportService imports, IExportService exports, InventoryService inventory,
         StockAlertService alerts, ProductService products, WarehouseService warehouses,
         SupplierService suppliers, CategoryService categories, IProductService productManagement, LocationService locations,
         DashboardService dashboard, ReportService reports, UserService users, NotificationService notifications, Action resetTracking)
@@ -41,7 +41,6 @@ public sealed class UiServices : IDisposable
         Inventory = inventory;
         Alerts = alerts;
         Products = products;
-        ProductManagement = productManagement;
         ProductManagement = productManagement;
         Warehouses = warehouses;
         Suppliers = suppliers;

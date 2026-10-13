@@ -12,13 +12,16 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class InventoryService : IInventoryService
 {
+    private const int MaxReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
+    private readonly StockMutationService _stockMutation;
 
     public InventoryService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _stockMutation = new StockMutationService(_dbContext);
     }
 
     public event EventHandler<InventoryChangedEvent>? InventoryChanged;
@@ -28,6 +31,8 @@ public sealed class InventoryService : IInventoryService
         int warehouseId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
         if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem tồn kho tại kho này.");
@@ -63,6 +68,16 @@ public sealed class InventoryService : IInventoryService
         DateTime? to = null,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
+        if (productId.HasValue && productId.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+        if (from.HasValue && to.HasValue && to.Value.Date < from.Value.Date)
+        {
+            throw new ArgumentException("Khoảng ngày không hợp lệ.", nameof(to));
+        }
         if (!await _authorization.CanViewWarehouseAsync(session, warehouseId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem lịch sử tồn kho tại kho này.");
@@ -110,13 +125,16 @@ public sealed class InventoryService : IInventoryService
         string reason,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(warehouseId);
+        ValidateProductId(productId);
         if (quantityDelta == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(quantityDelta), "Số lượng điều chỉnh phải khác 0.");
         }
-        if (string.IsNullOrWhiteSpace(reason))
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > MaxReasonLength)
         {
-            throw new ArgumentException("Lý do điều chỉnh là bắt buộc.", nameof(reason));
+            throw new ArgumentException("Lý do điều chỉnh là bắt buộc và không quá 500 ký tự.", nameof(reason));
         }
         if (!await _authorization.CanAdjustInventoryAsync(session, warehouseId))
         {
@@ -133,7 +151,8 @@ public sealed class InventoryService : IInventoryService
             throw new KeyNotFoundException("Sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
         }
 
-        var inventory = await GetOrCreateInventoryAsync(warehouseId, productId, cancellationToken);
+        var inventory = await _stockMutation.GetOrCreateAsync(warehouseId, productId, cancellationToken);
+        var previousQuantity = inventory.Quantity;
         var newQuantity = checked(inventory.Quantity + quantityDelta);
         if (newQuantity < 0)
         {
@@ -152,11 +171,17 @@ public sealed class InventoryService : IInventoryService
             CreatedAt = DateTime.Now,
             Note = reason.Trim()
         });
+        await new StockAlertService(_dbContext, _authorization)
+            .RefreshAsync(productId, warehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        await new StockAlertService(_dbContext, _authorization)
-            .RefreshAsync(productId, warehouseId, cancellationToken);
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, warehouseId));
+        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+            productId,
+            warehouseId,
+            previousQuantity,
+            newQuantity,
+            InventoryTransactionTypes.Adjustment,
+            session.CurrentUser!.UserId));
     }
 
     public async Task TransferAsync(
@@ -168,6 +193,10 @@ public sealed class InventoryService : IInventoryService
         string note,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateWarehouseId(sourceWarehouseId);
+        ValidateWarehouseId(destinationWarehouseId);
+        ValidateProductId(productId);
         if (sourceWarehouseId == destinationWarehouseId)
         {
             throw new ArgumentException("Kho nguồn và kho đích phải khác nhau.");
@@ -179,6 +208,10 @@ public sealed class InventoryService : IInventoryService
         if (string.IsNullOrWhiteSpace(note))
         {
             throw new ArgumentException("Lý do chuyển kho là bắt buộc.", nameof(note));
+        }
+        if (note.Trim().Length > 500)
+        {
+            throw new ArgumentException("Ghi chú chuyển kho không quá 500 ký tự.", nameof(note));
         }
         if (!await _authorization.CanTransferInventoryAsync(session, sourceWarehouseId, destinationWarehouseId))
         {
@@ -202,11 +235,14 @@ public sealed class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("Tồn kho tại kho nguồn không đủ để chuyển.");
         }
-        var destination = await GetOrCreateInventoryAsync(destinationWarehouseId, productId, cancellationToken);
-        source.Quantity -= quantity;
-        source.UpdatedAt = DateTime.Now;
-        destination.Quantity = checked(destination.Quantity + quantity);
-        destination.UpdatedAt = DateTime.Now;
+        var previousSourceQuantity = source.Quantity;
+        var destinationInventory = await _dbContext.Inventories
+            .SingleOrDefaultAsync(item => item.WarehouseId == destinationWarehouseId && item.ProductId == productId, cancellationToken);
+        var previousDestinationQuantity = destinationInventory?.Quantity ?? 0;
+        await _stockMutation.DecreaseAsync(sourceWarehouseId, productId, quantity, cancellationToken);
+        destinationInventory ??= await _stockMutation.GetOrCreateAsync(destinationWarehouseId, productId, cancellationToken);
+        destinationInventory.Quantity = checked(destinationInventory.Quantity + quantity);
+        destinationInventory.UpdatedAt = DateTime.Now;
         var now = DateTime.Now;
         _dbContext.InventoryTransactions.AddRange(
             new InventoryTransaction
@@ -231,13 +267,25 @@ public sealed class InventoryService : IInventoryService
                 CreatedAt = now,
                 Note = note.Trim()
             });
+        var alertService = new StockAlertService(_dbContext, _authorization);
+        await alertService.RefreshAsync(productId, sourceWarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
+        await alertService.RefreshAsync(productId, destinationWarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        var alertService = new StockAlertService(_dbContext, _authorization);
-        await alertService.RefreshAsync(productId, sourceWarehouseId, cancellationToken);
-        await alertService.RefreshAsync(productId, destinationWarehouseId, cancellationToken);
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, sourceWarehouseId));
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(productId, destinationWarehouseId));
+        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+            productId,
+            sourceWarehouseId,
+            previousSourceQuantity,
+            previousSourceQuantity - quantity,
+            InventoryTransactionTypes.TransferOut,
+            session.CurrentUser!.UserId));
+        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+            productId,
+            destinationWarehouseId,
+            previousDestinationQuantity,
+            previousDestinationQuantity + quantity,
+            InventoryTransactionTypes.TransferIn,
+            session.CurrentUser!.UserId));
     }
 
     private async Task<InventoryEntity> GetOrCreateInventoryAsync(int warehouseId, int productId, CancellationToken cancellationToken)
@@ -257,5 +305,30 @@ public sealed class InventoryService : IInventoryService
         };
         _dbContext.Inventories.Add(inventory);
         return inventory;
+    }
+
+    private static void ValidateProductId(int productId)
+    {
+        if (productId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(productId));
+        }
+    }
+
+    private static void ValidateWarehouseId(int warehouseId)
+    {
+        if (warehouseId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(warehouseId));
+        }
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để thực hiện thao tác.");
+        }
     }
 }

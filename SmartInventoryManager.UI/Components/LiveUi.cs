@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.UI.Themes;
 
 namespace SmartInventoryManager.UI.Components;
@@ -30,6 +31,18 @@ internal static class LiveUi
         return panel;
     }
 
+    public static string ExportError(Exception exception)
+    {
+        Debug.WriteLine(exception);
+        return exception switch
+        {
+            UnauthorizedAccessException => "Không có quyền ghi vào vị trí đã chọn. Hãy chọn thư mục khác.",
+            IOException => "Không thể ghi tệp. Hãy đóng tệp đang mở hoặc chọn tên tệp khác.",
+            ArgumentException => "Tên hoặc đường dẫn tệp không hợp lệ. Hãy chọn lại nơi lưu.",
+            _ => "Không thể xuất báo cáo. Hãy kiểm tra đường dẫn lưu, quyền ghi và tệp đang mở rồi thử lại."
+        };
+    }
+
     public static FlowLayoutPanel Toolbar() => new()
     {
         Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true, Margin = Padding.Empty
@@ -39,12 +52,58 @@ internal static class LiveUi
     {
         var frame = new RoundedSurface
         {
-            Dock = DockStyle.Fill, Padding = new Padding(8), Margin = Padding.Empty,
+            Dock = DockStyle.Fill, Padding = new Padding(10), Margin = Padding.Empty,
             AccessibleName = "Khung bảng dữ liệu"
         };
         content.Dock = DockStyle.Fill;
         content.Margin = Padding.Empty;
         frame.Controls.Add(content);
+        void StyleTables(Control control)
+        {
+            if (control is DataGridView table)
+            {
+                var bodyFont = new Font("Segoe UI", 10F, FontStyle.Regular);
+                table.Font = bodyFont;
+                Font? headerFont = null;
+                void ApplyHeaderFont()
+                {
+                    var previous = headerFont;
+                    headerFont = new Font("Segoe UI", table.Font.Size, FontStyle.Bold);
+                    table.ColumnHeadersDefaultCellStyle.Font = headerFont;
+                    previous?.Dispose();
+                }
+                table.ColumnHeadersDefaultCellStyle.Padding = new Padding(12, 0, 8, 0);
+                table.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                ApplyHeaderFont();
+                table.DataSourceChanged += (_,_) =>
+                {
+                    if(table.Parent is TableLayoutPanel area && area.RowCount==2 && area.RowStyles.Count==2)
+                    { area.RowStyles[0].SizeType=SizeType.Percent; area.RowStyles[0].Height=100; area.RowStyles[1].SizeType=SizeType.Absolute; area.RowStyles[1].Height=0; foreach(Control other in area.Controls) if(!ReferenceEquals(other,table)) other.Visible=false; }
+                };
+                table.FontChanged += (_, _) => ApplyHeaderFont();
+                table.Disposed += (_, _) => { headerFont?.Dispose(); bodyFont.Dispose(); };
+                table.BorderStyle = BorderStyle.None;
+                table.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+                table.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+                // [COLOR CONFIG]: đường ngang nhạt, bỏ viền đen giữa các tiêu đề.
+                table.GridColor = AppColors.Border;
+                void RoundTable()
+                {
+                    if (table.Width < 2 || table.Height < 2) return;
+                    using var outline = new System.Drawing.Drawing2D.GraphicsPath();
+                    int radius = Math.Max(8, 8 * table.DeviceDpi / 96);
+                    outline.AddRoundedRectangle(table.ClientRectangle, new Size(radius, radius));
+                    var previous = table.Region;
+                    table.Region = new Region(outline);
+                    previous?.Dispose();
+                }
+                table.SizeChanged += (_, _) => RoundTable();
+                table.DpiChangedAfterParent += (_, _) => RoundTable();
+                RoundTable();
+            }
+            foreach (Control child in control.Controls) StyleTables(child);
+        }
+        StyleTables(content);
         return frame;
     }
 
@@ -115,11 +174,20 @@ internal static class LiveUi
         return grid;
     }
 
+    public static string StockStatusText(SmartInventoryManager.Business.Inventory.StockStatus status) => status switch
+    {
+        SmartInventoryManager.Business.Inventory.StockStatus.OutOfStock => "Hết hàng",
+        SmartInventoryManager.Business.Inventory.StockStatus.LowStock => "Sắp hết hàng",
+        SmartInventoryManager.Business.Inventory.StockStatus.Normal => "Bình thường",
+        SmartInventoryManager.Business.Inventory.StockStatus.Overstock => "Vượt mức",
+        _ => "Chưa xác định"
+    };
+
     public static string StatusText(string status) => status switch
     {
         "DRAFT" => "Nháp", "COMPLETED" => "Hoàn tất", "CANCELLED" => "Đã hủy",
-        "OUT_OF_STOCK" => "Hết hàng", "LOW_STOCK" => "Sắp hết",
-        "NORMAL" => "Bình thường", "OVERSTOCK" => "Vượt mức",
+        "OutOfStock" or "OUT_OF_STOCK" => "Hết hàng", "LowStock" or "LOW_STOCK" => "Sắp hết",
+        "Normal" or "NORMAL" => "Bình thường", "Overstock" or "OVERSTOCK" => "Vượt mức",
         "IMPORT" => "Nhập kho", "EXPORT" => "Xuất kho", "ADJUSTMENT" => "Điều chỉnh",
         "TRANSFER_IN" => "Chuyển kho đến", "TRANSFER_OUT" => "Chuyển kho đi",
         _ => "Chưa xác định"
@@ -131,12 +199,14 @@ internal static class LiveUi
         return exception switch
         {
             UnauthorizedAccessException => "Bạn chưa đăng nhập hoặc không có quyền thao tác tại kho này.",
-            ArgumentException => "Thông tin chưa hợp lệ. Kiểm tra các trường bắt buộc, số lượng và đơn giá.",
+            ArgumentException argument when !string.IsNullOrWhiteSpace(argument.Message)
+                => argument.Message,
             KeyNotFoundException => "Dữ liệu không còn tồn tại. Hãy làm mới danh sách.",
             InvalidOperationException when exception.Message.Contains("không đủ", StringComparison.OrdinalIgnoreCase)
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."
                 => "Mức giảm vượt quá tồn hiện tại. Hãy kiểm tra số lượng điều chỉnh.",
+            DbUpdateException => "Cơ sở dữ liệu chưa đồng bộ cấu trúc. Hãy khởi động lại ứng dụng để áp dụng migration rồi thử lại.",
             _ => "Chưa thực hiện được thao tác. Hãy làm mới dữ liệu hoặc thử lại; không gửi lại khi chưa kiểm tra kết quả."
         };
     }

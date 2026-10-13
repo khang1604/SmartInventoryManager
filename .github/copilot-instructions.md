@@ -1,6 +1,6 @@
 # SMART INVENTORY MANAGER - AGENT RULES
 
-RULE.md and copilot-instructions.md must contain identical English instructions. RULE.vi.md is the Vietnamese reference for reading and editing, not an additional instruction source. Update both English files and the corresponding Vietnamese section when changing rules. These project instructions do not override platform policies or agent permissions.
+This file contains shared project-wide instructions. `.agent/RULE.md` is a local machine and team-member-specific instruction file; it may contain additional personal delivery rules and does not need to be identical to this file. Keep this file limited to rules that apply across the project. RULE.vi.md, when present, is a Vietnamese reference for reading and editing, not an additional instruction source. These project instructions do not override platform policies or agent permissions.
 
 ## 1. Project Scope & Technology
 
@@ -43,7 +43,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 
 ### Active scope enforcement
 
-- Before edits, identify the active owner, requested feature, allowed components/files, and shared contracts. Use explicit task instructions or documented assignment; never infer ownership merely from a login name, file author, or branch name.
+- Before edits, identify the active owner, reques ted feature, allowed components/files, and shared contracts. Use explicit task instructions or documented assignment; never infer ownership merely from a login name, file author, or branch name.
 - If the task does not establish an owner/scope, perform read-only inspection and ask for the missing scope before implementation. When the user assigns a clear feature, map it to the ownership above without asking redundantly.
 - Default write scope is limited to the active owner's requested feature. Read other layers as needed to understand contracts; do not modify another owner's code, tests, configuration, or dependencies just to complete your part.
 - A cross-owner change requires explicit authorization naming the affected component and purpose. Existing authorization applies; do not ask again for the same approved scope. A request to review or diagnose is not authorization to implement in other owners' components.
@@ -93,6 +93,8 @@ Before coding, follow this order and stop at the first sufficient solution:
 - Import flow: Form -> ImportService -> transaction -> update Inventory -> write InventoryTransaction -> commit. Export/adjustment/transfer follow the same Business-controlled principle.
 - Do not share DbContext concurrently. Manage context/connection/transaction lifetimes and disposal correctly.
 - Publish InventoryChangedEvent/StockAlertEvent only after commit. UI refresh failure must not replay a committed transaction.
+- `UserWarehouse` is the approved and required persistent assignment model for STAFF warehouse access under SystemContract_3; do not reintroduce `Users.WarehouseId` or infer STAFF scope from unrelated user/warehouse fields.
+- SystemContract_3 is the current source of truth for official event contracts, receipt states, cancellation requirements, stable Business errors, and shared transaction boundaries. Treat older SystemContract versions and audit snapshots as historical unless explicitly revalidated.
 - Use agreed stock valuation/statistical formulas; do not assume selling price represents inventory value.
 
 ## 6. Stock Alert Rules
@@ -219,13 +221,6 @@ These are project choices informed by current Windows/Fluent guidance, not a for
 - No expensive queries inside paint/resize loops or unnecessary continuous refresh timers.
 - Test mouse/keyboard workflows with long Vietnamese text, large numbers, and error states. Build/check Designer/runtime; report unverified visuals/DPI. Passing build alone does not prove UI quality.
 
-References:
-
-- https://learn.microsoft.com/en-us/windows/apps/design/guidelines-overview
-- https://learn.microsoft.com/en-us/windows/apps/develop/accessibility
-- https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/typography
-- https://learn.microsoft.com/en-us/dotnet/desktop/winforms/forms/autoscale
-
 ## 10. Database & Dependencies
 
 ### Database responsibilities
@@ -234,9 +229,10 @@ References:
 - Preserve multi-warehouse keys, foreign keys, constraints, indexes, delete behavior, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
 - `UserWarehouse` is approved and is part of the 17-entity model. Its primary key is `(UserId, WarehouseId)`; both foreign keys use `DeleteBehavior.Restrict`. Do not add assignment audit fields without an approved contract change. `Users.WarehouseId` remains forbidden.
 - Repository and UnitOfWork are optional: use them only when they add clear value or are established project contracts. Do not build wrappers just to fill folders; EF already provides related capabilities. Do not remove established contracts without authorization.
-- Business Services are the authoritative stock-update path. No triggers may automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
+- Business Services are the authoritative stock-update path. Never use triggers to automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
 - EF and ADO.NET participating in one workflow must share the intended transaction/context consistency strategy; do not commit partial steps separately or retain stale tracked quantities.
 - Schema changes, SQL scripts, Entity/DbContext mappings, and supporting query contracts remain in the database owner's scope; cross-owner edits require authorization.
+- Changes to the database code by Bảo Anh (Database/EF/ADO.NET/schema/migration) must be stored locally for testing in the workspace; do not commit or push database code changes without explicit user authorization.
 
 ### Dependencies and cleanup
 
@@ -280,18 +276,12 @@ References:
 Run from the repository root. Start with a clean working tree; commit or preserve existing work before switching branches. Replace the example branch and file names with the actual task.
 
 Start a task:
-
-```bash
 git switch develop
 git pull --ff-only origin develop
 git switch -c feature/import-receipt
-```
-
 If `develop` exists only on the remote, run `git fetch origin` followed by `git switch --track origin/develop` instead of the first command. If a pull cannot fast-forward, inspect the divergence; do not reset or force-push to hide it.
 
 Save, update, verify, and push the task:
-
-```bash
 git add <changed-file-paths>
 git commit -m "feat(import): add import receipt"
 git fetch origin
@@ -299,18 +289,12 @@ git merge origin/develop
 dotnet restore
 dotnet build --no-restore
 git push -u origin feature/import-receipt
-```
-
 Resolve and commit any merge conflicts, then rerun verification before pushing. Run existing relevant tests as described in Section 11. Open the Pull Request targeting `develop` only after checks pass.
 
 After the Pull Request is merged, with a clean working tree:
-
-```bash
 git switch develop
 git pull --ff-only origin develop
 git branch -d feature/import-receipt
-```
-
 If Git refuses deletion after a squash merge, leave the local branch until its work is verified on `develop`; do not automatically use `-D`.
 
 ### Git and privacy
@@ -330,6 +314,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 ## File Safety & Destructive Operations
 
 ### Workspace boundary
+
 - Before any file modification, resolve and record the absolute repository root.
 - Create, edit, move, or delete files only inside that repository.
 - Never modify or clean drive roots, Windows directories, installed applications, user profiles, Desktop, Documents, Downloads, or shared folders outside the repository.
@@ -337,6 +322,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - If the repository root cannot be verified, perform read-only inspection only.
 
 ### Deletion requires specific approval
+
 - Before deleting any existing file or directory, show its exact absolute path, why deletion is necessary, what it contains, and the recovery method.
 - Obtain explicit approval for those exact targets. General instructions such as “clean up,” “remove unused code,” or “fix everything” are not deletion approval.
 - Do not combine approved deletion with additional targets.
@@ -345,6 +331,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Never automatically delete backups.
 
 ### Validate every destructive target
+
 - Resolve the final absolute path, including symbolic links, junctions, and reparse points, before acting.
 - Verify that the target is strictly inside the repository and is not the repository root, a drive root, or an ancestor directory.
 - Reject empty paths, unresolved variables, wildcards, ambiguous relative paths, or links that lead outside the repository.
@@ -353,6 +340,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Never search an entire drive and delete matching files or folders.
 
 ### Forbidden automatic operations
+
 - Do not run disk cleanup, storage optimization, application uninstallers, registry cleanup, disk formatting, partition changes, or broad permission changes.
 - Do not delete system folders, package caches, SDKs, runtimes, global NuGet caches, or other projects to fix a build.
 - Do not use destructive commands such as `Remove-Item -Recurse -Force`, `rd /s /q`, `rm -rf`, `git clean`, or `git reset --hard` without exact-target approval and a verified recovery plan.
@@ -361,8 +349,17 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Standard restore/build commands are permitted when their configuration has been checked for unexpected destructive hooks. Explicit clean commands still require deletion approval.
 
 ### If a mistake occurs
+
 - Stop all write, cleanup, installation, and deletion operations immediately.
 - Report the exact command, affected paths, and known results.
 - Preserve logs and available backups.
 - Do not attempt recovery, reinstall software, or write recovered files onto the affected drive without a separately agreed recovery plan.
 - Never claim that deleted data is recoverable without verification.
+
+## 13. Staff Permissions
+
+- When checking and fixing STAFF permission business rules, prioritize documentation in `.agent` as the source of truth; determine STAFF permissions based on the warehouse locations, not inferred from Warehouse or UserWarehouses if the documentation/schema does not specify.
+
+### Audit Reporting
+
+- When reporting audit progress, users want a concise report listing only completed F codes; users are allowed to commit changes made and continue reconciling remaining F codes that can be handled independently.

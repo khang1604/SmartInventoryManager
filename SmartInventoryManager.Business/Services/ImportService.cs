@@ -1,26 +1,33 @@
 using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
+using SmartInventoryManager.Business.Events;
 using SmartInventoryManager.Business.Inventory;
+using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
-using InventoryEntity = SmartInventoryManager.Data.Entities.Inventory;
 
 namespace SmartInventoryManager.Business.Services;
 
-public sealed class ImportService
+public sealed class ImportService : IImportService
 {
     private const int MaxListResults = 500;
+    private const int MaxReceiptNoteLength = 500;
+    private const int MaxRejectReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
+    private readonly StockMutationService _stockMutation;
     private readonly ImportValidator _validator = new();
 
     public ImportService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _stockMutation = new StockMutationService(_dbContext);
     }
+
+    public event EventHandler<ReceiptCompletedEvent>? ReceiptCompleted;
 
     public async Task<int> CreateDraftAsync(
         UserSession session,
@@ -28,13 +35,20 @@ public sealed class ImportService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateSession(session);
+        ValidateReceiptId(request.WarehouseId);
+        if (request.SupplierId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request.SupplierId));
+        }
+        ValidateNote(request.Note);
 
         if (!await _authorization.CanCreateDraftReceiptAsync(session, request.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền tạo phiếu nhập tại kho này.");
         }
 
-        ValidateRequest(request);
+        ValidateRequest(request, requireDetails: false);
         var warehouseExists = await _dbContext.Warehouses.AnyAsync(
             warehouse => warehouse.WarehouseId == request.WarehouseId && warehouse.IsActive,
             cancellationToken);
@@ -58,13 +72,14 @@ public sealed class ImportService
 
         var receipt = new ImportReceipt
         {
-            ReceiptCode = request.ReceiptCode.Trim(),
+            ReceiptCode = GenerateReceiptCode(),
             SupplierId = request.SupplierId,
             WarehouseId = request.WarehouseId,
             CreatedBy = session.CurrentUser!.UserId,
             ReceiptDate = DateTime.Now,
             Status = "DRAFT",
             Note = request.Note?.Trim(),
+            TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice),
             Details = request.Details.Select(detail => new ImportDetail
             {
                 ProductId = detail.ProductId,
@@ -87,6 +102,7 @@ public sealed class ImportService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
         if (!session.IsAuthenticated)
         {
             throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu nhập.");
@@ -145,10 +161,8 @@ public sealed class ImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
-        if (!session.IsAuthenticated)
-        {
-            throw new UnauthorizedAccessException("Bạn cần đăng nhập để xem phiếu nhập.");
-        }
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         var receipt = await _dbContext.ImportReceipts
             .AsNoTracking()
@@ -188,18 +202,42 @@ public sealed class ImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
+
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
-        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
-        {
-            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu nhập.");
-        }
         if (receipt.Status != "DRAFT")
         {
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được gửi duyệt.");
         }
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền gửi phiếu nhập.");
+        }
+        await ValidateStoredReceiptAsync(receipt, cancellationToken);
+        receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "PENDING_APPROVAL";
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteDraftAsync(
+        UserSession session,
+        int importReceiptId,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _dbContext.ImportReceipts
+            .Include(item => item.Details)
+            .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
+            ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu nhập nháp tại kho này.");
+        if (receipt.Status != "DRAFT")
+            throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được xóa.");
+
+        _dbContext.ImportDetails.RemoveRange(receipt.Details);
+        _dbContext.ImportReceipts.Remove(receipt);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -229,10 +267,17 @@ public sealed class ImportService
         string reason,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Lý do từ chối là bắt buộc.", nameof(reason));
         }
+        if (reason.Trim().Length > MaxRejectReasonLength)
+        {
+            throw new ArgumentException("Lý do từ chối quá dài.", nameof(reason));
+        }
+
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
@@ -274,6 +319,11 @@ public sealed class ImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            cancellationToken);
         var receipt = await _dbContext.ImportReceipts
             .Include(importReceipt => importReceipt.Details)
             .SingleOrDefaultAsync(importReceipt => importReceipt.ImportReceiptId == importReceiptId, cancellationToken)
@@ -285,35 +335,24 @@ public sealed class ImportService
         }
 
         if (receipt.Status == "COMPLETED")
-        {
-            return;
-        }
+            throw new InvalidOperationException("Phiếu nhập đã hoàn tất trước đó.");
 
         if (receipt.Status != "APPROVED")
         {
             throw new InvalidOperationException("Chỉ phiếu nhập đã được duyệt mới được hoàn tất.");
         }
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable,
-            cancellationToken);
+        await ValidateStoredReceiptAsync(receipt, cancellationToken);
         var alreadyPosted = await _dbContext.InventoryTransactions.AnyAsync(
             item => item.ReferenceType == InventoryTransactionTypes.ImportReceipt &&
                 item.ReferenceId == importReceiptId,
             cancellationToken);
         if (alreadyPosted)
-        {
-            receipt.Status = "COMPLETED";
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return;
-        }
+            throw new InvalidOperationException("Phiếu nhập đã được ghi nhận tồn kho trước đó.");
 
         foreach (var detail in receipt.Details)
         {
-            var inventory = await GetOrCreateInventoryAsync(receipt.WarehouseId, detail.ProductId, cancellationToken);
-            inventory.Quantity = checked(inventory.Quantity + detail.Quantity);
-            inventory.UpdatedAt = DateTime.Now;
+            await _stockMutation.IncreaseAsync(receipt.WarehouseId, detail.ProductId, detail.Quantity, cancellationToken);
             _dbContext.InventoryTransactions.Add(new InventoryTransaction
             {
                 ProductId = detail.ProductId,
@@ -330,14 +369,16 @@ public sealed class ImportService
 
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "COMPLETED";
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
         var alertService = new StockAlertService(_dbContext, _authorization);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
-        {
-            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken);
-        }
+            await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        ReceiptCompleted?.Invoke(this, new ReceiptCompletedEvent(
+            importReceiptId,
+            import: true,
+            receipt.WarehouseId,
+            receipt.Details.Select(detail => detail.ProductId).Distinct().ToArray()));
     }
 
     public async Task UpdateDraftAsync(
@@ -347,6 +388,8 @@ public sealed class ImportService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         var receipt = await _dbContext.ImportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
@@ -359,7 +402,7 @@ public sealed class ImportService
         {
             throw new UnauthorizedAccessException("Bạn không có quyền sửa phiếu nhập tại kho này.");
         }
-        ValidateRequest(request);
+        ValidateRequest(request, requireDetails: false);
         if (request.WarehouseId != receipt.WarehouseId)
         {
             throw new InvalidOperationException("Không được đổi kho của phiếu nhập nháp.");
@@ -375,7 +418,6 @@ public sealed class ImportService
         {
             throw new InvalidOperationException("Nhà cung cấp hoặc sản phẩm không tồn tại hoặc đã ngừng hoạt động.");
         }
-        receipt.ReceiptCode = request.ReceiptCode.Trim();
         receipt.SupplierId = request.SupplierId;
         receipt.Note = request.Note?.Trim();
         _dbContext.ImportDetails.RemoveRange(receipt.Details);
@@ -385,6 +427,8 @@ public sealed class ImportService
             Quantity = detail.Quantity,
             UnitPrice = detail.UnitPrice
         }).ToList();
+        if (receipt.Status == "REJECTED")
+            receipt.Status = "DRAFT";
         receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -394,6 +438,8 @@ public sealed class ImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        ValidateSession(session);
+        ValidateReceiptId(importReceiptId);
         var receipt = await _dbContext.ImportReceipts
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
@@ -409,32 +455,35 @@ public sealed class ImportService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<InventoryEntity> GetOrCreateInventoryAsync(int warehouseId, int productId, CancellationToken cancellationToken)
+    private async Task ValidateStoredReceiptAsync(ImportReceipt receipt, CancellationToken cancellationToken)
     {
-        var inventory = await _dbContext.Inventories
-            .SingleOrDefaultAsync(item => item.WarehouseId == warehouseId && item.ProductId == productId, cancellationToken);
-        if (inventory is not null)
-        {
-            return inventory;
-        }
+        if (receipt.Details.Count == 0)
+            throw new InvalidOperationException("Phiếu nhập phải có ít nhất một dòng hàng.");
 
-        inventory = new InventoryEntity
+        var supplierExists = await _dbContext.Suppliers.AnyAsync(
+            supplier => supplier.SupplierId == receipt.SupplierId && supplier.IsActive,
+            cancellationToken);
+        var warehouseExists = await _dbContext.Warehouses.AnyAsync(
+            warehouse => warehouse.WarehouseId == receipt.WarehouseId && warehouse.IsActive,
+            cancellationToken);
+        var productIds = receipt.Details.Select(detail => detail.ProductId).ToArray();
+        var activeProductCount = await _dbContext.Products.CountAsync(
+            product => productIds.Contains(product.ProductId) && product.IsActive,
+            cancellationToken);
+        if (!supplierExists || !warehouseExists || activeProductCount != productIds.Distinct().Count() ||
+            productIds.Length != productIds.Distinct().Count() ||
+            receipt.Details.Any(detail => detail.Quantity <= 0 || detail.UnitPrice < 0))
         {
-            WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 0,
-            UpdatedAt = DateTime.Now
-        };
-        _dbContext.Inventories.Add(inventory);
-        return inventory;
+            throw new InvalidOperationException("Phiếu nhập có kho, nhà cung cấp, sản phẩm hoặc số lượng không hợp lệ.");
+        }
     }
 
-    private void ValidateRequest(ImportReceiptDto request)
+    private void ValidateRequest(ImportReceiptDto request, bool requireDetails)
     {
-        if (string.IsNullOrWhiteSpace(request.ReceiptCode) || request.Details.Count == 0 ||
+        if ((requireDetails && request.Details.Count == 0) ||
             request.Details.Select(detail => detail.ProductId).Distinct().Count() != request.Details.Count)
         {
-            throw new ArgumentException("Mã phiếu và chi tiết phiếu nhập là bắt buộc; sản phẩm không được trùng.", nameof(request));
+            throw new ArgumentException("Chi tiết phiếu nhập không được trùng và phải có ít nhất một dòng khi chuyển trạng thái.", nameof(request));
         }
         var errors = request.Details
             .SelectMany(detail => _validator.ValidateDetail(detail.ProductId, detail.Quantity, detail.UnitPrice))
@@ -442,6 +491,33 @@ public sealed class ImportService
         if (errors.Length > 0)
         {
             throw new ArgumentException(string.Join(" ", errors), nameof(request));
+        }
+    }
+
+    private static string GenerateReceiptCode() => $"PN{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..38];
+
+    private static void ValidateReceiptId(int receiptId)
+    {
+        if (receiptId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(receiptId));
+        }
+    }
+
+    private static void ValidateNote(string? note)
+    {
+        if (note?.Trim().Length > MaxReceiptNoteLength)
+        {
+            throw new ArgumentException("Ghi chú phiếu nhập không quá 500 ký tự.", nameof(note));
+        }
+    }
+
+    private static void ValidateSession(UserSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (session.CurrentUser is null)
+        {
+            throw new UnauthorizedAccessException("Bạn cần đăng nhập để thực hiện thao tác.");
         }
     }
 }

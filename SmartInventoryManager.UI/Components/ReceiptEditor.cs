@@ -11,6 +11,7 @@ internal sealed class ReceiptEditor : UserControl
     private readonly bool _requestedEdit;
     private int? _id;
     private string _status = "DRAFT";
+    private int _createdBy;
     private bool _busy;
     private bool _editable;
     private bool _dirty;
@@ -52,13 +53,13 @@ internal sealed class ReceiptEditor : UserControl
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
         root.Controls.Add(ProductUi.Label(import ? "Phiếu nhập kho" : "Phiếu xuất kho", 18, true), 0, 0);
-        _fields.Controls.AddRange([LiveUi.Field("Mã phiếu *", _code), LiveUi.Field("Kho *", _warehouse)]);
+        _fields.Controls.AddRange([LiveUi.Field("Mã phiếu (tự động)", _code), LiveUi.Field("Kho *", _warehouse)]);
         if (import) _fields.Controls.Add(LiveUi.Field("Nhà cung cấp *", _supplier));
         _fields.Controls.Add(LiveUi.Field("Ghi chú", _note));
         root.Controls.Add(_fields, 0, 1);
         var toolbar = LiveUi.Toolbar();
         toolbar.Controls.AddRange([_add, _remove, _reload]);
-        var hint = ProductUi.Label("Số lượng nguyên > 0 • Đơn giá ≥ 0 • Ngày lập do hệ thống ghi nhận");
+        var hint = ProductUi.Label("Có thể lưu nháp chưa có dòng hàng • Số lượng > 0 • Đơn giá ≥ 0");
         hint.Dock = DockStyle.None; hint.Size = new Size(520, 44);
         toolbar.Controls.Add(hint);
         root.Controls.Add(toolbar, 0, 2);
@@ -131,7 +132,7 @@ internal sealed class ReceiptEditor : UserControl
         owner.CancelButton = close;
         // Enter trong bảng không thực hiện lưu hoặc hoàn tất phiếu.
         _actions.Controls.AddRange([_save, close]);
-        root.Controls.Add(_lines, 0, 3);
+        root.Controls.Add(LiveUi.TableFrame(_lines), 0, 3);
         root.Controls.Add(_total, 0, 4);
         var footer = ProductUi.Layout(2, 1);
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -171,7 +172,8 @@ internal sealed class ReceiptEditor : UserControl
             var suppliers = _import ? await _services.RunAsync(() => _services.Suppliers.GetActiveAsync(_services.Session)) : Array.Empty<LookupItemDto>();
             _products = await _services.RunAsync(() => _services.Products.GetActiveAsync(_services.Session));
             IReadOnlyList<ReceiptDetailViewDto> details = Array.Empty<ReceiptDetailViewDto>();
-            int warehouseId = 0, supplierId = 0;
+            int warehouseId = !_id.HasValue && _services.Authorization.IsStaff(_services.Session)
+                ? _services.Session.CurrentWarehouseId ?? 0 : 0, supplierId = 0;
             string warehouseName = "", supplierName = "";
             if (_id.HasValue)
             {
@@ -182,7 +184,7 @@ internal sealed class ReceiptEditor : UserControl
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
                     supplierId = receipt.SupplierId; supplierName = receipt.SupplierName;
-                    _status = receipt.Status; details = receipt.Details;
+                    _status = receipt.Status; _createdBy=receipt.CreatedBy; details = receipt.Details;
                 }
                 else
                 {
@@ -190,7 +192,7 @@ internal sealed class ReceiptEditor : UserControl
                         ?? throw new KeyNotFoundException();
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
-                    _status = receipt.Status; details = receipt.Details;
+                    _status = receipt.Status; _createdBy=receipt.CreatedBy; details = receipt.Details;
                 }
             }
             BindLookup(_warehouse, warehouses, warehouseId, warehouseName, "Chọn kho");
@@ -248,16 +250,18 @@ internal sealed class ReceiptEditor : UserControl
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
         _editable = false;
         _save.Enabled = _add.Enabled = _remove.Enabled = false;
-        _code.ReadOnly = _note.ReadOnly = _lines.ReadOnly = true;
+        _code.ReadOnly = true;
+        _note.ReadOnly = _lines.ReadOnly = true;
         var allowed = warehouseId != 0 && await _services.RunAsync(() => _id.HasValue
-            ? _services.Authorization.CanEditDraftReceiptAsync(_services.Session, warehouseId)
+            ? _services.Authorization.CanEditReceiptAsync(_services.Session, warehouseId, _createdBy, _status)
             : _services.Authorization.CanCreateDraftReceiptAsync(_services.Session, warehouseId));
         if (IsDisposed || ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) != warehouseId) return;
-        _editable = _requestedEdit && _status == "DRAFT" && allowed;
-        _code.ReadOnly = _note.ReadOnly = !_editable;
+        _editable = _requestedEdit && (_status is "DRAFT" or "REJECTED") && allowed;
+        _code.ReadOnly = true;
+        _note.ReadOnly = !_editable;
         _lines.ReadOnly = !_editable;
         // Cho phép chọn kho trước khi xác định quyền tạo mới; kho phiếu đã lưu không được đổi.
-        _warehouse.Enabled = _requestedEdit && !_id.HasValue;
+        _warehouse.Enabled = _requestedEdit && !_id.HasValue && !_services.Authorization.IsStaff(_services.Session);
         _supplier.Enabled = _editable;
         _save.Enabled = _add.Enabled = _remove.Enabled = _editable && !_busy;
         if (!_busy && _loaded) _message.Text = PermissionHint();
@@ -267,18 +271,19 @@ internal sealed class ReceiptEditor : UserControl
     {
         if (_requestedEdit && !_id.HasValue && ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) == 0)
             return "Chọn kho để bắt đầu tạo phiếu nháp.";
-        if (_editable) return "Nháp • Nhập thông tin và lưu nháp.";
-        if (!_requestedEdit || _status != "DRAFT")
+        if (_editable) return $"{LiveUi.StatusText(_status)} • Nhập thông tin và lưu thay đổi.";
+        if (!_requestedEdit || _status is not ("DRAFT" or "REJECTED"))
             return $"{LiveUi.StatusText(_status)} • Chỉ xem; phiếu không ở chế độ chỉnh sửa.";
         return "Chưa có quyền sửa phiếu tại kho đã chọn.";
     }
 
-    private bool TryReadLines(out IReadOnlyList<ReceiptDetailDto> details, bool showErrors)
+    private bool TryReadLines(out IReadOnlyList<ReceiptDetailDto> details, bool showErrors, bool requireLine)
     {
         var result = new List<ReceiptDetailDto>();
         var valid = true;
         foreach (DataGridViewRow row in _lines.Rows)
         {
+            if (row.IsNewRow) continue;
             row.ErrorText = "";
             foreach (DataGridViewCell cell in row.Cells) cell.ErrorText = "";
             var id = row.Cells["ProductId"].Value is int value ? value : 0;
@@ -297,7 +302,7 @@ internal sealed class ReceiptEditor : UserControl
             else result.Add(new ReceiptDetailDto(id, quantity, price));
         }
         details = result;
-        return valid && result.Count > 0;
+        return valid && (!requireLine || result.Count > 0);
     }
 
     private void UpdateTotal()
@@ -308,6 +313,7 @@ internal sealed class ReceiptEditor : UserControl
         {
             foreach (DataGridViewRow row in _lines.Rows)
             {
+                if (row.IsNewRow) continue;
                 var qtyOk = int.TryParse(Convert.ToString(row.Cells["Quantity"].Value, LiveUi.Culture), NumberStyles.Integer | NumberStyles.AllowThousands, LiveUi.Culture, out var quantity);
                 var priceOk = decimal.TryParse(Convert.ToString(row.Cells["UnitPrice"].Value, LiveUi.Culture), NumberStyles.Number, LiveUi.Culture, out var price);
                 var amount = qtyOk && priceOk && quantity > 0 && price >= 0 ? checked(quantity * price) : 0;
@@ -327,15 +333,13 @@ internal sealed class ReceiptEditor : UserControl
         _errors.Clear();
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
         var supplierId = (_supplier.SelectedItem as LookupItemDto)?.Id ?? 0;
-        if (string.IsNullOrWhiteSpace(_code.Text)) _errors.SetError(_code, "Nhập mã phiếu.");
         if (warehouseId == 0) _errors.SetError(_warehouse, "Chọn kho.");
         if (_import && supplierId == 0) _errors.SetError(_supplier, "Chọn nhà cung cấp.");
-        var linesValid = TryReadLines(out var details, true);
-        if (string.IsNullOrWhiteSpace(_code.Text) || warehouseId == 0 || (_import && supplierId == 0) || !linesValid)
+        var linesValid = TryReadLines(out var details, true, requireLine: false);
+        if (warehouseId == 0 || (_import && supplierId == 0) || !linesValid)
         {
-            _message.Text = "Kiểm tra các trường có lỗi và thêm ít nhất một sản phẩm.";
-            if (string.IsNullOrWhiteSpace(_code.Text)) _code.Focus();
-            else if (warehouseId == 0) _warehouse.Focus();
+            _message.Text = "Kiểm tra các trường có lỗi.";
+            if (warehouseId == 0) _warehouse.Focus();
             else if (_import && supplierId == 0) _supplier.Focus();
             else _lines.Focus();
             return;
@@ -346,15 +350,25 @@ internal sealed class ReceiptEditor : UserControl
         {
             if (_import)
             {
-                var request = new ImportReceiptDto { ReceiptCode = _code.Text.Trim(), WarehouseId = warehouseId, SupplierId = supplierId, Note = _note.Text, Details = details };
+                var request = new ImportReceiptDto { WarehouseId = warehouseId, SupplierId = supplierId, Note = _note.Text, Details = details };
                 if (_id.HasValue) await _services.RunAsync(() => _services.Imports.UpdateDraftAsync(_services.Session, _id.Value, request));
                 else _id = await _services.RunAsync(() => _services.Imports.CreateDraftAsync(_services.Session, request));
+                if (_id.HasValue)
+                {
+                    var saved = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_services.Session, _id.Value));
+                    if (saved is not null) _code.Text = saved.ReceiptCode;
+                }
             }
             else
             {
-                var request = new ExportReceiptDto { ReceiptCode = _code.Text.Trim(), WarehouseId = warehouseId, Note = _note.Text, Details = details };
+                var request = new ExportReceiptDto { WarehouseId = warehouseId, Note = _note.Text, Details = details };
                 if (_id.HasValue) await _services.RunAsync(() => _services.Exports.UpdateDraftAsync(_services.Session, _id.Value, request));
                 else _id = await _services.RunAsync(() => _services.Exports.CreateDraftAsync(_services.Session, request));
+                if (_id.HasValue)
+                {
+                    var saved = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_services.Session, _id.Value));
+                    if (saved is not null) _code.Text = saved.ReceiptCode;
+                }
             }
             _dirty = false;
             _message.Text = "Đã lưu phiếu nháp. Đóng để trở lại danh sách và hoàn tất khi cần.";

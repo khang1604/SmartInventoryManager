@@ -36,7 +36,7 @@ internal static class WorkflowUi
             }
             filterPanel.Controls.Add(ProductUi.Label(filters[i].Caption, 10, true), i, 0);
             var input = ProductUi.Input($"filter{i}", filters[i].Value);
-            input.ReadOnly = true;
+            input.ReadOnly = false;
             input.TabIndex = i;
             input.AccessibleName = filters[i].Caption;
             input.AccessibleDescription = "Chưa sẵn sàng: chức năng tải dữ liệu đang được hoàn thiện";
@@ -186,7 +186,7 @@ internal static class WorkflowUi
     {
         var button = ProductUi.Button(name, caption, icon);
         button.Width = Math.Max(145, TextRenderer.MeasureText(caption, button.Font).Width + 48);
-        button.Enabled = false;
+        button.Click += (_, _) => ActionFeedback.Show(button);
         button.AccessibleDescription = "Chưa sẵn sàng: chưa có dữ liệu được chọn hoặc hợp đồng thao tác";
         return button;
     }

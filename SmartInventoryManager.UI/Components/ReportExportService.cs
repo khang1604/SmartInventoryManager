@@ -13,7 +13,7 @@ internal static class ReportExportService
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("Tồn kho");
         sheet.Cell(1, 1).Value = "Báo cáo tồn kho";
-        sheet.Cell(2, 1).Value = "Tổng số lượng";
+        sheet.Cell(2, 1).Value = "Tổng số lượng toàn phạm vi kho";
         sheet.Cell(2, 2).Value = report.TotalQuantity;
         sheet.Cell(3, 1).Value = "Cảnh báo đang mở";
         sheet.Cell(3, 2).Value = report.OpenAlertCount;
@@ -28,6 +28,8 @@ internal static class ReportExportService
             for (var columnIndex = 0; columnIndex < values.Length; columnIndex++)
                 sheet.Cell(rowIndex + 6, columnIndex + 1).Value = XLCellValue.FromObject(values[columnIndex]);
         }
+        sheet.Column(9).Style.DateFormat.Format="dd/MM/yyyy HH:mm";
+        sheet.Columns(5,7).Style.NumberFormat.Format="#,##0";
         sheet.Row(5).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
         workbook.SaveAs(filePath);
@@ -38,6 +40,8 @@ internal static class ReportExportService
         QuestPDF.Settings.License = LicenseType.Community;
         Document.Create(document => document.Page(page =>
         {
+            page.Size(PageSizes.A4.Landscape());
+            page.DefaultTextStyle(style=>style.FontSize(9));
             page.Margin(30);
             page.Header().Text("BÁO CÁO TỒN KHO").Bold().FontSize(18);
             page.Content().Table(table =>
@@ -51,19 +55,19 @@ internal static class ReportExportService
                     columns.RelativeColumn();
                     columns.RelativeColumn();
                 });
-                foreach (var header in new[] { "Mã", "Sản phẩm", "Kho", "SL", "Trạng thái", "Cập nhật" })
+                foreach (var header in new[] { "Mã", "Sản phẩm", "Kho", "SL / đơn vị", "Trạng thái", "Cập nhật" })
                     table.Cell().Background(Colors.Grey.Lighten2).Padding(4).Text(header).Bold();
                 foreach (var row in report.Rows)
                 {
                     table.Cell().Padding(4).Text(row.ProductCode);
                     table.Cell().Padding(4).Text(row.ProductName);
                     table.Cell().Padding(4).Text(row.WarehouseName);
-                    table.Cell().Padding(4).Text(row.Quantity.ToString("N0"));
+                    table.Cell().Padding(4).Text($"{row.Quantity:N0} {row.Unit}");
                     table.Cell().Padding(4).Text(LiveUi.StatusText(row.StockStatus));
                     table.Cell().Padding(4).Text(row.UpdatedAt.ToString("dd/MM/yyyy HH:mm"));
                 }
             });
-            page.Footer().AlignRight().Text($"Tổng số lượng: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
+            page.Footer().AlignRight().Text($"Tổng số lượng toàn kho: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
         })).GeneratePdf(filePath);
     }
 
@@ -71,7 +75,7 @@ internal static class ReportExportService
     {
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("Nhập xuất");
-        var headers = new[] { "Ngày", "Mã phiếu", "Loại", "Kho", "Tổng tiền", "Trạng thái" };
+        var headers = new[] { "Ngày", "Mã phiếu", "Loại", "Kho", "Tổng tiền (đ)", "Trạng thái" };
         for (var index = 0; index < headers.Length; index++)
             sheet.Cell(1, index + 1).Value = headers[index];
         var rows = report.Imports.Select(item => new object?[] { item.ReceiptDate, item.ReceiptCode, "Nhập kho", item.WarehouseName, item.TotalAmount, LiveUi.StatusText(item.Status) })
@@ -83,6 +87,11 @@ internal static class ReportExportService
                 sheet.Cell(rowIndex, columnIndex + 1).Value = XLCellValue.FromObject(row[columnIndex]);
             rowIndex++;
         }
+        sheet.Column(1).Style.DateFormat.Format="dd/MM/yyyy HH:mm";
+        sheet.Column(5).Style.NumberFormat.Format="#,##0.00";
+        sheet.Cell(rowIndex+1,1).Value="Tổng tiền theo kho/ngày (đ)";
+        sheet.Cell(rowIndex+2,1).Value="Nhập"; sheet.Cell(rowIndex+2,5).Value=report.ImportTotalAmount;
+        sheet.Cell(rowIndex+3,1).Value="Xuất"; sheet.Cell(rowIndex+3,5).Value=report.ExportTotalAmount;
         sheet.Row(1).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
         workbook.SaveAs(filePath);
@@ -96,6 +105,8 @@ internal static class ReportExportService
             .OrderByDescending(item => item.ReceiptDate).ToList();
         Document.Create(document => document.Page(page =>
         {
+            page.Size(PageSizes.A4.Landscape());
+            page.DefaultTextStyle(style=>style.FontSize(9));
             page.Margin(30);
             page.Header().Text("BÁO CÁO NHẬP XUẤT").Bold().FontSize(18);
             page.Content().Table(table =>
@@ -105,7 +116,7 @@ internal static class ReportExportService
                     columns.RelativeColumn(); columns.RelativeColumn(); columns.RelativeColumn();
                     columns.RelativeColumn(2); columns.RelativeColumn();
                 });
-                foreach (var header in new[] { "Ngày", "Mã phiếu", "Loại", "Kho", "Tổng tiền" })
+                foreach (var header in new[] { "Ngày", "Mã phiếu", "Loại", "Kho", "Tổng tiền (đ)" })
                     table.Cell().Background(Colors.Grey.Lighten2).Padding(4).Text(header).Bold();
                 foreach (var row in rows)
                 {
@@ -113,10 +124,10 @@ internal static class ReportExportService
                     table.Cell().Padding(4).Text(row.ReceiptCode);
                     table.Cell().Padding(4).Text(row.Type);
                     table.Cell().Padding(4).Text(row.WarehouseName);
-                    table.Cell().Padding(4).Text(row.TotalAmount.ToString("N0"));
+                    table.Cell().Padding(4).Text(row.TotalAmount.ToString("N2"));
                 }
             });
-            page.Footer().AlignRight().Text($"Nhập: {report.ImportTotalAmount:N0} • Xuất: {report.ExportTotalAmount:N0}");
+            page.Footer().AlignRight().Text($"Tổng tiền theo kho/ngày (đ) • Nhập: {report.ImportTotalAmount:N0} • Xuất: {report.ExportTotalAmount:N0}");
         })).GeneratePdf(filePath);
     }
 }

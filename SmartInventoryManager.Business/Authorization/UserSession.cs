@@ -17,6 +17,17 @@ public sealed class UserSession
         CurrentWarehouseId = null;
     }
 
+    public void SetCurrentWarehouseFromAssignments(IReadOnlyCollection<int> warehouseIds)
+    {
+        ArgumentNullException.ThrowIfNull(warehouseIds);
+        if (!IsAuthenticated || !string.Equals(CurrentUser!.RoleName.Trim(), RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        CurrentWarehouseId = warehouseIds.Count == 1 ? warehouseIds.Single() : null;
+    }
+
     public void SetCurrentWarehouse(int warehouseId)
     {
         if (warehouseId <= 0)

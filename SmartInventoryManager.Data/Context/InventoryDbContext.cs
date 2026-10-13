@@ -85,7 +85,6 @@ namespace SmartInventoryManager.Data.Context
                     .IsUnique();
             });
 
-
             // ==========================================
             // USER
             // ==========================================
@@ -353,6 +352,10 @@ namespace SmartInventoryManager.Data.Context
                 entity.Property(i => i.Note)
                     .HasMaxLength(500);
 
+                entity.Property(i => i.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken();
+
                 entity.HasIndex(i => i.ReceiptCode)
                     .IsUnique();
 
@@ -432,6 +435,10 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.Property(e => e.Note)
                     .HasMaxLength(500);
+
+                entity.Property(e => e.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken();
 
                 entity.HasIndex(e => e.ReceiptCode)
                     .IsUnique();
@@ -607,6 +614,11 @@ namespace SmartInventoryManager.Data.Context
                     .WithMany(u => u.ResolvedStockAlerts)
                     .HasForeignKey(a => a.ResolvedBy)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(a => new { a.ProductId, a.WarehouseId, a.AlertType })
+                    .IsUnique()
+                    .HasFilter("[IsResolved] = 0")
+                    .HasDatabaseName("UX_StockAlerts_Open_ProductWarehouseType");
 
                 entity.ToTable("StockAlerts", table =>
                 {

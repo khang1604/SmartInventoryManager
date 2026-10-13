@@ -40,6 +40,7 @@ public sealed class LocationService
     {
         EnsureCanManage(session); Validate(request); await EnsureWarehouseAsync(session, request.WarehouseId, cancellationToken);
         var entity = await _dbContext.Locations.SingleOrDefaultAsync(item => item.LocationId == locationId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy vị trí.");
+        await EnsureWarehouseAsync(session, entity.WarehouseId, cancellationToken);
         if (await _dbContext.Locations.AnyAsync(item => item.LocationId != locationId && item.WarehouseId == request.WarehouseId && item.LocationCode == request.LocationCode.Trim(), cancellationToken))
             throw new InvalidOperationException("Mã vị trí đã tồn tại trong kho.");
         entity.WarehouseId = request.WarehouseId; entity.LocationCode = request.LocationCode.Trim(); entity.LocationName = request.LocationName?.Trim(); entity.IsActive = request.IsActive;
@@ -60,5 +61,12 @@ public sealed class LocationService
     }
 
     private void EnsureCanManage(UserSession session) { if (!_authorization.CanManageWarehouse(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý vị trí."); }
-    private static void Validate(LocationRequestDto request) { ArgumentNullException.ThrowIfNull(request); if (request.WarehouseId <= 0 || string.IsNullOrWhiteSpace(request.LocationCode)) throw new ArgumentException("Kho và mã vị trí là bắt buộc.", nameof(request)); }
+    private static void Validate(LocationRequestDto request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.WarehouseId <= 0 || string.IsNullOrWhiteSpace(request.LocationCode) || request.LocationCode.Trim().Length > 50)
+            throw new ArgumentException("Kho và mã vị trí hợp lệ, không quá 50 ký tự, là bắt buộc.", nameof(request));
+        if (request.LocationName?.Trim().Length > 100)
+            throw new ArgumentException("Tên vị trí không quá 100 ký tự.", nameof(request));
+    }
 }

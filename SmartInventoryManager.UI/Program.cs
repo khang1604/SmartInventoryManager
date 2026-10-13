@@ -54,7 +54,7 @@ namespace SmartInventoryManager.UI
                 new InventoryService(dbContext, authorizationService),
                 new StockAlertService(dbContext, authorizationService),
                 new ProductService(dbContext), new WarehouseService(dbContext, authorizationService),
-                new SupplierService(dbContext),
+                 new SupplierService(dbContext, authorizationService),
                 new CategoryService(dbContext, authorizationService),
                 new ProductManagementService(dbContext, authorizationService),
                 new LocationService(dbContext, authorizationService),
@@ -72,6 +72,15 @@ namespace SmartInventoryManager.UI
                 }
 
                 session.SignIn(loginForm.AuthenticatedUser);
+                if (string.Equals(loginForm.AuthenticatedUser.RoleName.Trim(), RoleNames.Staff, StringComparison.OrdinalIgnoreCase))
+                {
+                    using var warehouseContext = new FrmWarehouseContext(services);
+                    if (warehouseContext.ShowDialog() != DialogResult.OK)
+                    {
+                        session.SignOut();
+                        continue;
+                    }
+                }
                 using var mainForm = new FrmMain(loginForm.AuthenticatedUser, authorizationService, session, services);
                 Application.Run(mainForm);
                 session.SignOut();
