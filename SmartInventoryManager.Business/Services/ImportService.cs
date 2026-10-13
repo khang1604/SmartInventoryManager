@@ -205,9 +205,14 @@ public sealed class ImportService : IImportService
         ValidateSession(session);
         ValidateReceiptId(importReceiptId);
 
-        var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
+        var receipt = await _dbContext.ImportReceipts.Include(item => item.Details).SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (receipt.Status != "DRAFT")
         {
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được gửi duyệt.");
@@ -220,6 +225,8 @@ public sealed class ImportService : IImportService
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "PENDING_APPROVAL";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task DeleteDraftAsync(
@@ -227,10 +234,15 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ImportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
             throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu nhập nháp tại kho này.");
         if (receipt.Status != "DRAFT")
@@ -239,6 +251,8 @@ public sealed class ImportService : IImportService
         _dbContext.ImportDetails.RemoveRange(receipt.Details);
         _dbContext.ImportReceipts.Remove(receipt);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task ApproveAsync(
@@ -246,9 +260,14 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanApproveReceiptAsync(session, receipt.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền duyệt phiếu nhập tại kho này.");
@@ -259,6 +278,8 @@ public sealed class ImportService : IImportService
         }
         receipt.Status = "APPROVED";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task RejectAsync(
@@ -278,9 +299,14 @@ public sealed class ImportService : IImportService
             throw new ArgumentException("Lý do từ chối quá dài.", nameof(reason));
         }
 
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanApproveReceiptAsync(session, receipt.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền từ chối phiếu nhập tại kho này.");
@@ -292,6 +318,8 @@ public sealed class ImportService : IImportService
         receipt.Status = "REJECTED";
         receipt.Note = $"Lý do từ chối: {reason.Trim()}";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task ResubmitAsync(
@@ -299,9 +327,14 @@ public sealed class ImportService : IImportService
         int importReceiptId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ImportReceipts.SingleOrDefaultAsync(
             item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền gửi lại phiếu nhập.");
@@ -312,6 +345,8 @@ public sealed class ImportService : IImportService
         }
         receipt.Status = "DRAFT";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task CompleteAsync(
@@ -328,6 +363,8 @@ public sealed class ImportService : IImportService
             .Include(importReceipt => importReceipt.Details)
             .SingleOrDefaultAsync(importReceipt => importReceipt.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
 
         if (!await _authorization.CanCompleteReceiptAsync(session, receipt.WarehouseId))
         {
@@ -390,10 +427,15 @@ public sealed class ImportService : IImportService
         ArgumentNullException.ThrowIfNull(request);
         ValidateSession(session);
         ValidateReceiptId(importReceiptId);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ImportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (receipt.Status != "DRAFT" && receipt.Status != "REJECTED")
         {
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được sửa.");
@@ -431,6 +473,8 @@ public sealed class ImportService : IImportService
             receipt.Status = "DRAFT";
         receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task CancelDraftAsync(
@@ -440,9 +484,14 @@ public sealed class ImportService : IImportService
     {
         ValidateSession(session);
         ValidateReceiptId(importReceiptId);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ImportReceipts
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu nhập.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanCancelReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền hủy phiếu nhập tại kho này.");
@@ -453,6 +502,8 @@ public sealed class ImportService : IImportService
         }
         receipt.Status = "CANCELLED";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task ValidateStoredReceiptAsync(ImportReceipt receipt, CancellationToken cancellationToken)

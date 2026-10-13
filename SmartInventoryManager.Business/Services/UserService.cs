@@ -28,6 +28,7 @@ public sealed class UserService
         CancellationToken cancellationToken = default)
     {
         EnsureAdmin(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         var query = _dbContext.Users.AsNoTracking().Include(user => user.Role).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -55,6 +56,7 @@ public sealed class UserService
         CancellationToken cancellationToken = default)
     {
         EnsureAdmin(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
         ValidateRequest(request);
 
@@ -89,6 +91,7 @@ public sealed class UserService
         CancellationToken cancellationToken = default)
     {
         EnsureAdmin(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId));
 
@@ -114,6 +117,7 @@ public sealed class UserService
         CancellationToken cancellationToken = default)
     {
         EnsureAdmin(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId));
@@ -152,6 +156,7 @@ public sealed class UserService
         CancellationToken cancellationToken = default)
     {
         EnsureAdmin(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId));
@@ -169,6 +174,7 @@ public sealed class UserService
     public async Task UpdateAccountAsync(UserSession session, UpdateAccountRequest request, CancellationToken cancellationToken = default)
     {
         var userId = RequireCurrentUser(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.FullName) || request.FullName.Trim().Length > 100)
             throw new ArgumentException("Họ tên là bắt buộc và không quá 100 ký tự.", nameof(request));
@@ -186,6 +192,7 @@ public sealed class UserService
     public async Task ChangePasswordAsync(UserSession session, ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var userId = RequireCurrentUser(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
             throw new ArgumentException("Mật khẩu mới phải có ít nhất 8 ký tự.", nameof(request));

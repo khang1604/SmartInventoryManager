@@ -75,6 +75,7 @@ public sealed class ProductManagementService : IProductService
         CancellationToken cancellationToken = default)
     {
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ValidateRequest(request);
         await EnsureReferencesAndCodeAsync(request, null, cancellationToken);
         var product = new Product
@@ -103,6 +104,7 @@ public sealed class ProductManagementService : IProductService
     {
         if (productId <= 0) throw new ArgumentOutOfRangeException(nameof(productId));
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ValidateRequest(request);
         var product = await _dbContext.Products
             .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken)
@@ -144,6 +146,7 @@ public sealed class ProductManagementService : IProductService
             throw new ArgumentOutOfRangeException(nameof(productId));
         }
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         var product = await _dbContext.Products
             .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");

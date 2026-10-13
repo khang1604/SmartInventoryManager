@@ -55,6 +55,7 @@ public sealed class SupplierService
     public async Task<int> CreateAsync(UserSession session, SupplierRequestDto request, CancellationToken cancellationToken = default)
     {
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         Validate(request);
         var code = request.SupplierCode.Trim();
         if (await _dbContext.Suppliers.AnyAsync(item => item.SupplierCode == code, cancellationToken)) throw new InvalidOperationException("Mã nhà cung cấp đã tồn tại.");
@@ -68,6 +69,7 @@ public sealed class SupplierService
     {
         ValidateId(supplierId, nameof(supplierId));
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         Validate(request);
         var entity = await _dbContext.Suppliers.SingleOrDefaultAsync(item => item.SupplierId == supplierId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
         var code = request.SupplierCode.Trim();
@@ -80,6 +82,7 @@ public sealed class SupplierService
     {
         ValidateId(supplierId, nameof(supplierId));
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         var entity = await _dbContext.Suppliers.SingleOrDefaultAsync(item => item.SupplierId == supplierId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
         entity.IsActive = isActive;
         await _dbContext.SaveChangesAsync(cancellationToken);

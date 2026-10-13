@@ -273,6 +273,7 @@ public class BackendWorkflowHardeningTests
     public async Task NotificationService_RejectsReversedDateRange()
     {
         await using var context = CreateContext();
+        SeedWarehouseAndProduct(context, 7, 11);
         var service = new NotificationService(context);
 
         await Assert.ThrowsExceptionAsync<ArgumentException>(() => service.GetAsync(

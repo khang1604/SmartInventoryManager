@@ -46,7 +46,9 @@ public sealed class WarehouseService
 
     public async Task<int> CreateAsync(UserSession session, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
-        EnsureCanManage(session); Validate(request);
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        Validate(request);
         var code = request.WarehouseCode.Trim();
         if (await _dbContext.Warehouses.AnyAsync(item => item.WarehouseCode == code, cancellationToken)) throw new InvalidOperationException("Mã kho đã tồn tại.");
         var entity = new Warehouse { WarehouseCode = code, WarehouseName = request.WarehouseName.Trim(), Location = request.Location?.Trim(), ManagerId = request.ManagerId, IsActive = request.IsActive, CreatedAt = DateTime.Now };
@@ -56,7 +58,9 @@ public sealed class WarehouseService
     public async Task UpdateAsync(UserSession session, int warehouseId, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
         ValidateId(warehouseId, nameof(warehouseId));
-        EnsureCanManage(session); Validate(request);
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        Validate(request);
         var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho.");
         var code = request.WarehouseCode.Trim();
         if (await _dbContext.Warehouses.AnyAsync(item => item.WarehouseId != warehouseId && item.WarehouseCode == code, cancellationToken)) throw new InvalidOperationException("Mã kho đã tồn tại.");
@@ -66,7 +70,9 @@ public sealed class WarehouseService
     public async Task SetActiveAsync(UserSession session, int warehouseId, bool isActive, CancellationToken cancellationToken = default)
     {
         ValidateId(warehouseId, nameof(warehouseId));
-        EnsureCanManage(session); var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho."); entity.IsActive = isActive; await _dbContext.SaveChangesAsync(cancellationToken);
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho."); entity.IsActive = isActive; await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static void ValidateId(int id, string parameterName)
@@ -91,8 +97,8 @@ public sealed class WarehouseService
 
         var isValidManager = await _dbContext.Users
             .Where(item => item.UserId == managerId.Value && item.IsActive)
-            .AnyAsync(item => item.Role.RoleName == RoleNames.Admin || item.Role.RoleName == RoleNames.WarehouseManager, cancellationToken);
+            .AnyAsync(item => item.Role.RoleName == RoleNames.WarehouseManager, cancellationToken);
         if (!isValidManager)
-            throw new InvalidOperationException("Người quản lý phải là tài khoản quản trị hoặc quản lý kho đang hoạt động.");
+            throw new InvalidOperationException("Người quản lý phải là tài khoản quản lý kho đang hoạt động.");
     }
 }

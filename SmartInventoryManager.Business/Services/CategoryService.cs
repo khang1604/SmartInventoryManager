@@ -44,6 +44,7 @@ public sealed class CategoryService
     public async Task<int> CreateAsync(UserSession session, CategoryRequestDto request, CancellationToken cancellationToken = default)
     {
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         Validate(request);
         if (await _dbContext.Categories.AnyAsync(item => item.CategoryName == request.CategoryName.Trim(), cancellationToken))
             throw new InvalidOperationException("Tên danh mục đã tồn tại.");
@@ -57,11 +58,14 @@ public sealed class CategoryService
     {
         ValidateId(categoryId, nameof(categoryId));
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         Validate(request);
         var entity = await _dbContext.Categories.SingleOrDefaultAsync(item => item.CategoryId == categoryId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy danh mục.");
         if (await _dbContext.Categories.AnyAsync(item => item.CategoryId != categoryId && item.CategoryName == request.CategoryName.Trim(), cancellationToken))
             throw new InvalidOperationException("Tên danh mục đã tồn tại.");
+        if (!request.IsActive && await _dbContext.Products.AnyAsync(item => item.CategoryId == categoryId && item.IsActive, cancellationToken))
+            throw new InvalidOperationException("Không thể ngừng danh mục đang có sản phẩm hoạt động.");
         entity.CategoryName = request.CategoryName.Trim();
         entity.Description = request.Description?.Trim();
         entity.IsActive = request.IsActive;
@@ -72,6 +76,7 @@ public sealed class CategoryService
     {
         ValidateId(categoryId, nameof(categoryId));
         EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         var entity = await _dbContext.Categories.SingleOrDefaultAsync(item => item.CategoryId == categoryId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy danh mục.");
         if (!isActive && await _dbContext.Products.AnyAsync(item => item.CategoryId == categoryId && item.IsActive, cancellationToken))

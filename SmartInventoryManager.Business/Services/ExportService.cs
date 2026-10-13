@@ -179,9 +179,14 @@ public sealed class ExportService : IExportService
     {
         ValidateSession(session);
         ValidateReceiptId(exportReceiptId);
-        var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
+        var receipt = await _dbContext.ExportReceipts.Include(item => item.Details).SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (receipt.Status != "DRAFT")
         {
             throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được gửi duyệt.");
@@ -194,6 +199,8 @@ public sealed class ExportService : IExportService
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "PENDING_APPROVAL";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task DeleteDraftAsync(
@@ -201,10 +208,15 @@ public sealed class ExportService : IExportService
         int exportReceiptId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ExportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
             throw new UnauthorizedAccessException("Bạn không có quyền xóa phiếu xuất nháp tại kho này.");
         if (receipt.Status != "DRAFT")
@@ -213,15 +225,22 @@ public sealed class ExportService : IExportService
         _dbContext.ExportDetails.RemoveRange(receipt.Details);
         _dbContext.ExportReceipts.Remove(receipt);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task ApproveAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
         ValidateReceiptId(exportReceiptId);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanApproveReceiptAsync(session, receipt.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền duyệt phiếu xuất tại kho này.");
@@ -232,6 +251,8 @@ public sealed class ExportService : IExportService
         }
         receipt.Status = "APPROVED";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task RejectAsync(UserSession session, int exportReceiptId, string reason, CancellationToken cancellationToken = default)
@@ -246,9 +267,14 @@ public sealed class ExportService : IExportService
         {
             throw new ArgumentException("Lý do từ chối quá dài.", nameof(reason));
         }
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanApproveReceiptAsync(session, receipt.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền từ chối phiếu xuất tại kho này.");
@@ -260,15 +286,22 @@ public sealed class ExportService : IExportService
         receipt.Status = "REJECTED";
         receipt.Note = $"Lý do từ chối: {reason.Trim()}";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task ResubmitAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
         ValidateReceiptId(exportReceiptId);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ExportReceipts.SingleOrDefaultAsync(
             item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanEditReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền gửi lại phiếu xuất.");
@@ -279,6 +312,8 @@ public sealed class ExportService : IExportService
         }
         receipt.Status = "DRAFT";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task CompleteAsync(
@@ -295,6 +330,8 @@ public sealed class ExportService : IExportService
             .Include(exportReceipt => exportReceipt.Details)
             .SingleOrDefaultAsync(exportReceipt => exportReceipt.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanCompleteReceiptAsync(session, receipt.WarehouseId))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền hoàn tất phiếu xuất tại kho này.");
@@ -371,10 +408,15 @@ public sealed class ExportService : IExportService
         ValidateSession(session);
         ValidateReceiptId(exportReceiptId);
         ValidateNote(request.Note);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ExportReceipts
             .Include(item => item.Details)
             .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (receipt.Status != "DRAFT" && receipt.Status != "REJECTED")
         {
             throw new InvalidOperationException("Chỉ phiếu xuất nháp mới được sửa.");
@@ -409,6 +451,8 @@ public sealed class ExportService : IExportService
             receipt.Status = "DRAFT";
         receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task CancelDraftAsync(
@@ -418,9 +462,14 @@ public sealed class ExportService : IExportService
     {
         ValidateSession(session);
         ValidateReceiptId(exportReceiptId);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
         var receipt = await _dbContext.ExportReceipts
             .SingleOrDefaultAsync(item => item.ExportReceiptId == exportReceiptId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy phiếu xuất.");
+        // Re-read scalar state even if this receipt was already tracked by an earlier operation.
+        await _dbContext.Entry(receipt).ReloadAsync(cancellationToken);
         if (!await _authorization.CanCancelReceiptAsync(session, receipt.WarehouseId, receipt.CreatedBy, receipt.Status))
         {
             throw new UnauthorizedAccessException("Bạn không có quyền hủy phiếu xuất tại kho này.");
@@ -431,6 +480,8 @@ public sealed class ExportService : IExportService
         }
         receipt.Status = "CANCELLED";
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task ValidateStoredReceiptAsync(ExportReceipt receipt, CancellationToken cancellationToken)
