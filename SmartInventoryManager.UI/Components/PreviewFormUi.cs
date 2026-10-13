@@ -44,9 +44,7 @@ internal static class PreviewFormUi
         close.DialogResult = DialogResult.Cancel;
         close.TabIndex = 90;
         var save = ProductUi.Button("btnSave", "Lưu", primary: true);
-        save.Enabled = true;
-        save.Tag = "preview";
-        save.Click += (_, _) => { if (Equals(save.Tag, "preview")) ActionFeedback.Show(save); };
+        save.Enabled = false;
         save.TabIndex = 91;
         save.AccessibleDescription = "Chưa sẵn sàng: thiếu hợp đồng lưu dữ liệu";
         actions.Controls.Add(close);

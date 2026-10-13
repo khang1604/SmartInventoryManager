@@ -31,7 +31,7 @@ internal static class WarehouseUi
         filters.Controls.Add(ProductUi.Label("Tìm kiếm", 10, true), 0, 0);
         var search = ProductUi.Input("txtSearch", location ? "Nhập mã hoặc tên vị trí" : "Nhập mã hoặc tên kho");
         search.PrefixSvg = MainIcons.Get("search");
-        search.ReadOnly = false;
+        search.ReadOnly = true;
         search.AccessibleName = search.PlaceholderText;
         search.AccessibleDescription = "Tìm kiếm chưa sẵn sàng khi chưa có dữ liệu";
         filters.Controls.Add(search, 0, 1);
@@ -42,7 +42,7 @@ internal static class WarehouseUi
             var filter = ProductUi.Input(warehouseFilter ? "cboWarehouse" : "cboStatus");
             filter.Text = warehouseFilter ? "Tất cả kho" : "Tất cả trạng thái";
             filter.SuffixSvg = MainIcons.Get("chevron-down");
-            filter.ReadOnly = false;
+            filter.ReadOnly = true;
             filter.AccessibleName = filter.Text;
             filter.AccessibleDescription = "Bộ lọc chưa sẵn sàng khi chưa có dữ liệu";
             filters.Controls.Add(filter, i, 1);
@@ -239,7 +239,7 @@ internal static class WarehouseUi
     {
         var button = ProductUi.Button(name, text, icon);
         button.Width = width;
-        button.Click += (_, _) => ActionFeedback.Show(button);
+        button.Enabled = false;
         button.AccessibleDescription = "Chưa sẵn sàng: chưa có dữ liệu được chọn hoặc hợp đồng thao tác";
         return button;
     }

@@ -47,7 +47,7 @@ public partial class FrmProductList : Form
         filters.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var search = ProductUi.Input("txtSearch", "Nhập mã hoặc tên sản phẩm");
         search.PrefixSvg = MainIcons.Get("search");
-        search.ReadOnly = false;
+        search.ReadOnly = true;
         search.AccessibleName = "Tìm theo mã hoặc tên sản phẩm";
         search.AccessibleDescription = "Chức năng tìm kiếm chưa sẵn sàng";
         search.TabIndex = 0;
@@ -132,7 +132,7 @@ public partial class FrmProductList : Form
             Column("PurchasePrice", "Giá nhập (đ)", 90, "N2"), Column("SellingPrice", "Giá bán (đ)", 90, "N2"),
             Column("ReorderPoint", "Điểm đặt hàng lại", 130, "N0"), Column("MaximumStock", "Tồn tối đa", 85, "N0"),
             Column("Status", "Trạng thái", 95));
-        UiDetails.AddColumn(grid, insetButton: true);
+        UiDetails.AddColumn(grid);
         tableArea.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -180,7 +180,7 @@ public partial class FrmProductList : Form
     {
         var filter = ProductUi.Input(name);
         filter.Text = text;
-        filter.ReadOnly = false;
+        filter.ReadOnly = true;
         filter.SuffixSvg = MainIcons.Get("chevron-down");
         filter.TabIndex = tabIndex;
         filter.AccessibleName = text;
@@ -191,7 +191,7 @@ public partial class FrmProductList : Form
     private static AntdUI.Button Unavailable(string name, string caption, string icon)
     {
         var button = ProductUi.Button(name, caption, icon);
-        button.Click += (_, _) => ActionFeedback.Show(button);
+        button.Enabled = false;
         button.AccessibleDescription = "Chưa sẵn sàng: chức năng dữ liệu đang được hoàn thiện";
         return button;
     }

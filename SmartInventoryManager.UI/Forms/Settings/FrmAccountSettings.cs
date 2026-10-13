@@ -14,8 +14,7 @@ internal sealed class FrmAccountSettings : Form
         var title = ProductUi.Label($"{user?.FullName ?? "Chưa đăng nhập"}\n{role}", 11, true);
         title.Padding = new Padding(16, 0, 0, 0);
         var photo = ProductUi.Button("btnChangeAvatar", "Đổi ảnh");
-        photo.Dock = DockStyle.Right; photo.Width = 120;
-        photo.Click += (_, _) => ActionFeedback.Show(photo, "Chưa lưu ảnh đại diện: chức năng lưu ảnh chưa được kết nối.");
+        photo.Dock = DockStyle.Right; photo.Width = 120; photo.Enabled = false;
         photo.AccessibleDescription = "Chức năng ảnh đại diện chưa được hỗ trợ";
         profile.Controls.Add(title); profile.Controls.Add(photo); profile.Controls.Add(avatar); body.Controls.Add(profile);
         var profileErrors = new AccountFieldErrors();
@@ -60,12 +59,12 @@ internal sealed class FrmAccountSettings : Form
         close.DialogResult = DialogResult.Cancel; CancelButton = close; footer.Controls.Add(close);
         var available = services is not null && user is not null;
         bool busy = false;
-        saveProfile.Enabled = savePassword.Enabled = toggle.Enabled = true;
+        saveProfile.Enabled = savePassword.Enabled = toggle.Enabled = available;
 
         void SetBusy(bool value)
         {
             busy = value;
-            saveProfile.Enabled = savePassword.Enabled = toggle.Enabled = !value;
+            saveProfile.Enabled = savePassword.Enabled = toggle.Enabled = available && !value;
             close.Enabled = cancelPassword.Enabled = !value;
             fullName.ReadOnly = email.ReadOnly = currentPassword.ReadOnly = newPassword.ReadOnly = confirmPassword.ReadOnly = value;
         }
@@ -88,8 +87,7 @@ internal sealed class FrmAccountSettings : Form
         FormClosing += (_, e) => { if (busy) e.Cancel = true; };
         saveProfile.Click += async (_, _) =>
         {
-            if (busy) return;
-            if (!available) { ShowNotice(profileNotice, "Chưa lưu thông tin: chưa có kết nối tài khoản.", true); return; }
+            if (!available || busy) return;
             profileErrors.Clear(); profileNotice.Text = "";
             if (string.IsNullOrWhiteSpace(fullName.Text)) profileErrors.Set(fullName, "Nhập họ tên.");
             if (!string.IsNullOrWhiteSpace(email.Text) && !System.Net.Mail.MailAddress.TryCreate(email.Text.Trim(), out _)) profileErrors.Set(email, "Email không đúng định dạng.");
@@ -111,8 +109,7 @@ internal sealed class FrmAccountSettings : Form
         };
         savePassword.Click += async (_, _) =>
         {
-            if (busy) return;
-            if (!available) { ShowNotice(passwordNotice, "Chưa đổi mật khẩu: chưa có kết nối tài khoản.", true); return; }
+            if (!available || busy) return;
             passwordErrors.Clear(); passwordNotice.Text = "";
             if (string.IsNullOrEmpty(currentPassword.Text)) passwordErrors.Set(currentPassword, "Nhập mật khẩu hiện tại.");
             if (newPassword.Text.Length < 8) passwordErrors.Set(newPassword, "Mật khẩu phải có ít nhất 8 ký tự.");
