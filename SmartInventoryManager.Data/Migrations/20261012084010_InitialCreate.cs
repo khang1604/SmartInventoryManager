@@ -398,6 +398,30 @@ namespace SmartInventoryManager.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserWarehouses",
+                columns: table => new
+                {
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserWarehouses", x => new { x.UserId, x.WarehouseId });
+                    table.ForeignKey(
+                        name: "FK_UserWarehouses_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserWarehouses_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "WarehouseId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ExportDetails",
                 columns: table => new
                 {
@@ -577,9 +601,11 @@ namespace SmartInventoryManager.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_StockAlerts_ProductId",
+                name: "IX_StockAlerts_ProductId_WarehouseId_AlertType",
                 table: "StockAlerts",
-                column: "ProductId");
+                columns: new[] { "ProductId", "WarehouseId", "AlertType" },
+                unique: true,
+                filter: "[IsResolved] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_StockAlerts_ResolvedBy",
@@ -612,6 +638,11 @@ namespace SmartInventoryManager.Data.Migrations
                 table: "Users",
                 column: "Username",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserWarehouses_WarehouseId",
+                table: "UserWarehouses",
+                column: "WarehouseId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Warehouses_ManagerId",
@@ -651,6 +682,9 @@ namespace SmartInventoryManager.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "SystemLogs");
+
+            migrationBuilder.DropTable(
+                name: "UserWarehouses");
 
             migrationBuilder.DropTable(
                 name: "ExportReceipts");

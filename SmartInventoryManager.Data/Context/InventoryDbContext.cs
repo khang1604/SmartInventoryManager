@@ -38,17 +38,17 @@ namespace SmartInventoryManager.Data.Context
 
         public DbSet<ExportDetail> ExportDetails => Set<ExportDetail>();
 
-        public DbSet<InventoryTransaction> InventoryTransactions
-            => Set<InventoryTransaction>();
+        public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
 
-        public DbSet<StockAlert> StockAlerts
-            => Set<StockAlert>();
+        public DbSet<StockAlert> StockAlerts => Set<StockAlert>();
 
-        public DbSet<Notification> Notifications
-            => Set<Notification>();
+        public DbSet<Notification> Notifications => Set<Notification>();
 
-        public DbSet<SystemLog> SystemLogs
-            => Set<SystemLog>();
+        public DbSet<SystemLog> SystemLogs => Set<SystemLog>();
+
+
+        public DbSet<UserWarehouse> UserWarehouses => Set<UserWarehouse>();
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -567,6 +567,15 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.HasKey(a => a.AlertId);
 
+                entity.HasIndex(a => new
+                {
+                    a.ProductId,
+                    a.WarehouseId,
+                    a.AlertType
+                })
+                .IsUnique()
+                .HasFilter("[IsResolved] = 0");
+
                 entity.Property(a => a.AlertType)
                     .IsRequired()
                     .HasMaxLength(30)
@@ -686,6 +695,26 @@ namespace SmartInventoryManager.Data.Context
                 entity.HasOne(l => l.User)
                     .WithMany(u => u.SystemLogs)
                     .HasForeignKey(l => l.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ==========================================
+            // USER WAREHOUSE
+            // ==========================================
+            modelBuilder.Entity<UserWarehouse>(entity =>
+            {
+                entity.ToTable("UserWarehouses");
+
+                entity.HasKey(x => new { x.UserId, x.WarehouseId });
+
+                entity.HasOne(x => x.User)
+                    .WithMany(x => x.UserWarehouses)
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.Warehouse)
+                    .WithMany(x => x.UserWarehouses)
+                    .HasForeignKey(x => x.WarehouseId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

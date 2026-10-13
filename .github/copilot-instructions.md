@@ -232,6 +232,7 @@ References:
 
 - EF Core Migration is the authoritative mechanism for EF-managed schema evolution (tables, columns, types, PK/FK, UNIQUE, CHECK, NOT NULL, defaults, indexes, and EF relationships). Existing table/constraint/index SQL scripts must not compete with Migration as a second schema authority.
 - Preserve multi-warehouse keys, foreign keys, constraints, indexes, delete behavior, and transaction/concurrency requirements. Use views/stored procedures where justified; database ownership does not justify unnecessary abstractions.
+- `UserWarehouse` is approved and is part of the 17-entity model. Its primary key is `(UserId, WarehouseId)`; both foreign keys use `DeleteBehavior.Restrict`. Do not add assignment audit fields without an approved contract change. `Users.WarehouseId` remains forbidden.
 - Repository and UnitOfWork are optional: use them only when they add clear value or are established project contracts. Do not build wrappers just to fill folders; EF already provides related capabilities. Do not remove established contracts without authorization.
 - Business Services are the authoritative stock-update path. No triggers may automatically increase/decrease Inventory. Supporting stored procedures must not independently post receipts, duplicate stock updates, or bypass Business validation.
 - EF and ADO.NET participating in one workflow must share the intended transaction/context consistency strategy; do not commit partial steps separately or retain stale tracked quantities.

@@ -19,6 +19,11 @@ namespace SmartInventoryManager.Data.Entities
         // Navigation
         public User? Manager { get; set; }
 
+
+        public ICollection<UserWarehouse> UserWarehouses { get; set; }
+            = new List<UserWarehouse>();
+
+
         public ICollection<Location> Locations { get; set; }
             = new List<Location>();
 

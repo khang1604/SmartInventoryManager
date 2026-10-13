@@ -10,10 +10,6 @@
 	</PackageReference>
 	<PackageReference Include="QuestPDF" Version="2026.9.1" />
 	<PackageReference Include="ScottPlot.WinForms" Version="5.1.59" />
-    <Reference Include="AntdUI">
-      <HintPath>Lib\AntdUI.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
 	<ProjectReference Include="..\SmartInventoryManager.Business\SmartInventoryManager.Business.csproj" />
 	<ProjectReference Include="..\SmartInventoryManager.Common\SmartInventoryManager.Common.csproj" />
   <ProjectReference Include="..\SmartInventoryManager.Data\SmartInventoryManager.Data.csproj" />
@@ -51,7 +47,7 @@
   <PropertyGroup>
 	<OutputType>WinExe</OutputType>
     <ApplicationIcon>Resources/Images/vioware.ico</ApplicationIcon>
-	<TargetFramework>net10.0-windows</TargetFramework>
+	<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
 	<Nullable>enable</Nullable>
 	<UseWindowsForms>true</UseWindowsForms>
 	<ImplicitUsings>enable</ImplicitUsings>
