@@ -18,8 +18,6 @@ namespace SmartInventoryManager.Data.Entities
 
         public string? Note { get; set; }
 
-        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
-
         // Navigation
         public Warehouse Warehouse { get; set; } = null!;
 
