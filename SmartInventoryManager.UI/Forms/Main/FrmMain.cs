@@ -474,7 +474,7 @@ public partial class FrmMain : Form
         var filter = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList, Width = 165,
-            Enabled = false, AccessibleName = accessibleName,
+            AccessibleName = accessibleName,
             AccessibleDescription = "Chức năng dữ liệu đang được hoàn thiện"
         };
         filter.Items.Add(value);

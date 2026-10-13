@@ -3,7 +3,7 @@
     "SmartInventoryManager.UI": {
       "commandName": "Project",
       "environmentVariables": {
-        "SMART_INVENTORY_CONNECTION_STRING": "Server=localhost;Database=SmartInventoryManagerDB;Integrated Security=True;TrustServerCertificate=True;"
+        "SMART_INVENTORY_CONNECTION_STRING": "Server=.\\SQLEXPRESS;Database=SmartInventoryManagerDB;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
       }
     }
   }

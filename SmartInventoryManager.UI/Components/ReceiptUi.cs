@@ -34,8 +34,12 @@ internal static class ReceiptUi
         heading.Dock = DockStyle.None;
         heading.Size = new Size(180, 44);
         toolbar.Controls.Add(heading);
-        toolbar.Controls.Add(ProductUi.Button("btnAddLine", "Thêm dòng", "plus-lg"));
-        toolbar.Controls.Add(ProductUi.Button("btnRemoveLine", "Xóa dòng", "dash-circle"));
+        var addLine = ProductUi.Button("btnAddLine", "Thêm dòng", "plus-lg");
+        var removeLine = ProductUi.Button("btnRemoveLine", "Xóa dòng", "dash-circle");
+        addLine.Click += (_, _) => ActionFeedback.Show(addLine, "Biểu mẫu xem trước chưa có danh sách sản phẩm; chưa thêm hoặc lưu dòng dữ liệu.");
+        removeLine.Click += (_, _) => ActionFeedback.Show(removeLine, "Chọn một dòng dữ liệu đã tải trước khi xóa.");
+        toolbar.Controls.Add(addLine);
+        toolbar.Controls.Add(removeLine);
         if (import)
         {
             var note = ProductUi.Input("txtNote", "Ghi chú phiếu");

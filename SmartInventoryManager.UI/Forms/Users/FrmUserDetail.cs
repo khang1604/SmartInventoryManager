@@ -68,6 +68,7 @@ public sealed class FrmUserDetail : Form
             status.Text = "Đã kết nối dữ liệu";
             FindControl<Label>(root, "formNote").Text = "Các trường có dấu * là bắt buộc • Nhập email đúng định dạng để lưu tài khoản.";
             var save = FindControl<AntdUI.Button>(root, "btnSave");
+            save.Tag = null;
             save.Enabled = true;
             save.AccessibleDescription = "Lưu tài khoản nhân viên";
             save.Click += async (_, _) =>

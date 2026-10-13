@@ -62,7 +62,7 @@ public partial class FrmCategory : Form
         filters.Controls.Add(ProductUi.Label("Trạng thái", 10, true), 1, 0);
         var search = ProductUi.Input("txtSearch", "Nhập tên danh mục");
         search.PrefixSvg = MainIcons.Get("search");
-        search.ReadOnly = true;
+        search.ReadOnly = false;
         search.TabIndex = 0;
         search.AccessibleName = "Tìm tên danh mục";
         search.AccessibleDescription = "Tìm kiếm chưa sẵn sàng khi chưa có dữ liệu";
@@ -238,7 +238,7 @@ public partial class FrmCategory : Form
     private static AntdUI.Button Unavailable(string name, string text, string icon)
     {
         var button = ProductUi.Button(name, text, icon);
-        button.Enabled = false;
+        button.Click += (_, _) => ActionFeedback.Show(button);
         button.AccessibleDescription = "Chưa sẵn sàng: chức năng dữ liệu đang được hoàn thiện";
         return button;
     }
