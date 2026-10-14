@@ -67,7 +67,7 @@ namespace SmartInventoryManager.Data.Configurations
 
                 table.HasCheckConstraint(
                     "CK_Products_ReorderPoint",
-                    "[ReorderPoint] >= 0");
+                    "[ReorderPoint] > 0");
 
                 table.HasCheckConstraint(
                     "CK_Products_MaximumStock",
