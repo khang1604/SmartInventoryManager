@@ -64,6 +64,7 @@ public partial class FrmMain : Form
 
     private void BuildLayout()
     {
+        ScrollbarAppearance.Apply(this);
         FormClosed += (_, _) =>
         {
             foreach (var page in _pages.Values) page.Dispose();
@@ -192,7 +193,7 @@ public partial class FrmMain : Form
             ("Nhà cung cấp", "supplier"), ("Kho & vị trí", "building"),
             ("Nhập kho", "box-arrow-in-down"), ("Xuất kho", "box-arrow-up"),
             ("Tồn kho", "boxes"), ("Lịch sử tồn kho", "file-earmark-text"),
-            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Người dùng", "people"), ("Nhật ký", "file-earmark-text")
+            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Phân tích", "file-earmark-bar-graph"), ("Người dùng", "people"), ("Nhật ký", "file-earmark-text")
         ];
         foreach (var (title, icon) in pages)
         {
@@ -414,6 +415,8 @@ public partial class FrmMain : Form
 
     private Control CreatePage(string title) => title switch
     {
+        "Phân tích" when _services is not null => PrepareForm(new AnalyticsPage(_services), title),
+        "Phân tích" => EmptyPanel("Phân tích", "Đăng nhập để xem dữ liệu phân tích trong phạm vi kho.", "file-earmark-bar-graph"),
         "Tổng quan" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(_services), title),
         "Tổng quan" => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(), title),
         "Sản phẩm" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(_services), title),

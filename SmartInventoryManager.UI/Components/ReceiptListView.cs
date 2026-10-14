@@ -48,6 +48,7 @@ internal sealed class ReceiptListView : UserControl
         _create = AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
         AddAction("Xem chi tiết", () => OpenAsync(SelectedId(), false), "eye");
         AddAction("Xuất PDF phiếu", ExportReceiptAsync);
+        AddAction("Lịch sử từ chối", async () => { var id = SelectedId(); if (id.HasValue) { using var form = new ReceiptRejectionHistoryForm(_services, _import, id.Value); form.ShowDialog(FindForm()); } });
         AddAction("Sửa phiếu", () => OpenAsync(SelectedId(), true), "pencil");
         AddAction("Gửi duyệt", () => TransitionAsync("submit"));
         AddAction("Duyệt", () => TransitionAsync("approve"));
@@ -87,10 +88,17 @@ internal sealed class ReceiptListView : UserControl
         };
         for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
         root.Controls.Add(_filters, 0, 0);
+        LiveUi.FitWrappedToolbar(_filters, root, 0);
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
         Controls.Add(root);
+        _search.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode != Keys.Enter) return;
+            e.SuppressKeyPress = true;
+            await LoadAsync();
+        };
         Load += async (_, _) => await LoadAsync();
         VisibleChanged += async (_, _) =>
         {
@@ -190,6 +198,7 @@ internal sealed class ReceiptListView : UserControl
 
         EnableAction("Xem chi tiết", true);
         EnableAction("Xuất PDF phiếu", true);
+        EnableAction("Lịch sử từ chối", true);
         try
         {
             var rights = await _services.RunAsync(async () =>
@@ -229,13 +238,13 @@ internal sealed class ReceiptListView : UserControl
             {
                 var receipt = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_services.Session, id.Value)) ?? throw new KeyNotFoundException("Không tìm thấy phiếu trong phạm vi kho.");
                 ReportExportService.ExportReceiptPdf(dialog.FileName, "PHIẾU NHẬP KHO", receipt.ReceiptCode, receipt.ReceiptDate, receipt.Status,
-                    receipt.WarehouseName, receipt.CreatorName, receipt.SupplierName, receipt.Note, receipt.Details, receipt.TotalAmount);
+                    receipt.WarehouseName, receipt.CreatorName, receipt.SupplierName, receipt.Note, receipt.Details, receipt.TotalAmount, receipt.Audit);
             }
             else
             {
                 var receipt = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_services.Session, id.Value)) ?? throw new KeyNotFoundException("Không tìm thấy phiếu trong phạm vi kho.");
                 ReportExportService.ExportReceiptPdf(dialog.FileName, "PHIẾU XUẤT KHO", receipt.ReceiptCode, receipt.ReceiptDate, receipt.Status,
-                    receipt.WarehouseName, receipt.CreatorName, null, receipt.Note, receipt.Details, receipt.TotalAmount);
+                    receipt.WarehouseName, receipt.CreatorName, null, receipt.Note, receipt.Details, receipt.TotalAmount, receipt.Audit);
             }
             _message.Text = "Đã xuất PDF phiếu. Mở file để xem hoặc in A4.";
         }
@@ -319,6 +328,8 @@ internal sealed class ReceiptListView : UserControl
         var action = cancel ? "Hủy phiếu" : "Hoàn tất phiếu và cập nhật tồn kho";
         if (MessageBox.Show(FindForm(), $"{action} {code}?", "Xác nhận", MessageBoxButtons.OKCancel,
             MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
+        var reason = Microsoft.VisualBasic.Interaction.InputBox("Nhập lý do hủy phiếu (bắt buộc):", "Hủy phiếu", "");
+        if (string.IsNullOrWhiteSpace(reason)) { _message.Text = "Chưa nhập lý do; phiếu chưa bị hủy."; return; }
         Busy(true);
         _message.Text = "Đang xử lý phiếu…";
         var committed = false;
@@ -328,12 +339,12 @@ internal sealed class ReceiptListView : UserControl
             {
                 if (_import)
                 {
-                    if (cancel) await _services.Imports.CancelDraftAsync(_services.Session, id.Value);
+                    if (cancel) await _services.Imports.CancelAsync(_services.Session, id.Value, reason);
                     else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
                 }
                 else
                 {
-                    if (cancel) await _services.Exports.CancelDraftAsync(_services.Session, id.Value);
+                    if (cancel) await _services.Exports.CancelAsync(_services.Session, id.Value, reason);
                     else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
                 }
             });

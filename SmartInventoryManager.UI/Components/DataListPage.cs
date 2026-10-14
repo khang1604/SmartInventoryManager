@@ -91,6 +91,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         _actions.ControlAdded += (_, _) => FitActions();
         _search.KeyDown += async (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; await RefreshAsync(); } };
         root.Controls.Add(_filters, 0, 0);
+        LiveUi.FitWrappedToolbar(_filters, root, 0);
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);

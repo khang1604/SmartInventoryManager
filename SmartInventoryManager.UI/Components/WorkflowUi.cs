@@ -103,7 +103,7 @@ internal static class WorkflowUi
 
     public static DataGridView Grid(string name, string[] columns)
     {
-        var grid = new DataGridView
+        var grid = new ScrollableGrid
         {
             Name = name, Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false,
             AllowUserToAddRows = false, AllowUserToDeleteRows = false, AllowUserToOrderColumns = false,
@@ -193,6 +193,7 @@ internal static class WorkflowUi
 
     public static void StyleForm(Form form)
     {
+        ScrollbarAppearance.Apply(form);
         UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
         // [COLOR CONFIG]: nền và chữ của các màn hình nghiệp vụ.

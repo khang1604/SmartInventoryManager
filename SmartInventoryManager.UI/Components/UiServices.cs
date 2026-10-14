@@ -29,13 +29,15 @@ public sealed class UiServices : IDisposable
     public NotificationService Notifications { get; }
     public WarehouseAssignmentService Assignments { get; }
     public SystemLogService Logs { get; }
+    public AnalyticsService Analytics { get; }
+    public ReceiptAuditService ReceiptAudits { get; }
 
     public UiServices(UserSession session, AuthorizationService authorization,
         IImportService imports, IExportService exports, InventoryService inventory,
         StockAlertService alerts, ProductService products, WarehouseService warehouses,
         SupplierService suppliers, CategoryService categories, IProductService productManagement, LocationService locations,
         DashboardService dashboard, ReportService reports, UserService users, NotificationService notifications, Action resetTracking,
-        WarehouseAssignmentService assignments, SystemLogService logs)
+        WarehouseAssignmentService assignments, SystemLogService logs, AnalyticsService analytics, ReceiptAuditService receiptAudits)
     {
         Session = session;
         Authorization = authorization;
@@ -55,6 +57,8 @@ public sealed class UiServices : IDisposable
         Notifications = notifications;
         Assignments = assignments;
         Logs = logs;
+        Analytics = analytics;
+        ReceiptAudits = receiptAudits;
         _resetTracking = resetTracking;
     }
 

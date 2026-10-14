@@ -7,6 +7,8 @@ internal sealed class ProductManagementPage : UserControl
     private readonly UiServices _services;
     private readonly TextBox _search = new() { Width = 260, AccessibleName = "Tìm mã hoặc tên sản phẩm" };
     private readonly ComboBox _status = new() { Width = 150, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly ComboBox _category = LiveUi.Choice("cboProductCategory", "Danh mục sản phẩm");
+    private bool _categoriesLoaded;
     private readonly DataGridView _grid;
     private readonly Label _message = ProductUi.Label("Đang tải dữ liệu…");
     private readonly AntdUI.Button _previous = ProductUi.Button("btnPreviousPage", "Trang trước", "chevron-left");
@@ -33,11 +35,14 @@ internal sealed class ProductManagementPage : UserControl
         _status.Items.AddRange(["Tất cả trạng thái", "Đang kinh doanh", "Ngừng kinh doanh"]);
         _status.SelectedIndex = 0;
         filters.Controls.Add(LiveUi.Field("Trạng thái", _status));
+        _category.Width = 180;
+        filters.Controls.Add(LiveUi.Field("Danh mục", _category));
         var refresh = ProductUi.Button("btnRefreshProducts", "Làm mới", "arrow-clockwise");
         refresh.Click += async (_, _) => await RefreshAsync();
         refresh.Height = 34; refresh.Margin = new Padding(0, 28, 10, 0);
         filters.Controls.Add(refresh);
         root.Controls.Add(filters, 0, 0);
+        LiveUi.FitWrappedToolbar(filters, root, 0);
 
         var actions = LiveUi.Toolbar();
         var add = ProductUi.Button("btnAddProduct", "Thêm sản phẩm", "plus-lg", true);
@@ -129,6 +134,7 @@ internal sealed class ProductManagementPage : UserControl
             if (e.KeyCode == Keys.Enter) { _pageNumber = 1; await RefreshAsync(); e.SuppressKeyPress = true; }
         };
         _status.SelectedIndexChanged += async (_, _) => { _pageNumber = 1; await RefreshAsync(); };
+        _category.SelectedIndexChanged += async (_, _) => { _pageNumber = 1; await RefreshAsync(); };
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
         Controls.Add(root);
@@ -148,10 +154,19 @@ internal sealed class ProductManagementPage : UserControl
         try
         {
             Enabled = false;
+            if (!_categoriesLoaded)
+            {
+                var categories = await _services.RunAsync(() => _services.Categories.GetAsync(_services.Session));
+                _category.DisplayMember = nameof(CategoryDto.CategoryName);
+                _category.ValueMember = nameof(CategoryDto.CategoryId);
+                _category.DataSource = new[] { new CategoryDto(0, "Tất cả danh mục", null, true) }.Concat(categories).ToList();
+                _categoriesLoaded = true;
+            }
             var status = _status.SelectedIndex switch { 1 => true, 2 => false, _ => (bool?)null };
+            var categoryId = _category.SelectedItem is CategoryDto { CategoryId: > 0 } category ? category.CategoryId : (int?)null;
             var result = await _services.RunAsync(() => _services.ProductManagement.SearchAsync(
                 _services.Session,
-                new ProductSearchDto { Search = _search.Text, IsActive = status, PageNumber = _pageNumber, PageSize = PageSize }));
+                new ProductSearchDto { Search = _search.Text, CategoryId = categoryId, IsActive = status, PageNumber = _pageNumber, PageSize = PageSize }));
             _grid.DataSource = result.Items.ToList();
             _message.Text = result.TotalCount == 0
                 ? "Không có sản phẩm phù hợp."

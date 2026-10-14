@@ -55,6 +55,34 @@ internal static class LiveUi
         Margin = Padding.Empty
     };
 
+    public static void FitWrappedToolbar(FlowLayoutPanel toolbar, TableLayoutPanel root, int row)
+    {
+        toolbar.WrapContents = true;
+        toolbar.AutoScroll = false;
+        void Fit()
+        {
+            var width = Math.Max(160, toolbar.ClientSize.Width);
+            var used = 0;
+            var height = 0;
+            var lineHeight = 0;
+            foreach (Control child in toolbar.Controls)
+            {
+                var childWidth = child.Width + child.Margin.Horizontal;
+                if (used > 0 && used + childWidth > width)
+                {
+                    height += lineHeight; used = 0; lineHeight = 0;
+                }
+                used += childWidth;
+                lineHeight = Math.Max(lineHeight, child.Height + child.Margin.Vertical);
+            }
+            var required = height + lineHeight + 12;
+            if (root.RowStyles[row].Height != required) root.RowStyles[row].Height = required;
+        }
+        toolbar.SizeChanged += (_, _) => Fit();
+        toolbar.ControlAdded += (_, _) => Fit();
+        Fit();
+    }
+
     public static Control TableFrame(Control content)
     {
         var frame = new RoundedSurface
@@ -121,7 +149,7 @@ internal static class LiveUi
 
     public static DataGridView Grid(string name, params (string Property, string Caption)[] columns)
     {
-        var grid = new DataGridView
+        var grid = new ScrollableGrid
         {
             Name = name,
             AccessibleName = "Bảng dữ liệu",
@@ -189,7 +217,7 @@ internal static class LiveUi
         grid.DefaultCellStyle.SelectionBackColor = AppColors.Lavender;
         grid.DefaultCellStyle.SelectionForeColor = AppColors.SelectedText;
         grid.GridColor = AppColors.Border;
-        grid.ScrollBars = ScrollBars.Both;
+        grid.ScrollBars = ScrollBars.None;
         grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
         grid.DefaultCellStyle.FormatProvider = Culture;
         return grid;
@@ -234,6 +262,12 @@ internal static class LiveUi
         "SET_PRODUCT_ACTIVE" => "Đổi trạng thái sản phẩm",
         "ACTIVATE_ASSIGNMENT" => "Kích hoạt phân kho",
         "DEACTIVATE_ASSIGNMENT" => "Ngừng phân kho",
+        "USER_CREATED" => "Tạo tài khoản",
+        "USER_DEACTIVATED" => "Ngừng tài khoản",
+        "USER_UPDATED" => "Sửa tài khoản",
+        "PASSWORD_RESET" => "Đặt lại mật khẩu",
+        "ACCOUNT_UPDATED" => "Sửa hồ sơ cá nhân",
+        "PASSWORD_CHANGED" => "Đổi mật khẩu",
         _ => "Thao tác hệ thống"
     };
 

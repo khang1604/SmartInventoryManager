@@ -68,13 +68,14 @@ internal static class UiDetails
     public static void DecorateDetailsColumn(DataGridView grid, bool insetButton = false)
     {
         var eye = AntdUI.SvgExtend.SvgToBmp(MainIcons.Get("eye"), 18, 18, AppColors.Text);
-        grid.Disposed += (_, _) => eye?.Dispose();
+        // [COLOR CONFIG]: icon của hàng chọn dùng màu chữ chọn để giữ tương phản.
+        var selectedEye = AntdUI.SvgExtend.SvgToBmp(MainIcons.Get("eye"), 18, 18, SystemInformation.HighContrast ? SystemColors.HighlightText : AppColors.SelectedText);
+        grid.Disposed += (_, _) => { eye?.Dispose(); selectedEye?.Dispose(); };
         grid.CellPainting += (_, e) =>
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].Name != "ViewDetails" || eye is null) return;
-            e.Paint(e.ClipBounds, insetButton
-                ? DataGridViewPaintParts.Background | DataGridViewPaintParts.SelectionBackground | DataGridViewPaintParts.Border
-                : DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+            e.Paint(e.ClipBounds, DataGridViewPaintParts.Background | DataGridViewPaintParts.SelectionBackground | DataGridViewPaintParts.Border);
+            bool selected = (e.State & DataGridViewElementStates.Selected) != 0;
             int size = (int)(18 * grid.DeviceDpi / 96F);
             var bounds = e.CellBounds;
             if (insetButton)
@@ -83,16 +84,16 @@ internal static class UiDetails
                 bounds.Inflate(-gap, -gap);
                 using var outline = new System.Drawing.Drawing2D.GraphicsPath();
                 outline.AddRoundedRectangle(bounds, new Size(gap * 2, gap * 2));
-                // [COLOR CONFIG]: nút chi tiết trắng, viền lavender trong ô được chọn.
-                using var background = new SolidBrush(AppColors.Surface);
-                using var border = new Pen(AppColors.Border);
+                // [COLOR CONFIG]: nút giữ cùng nền hàng được chọn; viền và chữ theo style cell để hỗ trợ High Contrast.
+                using var background = new SolidBrush(selected ? e.CellStyle!.SelectionBackColor : e.CellStyle!.BackColor);
+                using var border = new Pen(SystemInformation.HighContrast ? (selected ? e.CellStyle.SelectionForeColor : e.CellStyle.ForeColor) : AppColors.Border);
                 e.Graphics!.FillPath(background, outline);
                 e.Graphics.DrawPath(border, outline);
             }
-            e.Graphics!.DrawImage(eye, new Rectangle(bounds.Left + 6, bounds.Top + (bounds.Height - size) / 2, size, size));
+            e.Graphics!.DrawImage(selected && selectedEye is not null ? selectedEye : eye, new Rectangle(bounds.Left + 6, bounds.Top + (bounds.Height - size) / 2, size, size));
             TextRenderer.DrawText(e.Graphics, "Chi tiết", grid.Font,
                 new Rectangle(bounds.Left + size + 12, bounds.Top, Math.Max(0, bounds.Width - size - 16), bounds.Height),
-                AppColors.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                selected ? e.CellStyle!.SelectionForeColor : e.CellStyle!.ForeColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
             e.Handled = true;
         };
     }
