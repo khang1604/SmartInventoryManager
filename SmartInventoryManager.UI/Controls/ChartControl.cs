@@ -29,7 +29,7 @@ namespace SmartInventoryManager.Controls
             ArgumentNullException.ThrowIfNull(labels);
             ArgumentNullException.ThrowIfNull(values);
             if (labels.Count != values.Count) throw new ArgumentException("Nhãn và dữ liệu biểu đồ phải cùng số lượng.");
-            foreach(Control old in _plotHost.Controls.Cast<Control>().ToArray()) { _plotHost.Controls.Remove(old); old.Dispose(); }
+            foreach (Control old in _plotHost.Controls.Cast<Control>().ToArray()) { _plotHost.Controls.Remove(old); old.Dispose(); }
             if (values.Count == 0)
             {
                 _plotHost.Controls.Add(SmartInventoryManager.UI.Components.WorkflowUi.Empty(
@@ -37,6 +37,80 @@ namespace SmartInventoryManager.Controls
                 return;
             }
             _plotHost.Controls.Add(new BarChartSurface(labels, values));
+        }
+
+        public void ShowComparison(IReadOnlyList<string> labels, IReadOnlyList<double> imports, IReadOnlyList<double> exports)
+        {
+            if (labels.Count != imports.Count || labels.Count != exports.Count) throw new ArgumentException("Dữ liệu biểu đồ không khớp.");
+            ReplacePlot(new ComparisonSurface(labels.ToArray(), imports.ToArray(), exports.ToArray()));
+        }
+
+        public void ShowHorizontal(IReadOnlyList<string> labels, IReadOnlyList<double> values)
+        {
+            if (labels.Count != values.Count) throw new ArgumentException("Dữ liệu biểu đồ không khớp.");
+            ReplacePlot(new HorizontalSurface(labels.ToArray(), values.ToArray()));
+        }
+
+        private void ReplacePlot(Control plot)
+        {
+            foreach (Control old in _plotHost.Controls.Cast<Control>().ToArray()) { _plotHost.Controls.Remove(old); old.Dispose(); }
+            plot.Dock = DockStyle.Fill;
+            _plotHost.Controls.Add(plot);
+        }
+
+        private sealed class ComparisonSurface(string[] labels, double[] imports, double[] exports) : Control
+        {
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+                if (labels.Length == 0) return;
+                var area = new Rectangle(35, 34, Math.Max(1, Width - 45), Math.Max(1, Height - 62));
+                var maximum = Math.Max(1, Math.Max(imports.Max(), exports.Max()));
+                var slot = area.Width / (double)labels.Length;
+                // [COLOR CONFIG]: system highlight cho nhập, control-dark cho xuất; có chú giải chữ để phân biệt.
+                using var importBrush = new SolidBrush(SystemColors.Highlight);
+                using var exportBrush = new SolidBrush(SystemColors.ControlDark);
+                using var textBrush = new SolidBrush(SystemColors.ControlText);
+                using var axis = new Pen(SystemColors.ControlText);
+                e.Graphics.DrawString("Nhập ■   Xuất ▧  • số lượng", Font, textBrush, 0, 0);
+                e.Graphics.DrawLine(axis, area.Left, area.Bottom, area.Right, area.Bottom);
+                e.Graphics.DrawString(maximum.ToString("N0"), Font, textBrush, 0, area.Top);
+                for (var i = 0; i < labels.Length; i++)
+                {
+                    var width = Math.Max(1, (float)(slot * .38));
+                    var x = area.Left + (float)(i * slot);
+                    var ih = (float)(imports[i] / maximum * area.Height);
+                    var eh = (float)(exports[i] / maximum * area.Height);
+                    e.Graphics.FillRectangle(importBrush, x, area.Bottom - ih, width, ih);
+                    e.Graphics.FillRectangle(exportBrush, x + width, area.Bottom - eh, width, eh);
+                    if (i % Math.Max(1, labels.Length / 5) == 0)
+                        e.Graphics.DrawString(labels[i], Font, textBrush, x, area.Bottom + 4);
+                }
+            }
+        }
+
+        private sealed class HorizontalSurface(string[] labels, double[] values) : Control
+        {
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+                // [COLOR CONFIG]: dùng màu system để giữ tương phản ở High Contrast, luôn hiển thị giá trị bằng chữ.
+                using var bar = new SolidBrush(SystemColors.Highlight);
+                using var text = new SolidBrush(SystemColors.ControlText);
+                if (values.Length == 0) { e.Graphics.DrawString("Chưa có dòng tồn kho", Font, text, 0, 0); return; }
+                var max = Math.Max(1, values.Max());
+                var row = Math.Max(1, Height / (float)values.Length);
+                var labelWidth = Math.Min(180, Width * .5f);
+                for (var i = 0; i < values.Length; i++)
+                {
+                    var y = i * row;
+                    using var format = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+                    e.Graphics.DrawString(labels[i], Font, text, new RectangleF(0, y, labelWidth - 6, row), format);
+                    var width = (float)(values[i] / max * Math.Max(1, Width - labelWidth - 45));
+                    e.Graphics.FillRectangle(bar, labelWidth, y + 3, width, Math.Max(1, row - 8));
+                    e.Graphics.DrawString(values[i].ToString("N0"), Font, text, labelWidth + width + 4, y);
+                }
+            }
         }
 
         private sealed class BarChartSurface : Control

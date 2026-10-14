@@ -11,8 +11,12 @@ internal static class LiveUi
 
     public static ComboBox Choice(string name, string caption) => new()
     {
-        Name = name, AccessibleName = caption, DropDownStyle = ComboBoxStyle.DropDownList,
-        Width = 190, Font = new Font("Segoe UI", 10), Margin = new Padding(0, 8, 12, 0)
+        Name = name,
+        AccessibleName = caption,
+        DropDownStyle = ComboBoxStyle.DropDownList,
+        Width = 190,
+        Font = new Font("Segoe UI", 10),
+        Margin = new Padding(0, 8, 12, 0)
     };
 
     public static Control Field(string caption, Control control)
@@ -45,14 +49,19 @@ internal static class LiveUi
 
     public static FlowLayoutPanel Toolbar() => new()
     {
-        Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true, Margin = Padding.Empty
+        Dock = DockStyle.Fill,
+        WrapContents = false,
+        AutoScroll = true,
+        Margin = Padding.Empty
     };
 
     public static Control TableFrame(Control content)
     {
         var frame = new RoundedSurface
         {
-            Dock = DockStyle.Fill, Padding = new Padding(10), Margin = Padding.Empty,
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10),
+            Margin = Padding.Empty,
             AccessibleName = "Khung bảng dữ liệu"
         };
         content.Dock = DockStyle.Fill;
@@ -75,10 +84,10 @@ internal static class LiveUi
                 table.ColumnHeadersDefaultCellStyle.Padding = new Padding(12, 0, 8, 0);
                 table.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
                 ApplyHeaderFont();
-                table.DataSourceChanged += (_,_) =>
+                table.DataSourceChanged += (_, _) =>
                 {
-                    if(table.Parent is TableLayoutPanel area && area.RowCount==2 && area.RowStyles.Count==2)
-                    { area.RowStyles[0].SizeType=SizeType.Percent; area.RowStyles[0].Height=100; area.RowStyles[1].SizeType=SizeType.Absolute; area.RowStyles[1].Height=0; foreach(Control other in area.Controls) if(!ReferenceEquals(other,table)) other.Visible=false; }
+                    if (table.Parent is TableLayoutPanel area && area.RowCount == 2 && area.RowStyles.Count == 2)
+                    { area.RowStyles[0].SizeType = SizeType.Percent; area.RowStyles[0].Height = 100; area.RowStyles[1].SizeType = SizeType.Absolute; area.RowStyles[1].Height = 0; foreach (Control other in area.Controls) if (!ReferenceEquals(other, table)) other.Visible = false; }
                 };
                 table.FontChanged += (_, _) => ApplyHeaderFont();
                 table.Disposed += (_, _) => { headerFont?.Dispose(); bodyFont.Dispose(); };
@@ -114,27 +123,38 @@ internal static class LiveUi
     {
         var grid = new DataGridView
         {
-            Name = name, AccessibleName = "Bảng dữ liệu", Dock = DockStyle.Fill,
-            AutoGenerateColumns = false, ReadOnly = true, AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false, RowHeadersVisible = false, MultiSelect = false,
-            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
+            Name = name,
+            AccessibleName = "Bảng dữ liệu",
+            Dock = DockStyle.Fill,
+            AutoGenerateColumns = false,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            RowHeadersVisible = false,
+            MultiSelect = false,
+            AllowUserToResizeRows = false,
+            AllowUserToResizeColumns = false,
             AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             // [COLOR CONFIG]: nền bảng trắng và chữ tối theo theme VioWare.
-            BackgroundColor = AppColors.Surface, ForeColor = AppColors.Text,
+            BackgroundColor = AppColors.Surface,
+            ForeColor = AppColors.Text,
             CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
             ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single,
             // [COLOR CONFIG]: đường phân cách bảng nhẹ, đồng bộ với khung bo góc.
             GridColor = AppColors.Border,
-            BorderStyle = BorderStyle.None, RowTemplate = { Height = 34 }
+            BorderStyle = BorderStyle.None,
+            RowTemplate = { Height = 34 }
         };
         foreach (var (property, caption) in columns)
         {
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = property, DataPropertyName = property, HeaderText = caption,
+                Name = property,
+                DataPropertyName = property,
+                HeaderText = caption,
                 MinimumWidth = property switch
                 {
                     "ProductName" => 140,
@@ -142,7 +162,8 @@ internal static class LiveUi
                     "ReorderPoint" => 130,
                     "PurchasePrice" or "SellingPrice" => 110,
                     _ => 80
-                }, SortMode = DataGridViewColumnSortMode.NotSortable
+                },
+                SortMode = DataGridViewColumnSortMode.NotSortable
             });
             var column = Column(grid, property);
             if (property.Contains("Price") || property.Contains("Amount"))
@@ -185,13 +206,35 @@ internal static class LiveUi
 
     public static string StatusText(string status) => status switch
     {
-        "DRAFT" => "Nháp", "COMPLETED" => "Hoàn tất", "CANCELLED" => "Đã hủy",
-        "PENDING_APPROVAL" => "Chờ duyệt", "APPROVED" => "Đã duyệt", "REJECTED" => "Đã từ chối",
-        "OutOfStock" or "OUT_OF_STOCK" => "Hết hàng", "LowStock" or "LOW_STOCK" => "Sắp hết",
-        "Normal" or "NORMAL" => "Bình thường", "Overstock" or "OVERSTOCK" => "Vượt mức",
-        "IMPORT" => "Nhập kho", "EXPORT" => "Xuất kho", "ADJUSTMENT" => "Điều chỉnh",
-        "TRANSFER_IN" => "Chuyển kho đến", "TRANSFER_OUT" => "Chuyển kho đi",
+        "DRAFT" => "Nháp",
+        "COMPLETED" => "Hoàn tất",
+        "CANCELLED" => "Đã hủy",
+        "PENDING_APPROVAL" => "Chờ duyệt",
+        "APPROVED" => "Đã duyệt",
+        "REJECTED" => "Đã từ chối",
+        "OutOfStock" or "OUT_OF_STOCK" => "Hết hàng",
+        "LowStock" or "LOW_STOCK" => "Sắp hết",
+        "Normal" or "NORMAL" => "Bình thường",
+        "Overstock" or "OVERSTOCK" => "Vượt mức",
+        "IMPORT" => "Nhập kho",
+        "EXPORT" => "Xuất kho",
+        "ADJUSTMENT" => "Điều chỉnh",
+        "TRANSFER_IN" => "Chuyển kho đến",
+        "TRANSFER_OUT" => "Chuyển kho đi",
         _ => "Chưa xác định"
+    };
+
+    public static string LogActionText(string action) => action switch
+    {
+        "COMPLETE_IMPORT" => "Hoàn tất phiếu nhập",
+        "COMPLETE_EXPORT" => "Hoàn tất phiếu xuất",
+        "ADJUST" => "Điều chỉnh tồn",
+        "TRANSFER" => "Chuyển kho",
+        "UPDATE_PRODUCT" => "Sửa sản phẩm",
+        "SET_PRODUCT_ACTIVE" => "Đổi trạng thái sản phẩm",
+        "ACTIVATE_ASSIGNMENT" => "Kích hoạt phân kho",
+        "DEACTIVATE_ASSIGNMENT" => "Ngừng phân kho",
+        _ => "Thao tác hệ thống"
     };
 
     public static string Error(Exception exception)
@@ -199,6 +242,7 @@ internal static class LiveUi
         Debug.WriteLine(exception);
         return exception switch
         {
+            SmartInventoryManager.Business.Services.BusinessConflictException conflict => conflict.Message,
             UnauthorizedAccessException => "Bạn chưa đăng nhập hoặc không có quyền thao tác tại kho này.",
             ArgumentException argument when !string.IsNullOrWhiteSpace(argument.Message)
                 => argument.Message,
@@ -207,6 +251,8 @@ internal static class LiveUi
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."
                 => "Mức giảm vượt quá tồn hiện tại. Hãy kiểm tra số lượng điều chỉnh.",
+            InvalidOperationException when exception.Message is "Phiếu nhập đã hoàn tất trước đó." or "Phiếu xuất đã hoàn tất trước đó."
+                => "Phiếu đã hoàn tất. Hãy làm mới danh sách; không cần gửi lại.",
             DbUpdateException => "Không lưu được dữ liệu. Hãy làm mới để kiểm tra kết quả; liên hệ quản trị viên nếu lỗi vẫn xảy ra.",
             _ => "Chưa thực hiện được thao tác. Hãy làm mới dữ liệu hoặc thử lại; không gửi lại khi chưa kiểm tra kết quả."
         };

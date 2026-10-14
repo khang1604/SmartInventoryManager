@@ -48,21 +48,22 @@ namespace SmartInventoryManager.UI
 
             var authorizationService = new AuthorizationService(dbContext);
             var session = new UserSession();
+            var stockPublisher = new SmartInventoryManager.Business.Events.StockEventPublisher();
             using var services = new UiServices(session, authorizationService,
-                new ImportService(dbContext, authorizationService),
-                new ExportService(dbContext, authorizationService),
-                new InventoryService(dbContext, authorizationService),
-                new StockAlertService(dbContext, authorizationService),
+                new ImportService(dbContext, authorizationService, stockPublisher),
+                new ExportService(dbContext, authorizationService, stockPublisher),
+                new InventoryService(dbContext, authorizationService, stockPublisher),
+                new StockAlertService(dbContext, authorizationService, stockPublisher),
                 new ProductService(dbContext), new WarehouseService(dbContext, authorizationService),
                  new SupplierService(dbContext, authorizationService),
                 new CategoryService(dbContext, authorizationService),
-                new ProductManagementService(dbContext, authorizationService),
+                new ProductManagementService(dbContext, authorizationService, stockPublisher),
                 new LocationService(dbContext, authorizationService),
                 new DashboardService(dbContext, authorizationService),
                 new ReportService(dbContext, authorizationService),
                 new UserService(dbContext, authorizationService),
                 new NotificationService(dbContext),
-                () => dbContext.ChangeTracker.Clear(), new WarehouseAssignmentService(dbContext, authorizationService));
+                () => dbContext.ChangeTracker.Clear(), new WarehouseAssignmentService(dbContext, authorizationService), new SystemLogService(dbContext, authorizationService));
             while (true)
             {
                 using var loginForm = new FrmLogin(authService);
