@@ -4,7 +4,17 @@ Chuẩn: `.agent/SystemContract.md` mới, được người dùng chọn ngày 
 
 ## 0. Cập nhật sau quyết định của chủ dự án
 
-Người dùng xác định DB triển khai là `SmartInventoryManagerDB`; chưa cung cấp server hay DB test riêng. Chọn giữ assignment với trạng thái ngừng hoạt động. Chọn tổng báo cáo và export theo toàn bộ dữ liệu khớp kho/ngày/search/type. Các mục 1–5 bên dưới giữ bằng chứng đợt đầu; những trạng thái được cập nhật ở mục này có ưu tiên hiện hành.
+### Xác minh DB test và apply migration
+
+Người dùng xác nhận SQL Server đang kết nối là môi trường test, server chính nằm riêng. Đã xác minh target từ launch profile: **localhost / SmartInventoryManagerDB**, rồi apply hai migration `20261014010000_RequirePositiveReorderPoint` và `20261014090948_AddUserWarehouseActiveState`. Trước apply có 0 sản phẩm ReorderPoint<=0. Sau apply không còn pending migration; 10 assignments hiện hữu giữ nguyên và đều active. Không truy cập server chính.
+
+SQL acceptance PASS: active assignment cấp scope; ngừng thu hồi current scope và giữ row; kích hoạt lại khôi phục scope; query report inventory filtered totals/rows/open alerts; unmatched filter trả 0; receipt report date/search/type trước aggregate; alert sau pending stock mutation lưu đúng quantity/type. Dữ liệu fixture riêng được rollback, kiểm tra không còn test user/product; schema migrations đã apply vẫn được giữ. Không drop/reset DB và không xóa SQL cũ. Harness local `.agent/SqlAcceptance` chưa phải integration suite trong repo/CI. Trước lượt bổ sung bên dưới chưa kiểm thử vòng receipt/race; UI save/DPI hoặc render file export vẫn chưa nghiệm thu.
+
+Đã kiểm tra thêm vòng receipt trên fixture riêng: create ở context1, Submit/Approve/Complete nhập ở context mới; quantity5 và một movement. Hai context cùng Complete một phiếu xuất quantity2: đúng một succeeds, stock còn3, chỉ một export movement. Thao tác cạnh tranh nhận **SQL deadlock1205** qua InvalidOperationException wrapper; chưa có stable Business error contract/retry policy nên chưa coi giao diện xử lý conflict đạt yêu cầu. Phiếu xuất quantity4 khi tồn3 bị từ chối; trạng thái vẫn APPROVED, stock/movements không đổi. Cleanup transaction chỉ xóa records trong warehouse/product/category/supplier WFTEST có ID/code riêng; dữ liệu nghiệp vụ hiện hữu giữ nguyên. Tổng 17 assertions SQL PASS ở hai nhóm; xác minh lại EF CanConnect=True, pending migrations rỗng, pending model=False và cả17 entity query PASS. Không chạy race complete-vs-cancel/update/delete/approve, concurrent different exports/transfer hoặc failure injection từng stage.
+
+Restore harness local có NuGet audit cảnh báo NU1902/NU1903 về dependency transitive System.Security.Cryptography.Pkcs 9.0.18; chưa nâng package sản phẩm ngoài phạm vi đợt này.
+
+Ban đầu người dùng xác định tên DB là `SmartInventoryManagerDB`, sau đó xác nhận connection hiện tại là DB test; server chính riêng chưa được cung cấp. Chọn giữ assignment với trạng thái ngừng hoạt động. Chọn tổng báo cáo và export theo toàn bộ dữ liệu khớp kho/ngày/search/type. Các mục 1–5 bên dưới giữ bằng chứng đợt đầu; những trạng thái được cập nhật ở mục này có ưu tiên hiện hành.
 
 | Tầng | Đã triển khai thêm | Commit |
 |---|---|---|
@@ -13,7 +23,7 @@ Người dùng xác định DB triển khai là `SmartInventoryManagerDB`; chưa
 | Business | Report search/type/status được query trước totals và rows; bỏ cap5000 để trả đủ dữ liệu; filtered alert count theo inventory scope | `1e7463e`, `413e69b` |
 | UI | ADMIN màn phân kho, chọn kho active không cắt danh sách; ngừng/kích hoạt lại. STAFF đổi kho và xóa cache pages sau đổi. Report summary/export truyền cùng kho/ngày/search/type/status | `616d510` |
 
-Xác minh hiện tại: build0 warning/error; **138 unit tests PASS**, gồm ngừng/revoke/reactivate/deny nonadmin/deny assigning admin, search/type/status totals và >5000 rows trả đủ. EF snapshot/script PASS. Smoke WinForms controls PASS. Chưa nghiệm thu SQL integration hoặc GUI save/assignment/context/export files. Hai migration mới **chưa apply** lên DB; code cần schema mới có UserWarehouses.IsActive trước dùng assignment/STAFF scope. Không chạy test ghi dữ liệu trên DB demo. Chưa push.
+Xác minh code: build0 warning/error; **138 unit tests PASS**, gồm ngừng/revoke/reactivate/deny nonadmin/deny assigning admin, search/type/status totals và >5000 rows trả đủ. EF snapshot/script PASS. Smoke WinForms controls PASS. Migration và SQL acceptance đã chạy trên DB test được người dùng xác nhận ở phần đầu mục0; các bước GUI và SQL concurrency vẫn chưa nghiệm thu. Chưa push.
 
 Chưa tự quyết định việc bỏ/giữ assignments khi đổi role hoặc user/kho inactive: auth vẫn từ chối tài khoản/kho không hợp lệ; rows giữ nguyên, service cho ngừng assignment cũ nhưng kích hoạt lại phải thỏa role/active. Chưa thêm audit fields, outbox hay công thức analytics. Phân trang hiển thị có thể bổ sung sau; hiện Business trả đủ tập khớp filter theo quyết định người dùng, không cam kết snapshot giữa nhiều query khi có concurrent writes.
 
