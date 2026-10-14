@@ -1,3 +1,10 @@
+## Tiến độ hiện hành sau triển khai TeamChot — 14/10/2026
+
+Phần này thay các mục trì hoãn audit/transfer/analytics/UI tương ứng trong snapshot bên dưới. Đã hoàn thiện theo quyết định mới trên ba tầng; không suy rằng tất cả yêu cầu lịch sử đều đã nghiệm thu. Xem Documentation/Architecture/TeamDecisionCompletion_2026-10-14.md và CurrentArchitecture.md cho code, quyết định,152unit/4SQL PASS,18bảng schema và giới hạn nghiệm thu. SQL cũ giữ nguyên, fixture TEST đã dọn, production chưa cung cấp, chưa push đợt này.
+
+Còn chờ: WAC và tồn đầu kỳ/định giá chuyển-điều chỉnh; retention/archive; production và peer review; Designer/DPI/máy in/dataset lớn. Không còn câu hỏi formula ABC/90ngày/giai đoạn đầu bị bỏ ngỏ: người dùng đã duyệt chi tiết trong TeamChot.
+
+---
 ## Cập nhật hiện hành ngày 14/10/2026 — sau nghiệm thu
 
 Phần này có ưu tiên so với các snapshot lịch sử phía dưới. Chuẩn là `.agent/SystemContract.md` hiện hành; người dùng đã cho phép hoàn thiện cả ba tầng, commit theo từng tầng và dùng `localhost / SmartInventoryManagerDB` làm DB TEST. Server production riêng chưa được cung cấp. SQL cũ được giữ nguyên; không drop/reset database. Các commit code/tài liệu đến `e0efd85` đã push Backend theo yêu cầu người dùng; remote develop đã nhận qua PR #50. README/rule/checklist tiếp tục được đồng bộ theo các quyết định đã chốt.
