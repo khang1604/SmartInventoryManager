@@ -2,6 +2,21 @@
 
 Chuẩn: `.agent/SystemContract.md` mới, được người dùng chọn ngày 14/10/2026. Người dùng hiện đảm nhận toàn bộ ba tầng và cho phép sửa liên tầng, commit riêng từng tầng. Triển khai từ dễ đến khó; quyết định nghiệp vụ chưa đủ bằng chứng được để mở. SQL cũ trong `Database/` giữ nguyên. Báo cáo này ghi một đợt triển khai, không chứng nhận toàn bộ dự án đã hoàn thiện.
 
+## 0. Cập nhật sau quyết định của chủ dự án
+
+Người dùng xác định DB triển khai là `SmartInventoryManagerDB`; chưa cung cấp server hay DB test riêng. Chọn giữ assignment với trạng thái ngừng hoạt động. Chọn tổng báo cáo và export theo toàn bộ dữ liệu khớp kho/ngày/search/type. Các mục 1–5 bên dưới giữ bằng chứng đợt đầu; những trạng thái được cập nhật ở mục này có ưu tiên hiện hành.
+
+| Tầng | Đã triển khai thêm | Commit |
+|---|---|---|
+| Data | UserWarehouse.IsActive; migration mới AddUserWarehouseActiveState, mặc định true cho assignments hiện hữu; PK/FK giữ nguyên | `455f838` |
+| Business | ADMIN phân kho/ngừng/kích hoạt lại; activation chỉ cho STAFF active/kho active; ngừng giữ row, chỉ active assignment cấp quyền kho | `1e7463e` |
+| Business | Report search/type/status được query trước totals và rows; bỏ cap5000 để trả đủ dữ liệu; filtered alert count theo inventory scope | `1e7463e`, `413e69b` |
+| UI | ADMIN màn phân kho, chọn kho active không cắt danh sách; ngừng/kích hoạt lại. STAFF đổi kho và xóa cache pages sau đổi. Report summary/export truyền cùng kho/ngày/search/type/status | `616d510` |
+
+Xác minh hiện tại: build0 warning/error; **138 unit tests PASS**, gồm ngừng/revoke/reactivate/deny nonadmin/deny assigning admin, search/type/status totals và >5000 rows trả đủ. EF snapshot/script PASS. Smoke WinForms controls PASS. Chưa nghiệm thu SQL integration hoặc GUI save/assignment/context/export files. Hai migration mới **chưa apply** lên DB; code cần schema mới có UserWarehouses.IsActive trước dùng assignment/STAFF scope. Không chạy test ghi dữ liệu trên DB demo. Chưa push.
+
+Chưa tự quyết định việc bỏ/giữ assignments khi đổi role hoặc user/kho inactive: auth vẫn từ chối tài khoản/kho không hợp lệ; rows giữ nguyên, service cho ngừng assignment cũ nhưng kích hoạt lại phải thỏa role/active. Chưa thêm audit fields, outbox hay công thức analytics. Phân trang hiển thị có thể bổ sung sau; hiện Business trả đủ tập khớp filter theo quyết định người dùng, không cam kết snapshot giữa nhiều query khi có concurrent writes.
+
 ## 1. Data — đã triển khai trong đợt này
 
 Commit `7282f26`: `fix(data): migrate positive reorder threshold and align connection target`.
@@ -85,9 +100,9 @@ Việc còn lại theo độ khó:
 
 1. Migration triển khai lên server/database nào? Nếu có sản phẩm ReorderPoint=0, giá trị thay thế phải theo từng sản phẩm hay do admin sửa trên UI trước apply?
 2. DB kiểm thử riêng tên gì, connection nào và có cho phép reset DB test đó để chạy lại fixture không?
-3. Khi thu hồi phân kho STAFF: xóa UserWarehouse hay cần trạng thái deactivate? Khi đổi role/kho inactive, assignments được giữ hay xóa?
+3. Đã chốt ngừng hoạt động assignment và triển khai. Còn cần chốt có tự thay trạng thái assignment khi đổi role/kho/user inactive không; hiện giữ rows và auth từ chối quyền không hợp lệ.
 4. Audit cần giữ lịch sử mọi lần reject/resubmit/cancel hay chỉ lý do hiện hành? Chốt các fields completion/cancel/reject và adjustment metadata tối thiểu.
 5. Chuyển kho dùng reference chung cấp từ đâu, và cách đảm bảo mã không trùng? Không tự thêm TransferReceipt.
 6. Notification bắt buộc lưu cùng nghiệp vụ nào, gửi cho roles/kho nào, hay best-effort? Cách xử lý subscriber thất bại sau commit?
-7. Report tổng theo full scope hay theo search/type đang xem; export toàn dữ liệu filter hay trang hiện tại?
+7. Đã chốt và triển khai tổng/export theo toàn bộ dữ liệu khớp bộ lọc; không giới hạn trang/cap5000. Còn kiểm tra file export thực tế và hiệu năng dataset lớn.
 8. Dashboard dùng date nào, khoảng thời gian mặc định, top-N và cách xử lý đồng hạng? Valuation/advanced analytics có công thức approved nào?
