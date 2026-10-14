@@ -101,6 +101,12 @@ public class UserServiceTests
         var stored = await context.Users.SingleAsync(user => user.UserId == 1);
         Assert.IsTrue(hasher.VerifyPassword("ResetPassword1", stored.PasswordHash));
         Assert.IsFalse(hasher.VerifyPassword("OldPassword1", stored.PasswordHash));
+        var log = await context.SystemLogs.SingleAsync();
+        Assert.AreEqual("PASSWORD_RESET", log.Action);
+        Assert.AreEqual(1, log.UserId);
+        Assert.AreEqual(1, log.EntityId);
+        Assert.IsFalse(log.Description!.Contains("ResetPassword1", StringComparison.Ordinal));
+        Assert.IsFalse(log.Description.Contains(stored.PasswordHash, StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -156,6 +162,7 @@ public class UserServiceTests
 
         await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.ChangePasswordAsync(
             session, new ChangePasswordRequest("WrongPassword1", "NewPassword1", "NewPassword1")));
+        Assert.AreEqual(0, await context.SystemLogs.CountAsync());
     }
 
     private static InventoryDbContext CreateContext()

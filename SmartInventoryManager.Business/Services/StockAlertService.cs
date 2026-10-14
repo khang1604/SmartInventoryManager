@@ -29,6 +29,14 @@ public sealed class StockAlertService : IStockAlertService
         UserSession session,
         int warehouseId,
         CancellationToken cancellationToken = default)
+        => await GetAsync(session, warehouseId, false, cancellationToken);
+
+    public Task<IReadOnlyList<StockAlertDto>> GetResolvedAsync(
+        UserSession session, int warehouseId, CancellationToken cancellationToken = default)
+        => GetAsync(session, warehouseId, true, cancellationToken);
+
+    private async Task<IReadOnlyList<StockAlertDto>> GetAsync(
+        UserSession session, int warehouseId, bool resolved, CancellationToken cancellationToken)
     {
         ValidateSession(session);
         ValidateWarehouseId(warehouseId);
@@ -39,7 +47,7 @@ public sealed class StockAlertService : IStockAlertService
 
         return await _dbContext.StockAlerts
             .AsNoTracking()
-            .Where(alert => alert.WarehouseId == warehouseId && !alert.IsResolved)
+            .Where(alert => alert.WarehouseId == warehouseId && alert.IsResolved == resolved)
             .OrderByDescending(alert => alert.CreatedAt)
             .Select(alert => new StockAlertDto(
                 alert.AlertId,
@@ -52,7 +60,11 @@ public sealed class StockAlertService : IStockAlertService
                 alert.Threshold,
                 alert.IsResolved,
                 alert.CreatedAt,
-                alert.ResolvedAt))
+                alert.ResolvedAt)
+            {
+                ResolvedByName = _dbContext.Users.Where(user => user.UserId == alert.ResolvedBy)
+                    .Select(user => user.FullName).FirstOrDefault()
+            })
             .ToListAsync(cancellationToken);
     }
 

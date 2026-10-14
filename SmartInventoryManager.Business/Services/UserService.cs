@@ -81,6 +81,7 @@ public sealed class UserService
             CreatedAt = DateTime.Now
         };
         _dbContext.Users.Add(user);
+        RecordUserAction(session, "USER_CREATED", null);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return user.UserId;
     }
@@ -107,6 +108,7 @@ public sealed class UserService
             throw new InvalidOperationException("Tài khoản đã được vô hiệu hóa.");
 
         user.IsActive = false;
+        RecordUserAction(session, "USER_DEACTIVATED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -146,6 +148,7 @@ public sealed class UserService
         user.Email = email;
         user.RoleId = role.RoleId;
         user.IsActive = request.IsActive;
+        RecordUserAction(session, "USER_UPDATED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -168,6 +171,7 @@ public sealed class UserService
         var user = await _dbContext.Users.SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        RecordUserAction(session, "PASSWORD_RESET", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -186,6 +190,7 @@ public sealed class UserService
         var user = await _dbContext.Users.SingleAsync(item => item.UserId == userId, cancellationToken);
         user.FullName = request.FullName.Trim();
         user.Email = email;
+        RecordUserAction(session, "ACCOUNT_UPDATED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -202,9 +207,22 @@ public sealed class UserService
         if (!_passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
             throw new UnauthorizedAccessException("Mật khẩu hiện tại không đúng.");
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        RecordUserAction(session, "PASSWORD_CHANGED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private void RecordUserAction(UserSession session, string action, int? targetUserId)
+    {
+        _dbContext.SystemLogs.Add(new SystemLog
+        {
+            UserId = RequireCurrentUser(session),
+            Action = action,
+            EntityName = "User",
+            EntityId = targetUserId,
+            Description = "User account operation; credentials are never recorded.",
+            CreatedAt = DateTime.Now
+        });
+    }
     private void EnsureAdmin(UserSession session)
     {
         if (!_authorization.CanManageUser(session))

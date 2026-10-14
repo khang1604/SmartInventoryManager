@@ -167,6 +167,12 @@ public class BackendWorkflowHardeningTests
         await service.ResolveAsync(CreateSession(RoleNames.WarehouseManager, 2), 1);
 
         Assert.IsTrue(await context.StockAlerts.Where(item => item.AlertId == 1).Select(item => item.IsResolved).SingleAsync());
+        var manager = CreateSession(RoleNames.WarehouseManager, 2);
+        Assert.AreEqual(0, (await service.GetOpenAsync(manager, 7)).Count);
+        var closed = (await service.GetResolvedAsync(manager, 7)).Single();
+        Assert.IsTrue(closed.ResolvedAt.HasValue);
+        Assert.AreEqual(await context.Users.Where(user => user.UserId == 2).Select(user => user.FullName).SingleAsync(), closed.ResolvedByName);
+        await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.GetResolvedAsync(CreateSession(RoleNames.Staff, 3, 8), 7));
     }
 
     [TestMethod]
