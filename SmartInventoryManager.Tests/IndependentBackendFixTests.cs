@@ -358,6 +358,12 @@ public class IndependentBackendFixTests
         var inventory = await reports.GetInventoryAsync(Admin(), 1, search: "missing");
         Assert.AreEqual(0L, inventory.TotalQuantity);
         Assert.AreEqual(0, inventory.Rows.Count);
+        var normal = await reports.GetInventoryAsync(Admin(), 1, stockStatus: "NORMAL");
+        Assert.AreEqual(7L, normal.TotalQuantity);
+        Assert.AreEqual(1, normal.Rows.Count);
+        var low = await reports.GetInventoryAsync(Admin(), 1, stockStatus: "LOW_STOCK");
+        Assert.AreEqual(0L, low.TotalQuantity);
+        Assert.AreEqual(0, low.Rows.Count);
     }
 
     private static UserSession Admin()

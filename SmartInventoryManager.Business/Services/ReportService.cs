@@ -18,7 +18,7 @@ public sealed class ReportService
     }
 
     public async Task<InventoryReportDto> GetInventoryAsync(UserSession session, int? warehouseId = null,
-        CancellationToken cancellationToken = default, string? search = null)
+        CancellationToken cancellationToken = default, string? search = null, string? stockStatus = null)
     {
         var warehouseIds = await GetWarehouseScopeAsync(session, warehouseId, cancellationToken);
         var inventory = _dbContext.Inventories.AsNoTracking()
@@ -28,6 +28,15 @@ public sealed class ReportService
             var value = search.Trim();
             inventory = inventory.Where(item => item.Product.ProductCode.Contains(value) || item.Product.ProductName.Contains(value));
         }
+        if (!string.IsNullOrWhiteSpace(stockStatus))
+            inventory = stockStatus switch
+            {
+                "OUT_OF_STOCK" => inventory.Where(item => item.Quantity == 0),
+                "LOW_STOCK" => inventory.Where(item => item.Quantity > 0 && item.Quantity <= item.Product.ReorderPoint),
+                "NORMAL" => inventory.Where(item => item.Quantity > item.Product.ReorderPoint && item.Quantity <= item.Product.MaximumStock),
+                "OVERSTOCK" => inventory.Where(item => item.Quantity > item.Product.MaximumStock),
+                _ => throw new ArgumentException("Trạng thái tồn không hợp lệ.", nameof(stockStatus))
+            };
         var totalQuantity = await inventory.Select(item => (long)item.Quantity).SumAsync(cancellationToken);
         var rows = await inventory
             .OrderBy(item => item.Warehouse.WarehouseName)
