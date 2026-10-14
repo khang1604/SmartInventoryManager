@@ -62,7 +62,7 @@ namespace SmartInventoryManager.UI
                 new ReportService(dbContext, authorizationService),
                 new UserService(dbContext, authorizationService),
                 new NotificationService(dbContext),
-                () => dbContext.ChangeTracker.Clear());
+                () => dbContext.ChangeTracker.Clear(), new WarehouseAssignmentService(dbContext, authorizationService));
             while (true)
             {
                 using var loginForm = new FrmLogin(authService);

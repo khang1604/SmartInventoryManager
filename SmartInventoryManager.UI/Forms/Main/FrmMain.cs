@@ -301,11 +301,13 @@ public partial class FrmMain : Form
 
     private Control BuildHeader()
     {
-        var header = CreateLayout(3, 1);
+        var header = CreateLayout(4, 1);
         header.Padding = new Padding(20, 12, 20, 8);
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 145));
+        var canSwitchWarehouse = _services is not null && _authorization?.IsStaff(_session!) == true;
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, canSwitchWarehouse ? 125 : 0));
         header.Controls.Add(_sidebarToggle, 0, 0);
         var titles = CreateLayout(1, 2);
         titles.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
@@ -323,6 +325,33 @@ public partial class FrmMain : Form
         notifications.Name = "btnNotifications";
         notifications.Click += (_, _) => ShowPage("Thông báo");
         header.Controls.Add(notifications, 2, 0);
+        var switchWarehouse = ActionButton("Đổi kho", "building");
+        switchWarehouse.Name = "btnSwitchWarehouse";
+        switchWarehouse.Visible = canSwitchWarehouse;
+        switchWarehouse.Dock = DockStyle.Fill;
+        switchWarehouse.Click += async (_, _) =>
+        {
+            if (_services is null || _session is null || _services.HasPendingOperations) return;
+            switchWarehouse.Enabled = false;
+            try
+            {
+                using var chooser = new SmartInventoryManager.UI.Forms.Login.FrmWarehouseContext(_services);
+                if (chooser.ShowDialog(this) != DialogResult.OK) return;
+                _content.Controls.Clear();
+                foreach (var page in _pages.Values) page.Dispose();
+                _pages.Clear();
+                var assigned = await _services.RunAsync(() => _services.Authorization.GetAssignedWarehouseIdsAsync(_session));
+                if (_session.CurrentWarehouseId is not int selected || !assigned.Contains(selected))
+                {
+                    _session.SetCurrentWarehouseFromAssignments(Array.Empty<int>());
+                    throw new UnauthorizedAccessException("Kho đã chọn không còn trong phân công hiện hành.");
+                }
+                ShowPage("Tổng quan");
+            }
+            catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Đổi kho", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            finally { if (!IsDisposed) switchWarehouse.Enabled = true; }
+        };
+        header.Controls.Add(switchWarehouse, 3, 0);
         return header;
     }
 
