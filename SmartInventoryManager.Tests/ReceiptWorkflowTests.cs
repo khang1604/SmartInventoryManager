@@ -130,7 +130,7 @@ public class ReceiptWorkflowTests
         await service.SubmitAsync(session, id);
         await service.RejectAsync(session, id, "Kiểm tra lại số lượng");
         await service.ResubmitAsync(session, id);
-        await service.CancelDraftAsync(session, id);
+        await service.CancelAsync(session, id, "Cancelled by workflow test");
 
         var receipt = await context.ImportReceipts.SingleAsync(item => item.ImportReceiptId == id);
         Assert.AreEqual("CANCELLED", receipt.Status);

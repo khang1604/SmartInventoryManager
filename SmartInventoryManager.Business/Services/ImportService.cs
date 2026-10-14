@@ -196,7 +196,12 @@ public sealed class ImportService : IImportService
                     detail.Product.Unit,
                     detail.Quantity,
                     detail.UnitPrice,
-                    detail.Quantity * detail.UnitPrice)).ToList());
+                    detail.Quantity * detail.UnitPrice)).ToList())
+            {
+                Audit = new ReceiptAuditDto(receipt.CompletedBy,
+                    await _dbContext.Users.Where(user => user.UserId == receipt.CompletedBy).Select(user => user.FullName).FirstOrDefaultAsync(cancellationToken),
+                    receipt.CompletedAt, receipt.CancelReason, receipt.RejectReason)
+            };
     }
 
     public async Task SubmitAsync(
@@ -250,6 +255,8 @@ public sealed class ImportService : IImportService
         if (receipt.Status != "DRAFT")
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được xóa.");
 
+        if (await _dbContext.ReceiptRejections.AnyAsync(x => x.ImportReceiptId == importReceiptId, cancellationToken))
+            throw new InvalidOperationException("Phiếu có lịch sử từ chối; hãy hủy để giữ audit, không được xóa.");
         _dbContext.ImportDetails.RemoveRange(receipt.Details);
         _dbContext.ImportReceipts.Remove(receipt);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -318,7 +325,12 @@ public sealed class ImportService : IImportService
             throw new InvalidOperationException("Chỉ phiếu nhập đang chờ duyệt mới được từ chối.");
         }
         receipt.Status = "REJECTED";
-        receipt.Note = $"Lý do từ chối: {reason.Trim()}";
+        receipt.RejectReason = reason.Trim();
+        _dbContext.ReceiptRejections.Add(new ReceiptRejection
+        {
+            ImportReceiptId = importReceiptId, RejectedBy = session.CurrentUser!.UserId,
+            RejectedAt = DateTime.Now, Reason = receipt.RejectReason
+        });
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
@@ -403,6 +415,8 @@ public sealed class ImportService : IImportService
 
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "COMPLETED";
+        receipt.CompletedBy = session.CurrentUser!.UserId;
+        receipt.CompletedAt = DateTime.Now;
         var alertService = new StockAlertService(_dbContext, _authorization, _publisher);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
@@ -474,9 +488,13 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CancelDraftAsync(
+    public Task CancelDraftAsync(UserSession session, int importReceiptId, CancellationToken cancellationToken = default)
+        => CancelAsync(session, importReceiptId, string.Empty, cancellationToken);
+
+    public async Task CancelAsync(
         UserSession session,
         int importReceiptId,
+        string reason,
         CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
@@ -497,7 +515,10 @@ public sealed class ImportService : IImportService
         {
             throw new InvalidOperationException("Phiếu nhập không ở trạng thái được phép hủy.");
         }
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > 500)
+            throw new ArgumentException("Lý do hủy là bắt buộc và không quá 500 ký tự.", nameof(reason));
         receipt.Status = "CANCELLED";
+        receipt.CancelReason = reason.Trim();
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);

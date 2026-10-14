@@ -25,4 +25,5 @@ public interface IImportService
     Task CompleteAsync(UserSession session, int importReceiptId, CancellationToken cancellationToken = default);
     Task UpdateDraftAsync(UserSession session, int importReceiptId, ImportReceiptDto request, CancellationToken cancellationToken = default);
     Task CancelDraftAsync(UserSession session, int importReceiptId, CancellationToken cancellationToken = default);
+    Task CancelAsync(UserSession session, int importReceiptId, string reason, CancellationToken cancellationToken = default);
 }

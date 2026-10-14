@@ -67,4 +67,12 @@ public sealed class SqlServerIntegrationTests
         Assert.AreEqual(30, result.DailyQuantities.Count);
         Assert.AreEqual(result.InventoryLineCount, result.StockDistribution.Sum(item => item.Count));
     }
+
+    [TestMethod]
+    [Timeout(90000)]
+    public async Task TeamDecisionWorkflows_TransferDifferentExportsCancelRaceAndInjectedRollback()
+    {
+        var options = Options(); await using var db = new InventoryDbContext(options);
+        await SqlTeamDecisionFixture.RunAsync(options, await AdminAsync(db));
+    }
 }

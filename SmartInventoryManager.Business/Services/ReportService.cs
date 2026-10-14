@@ -51,11 +51,14 @@ public sealed class ReportService
                 item.Product.ReorderPoint,
                 item.Product.MaximumStock,
                 StockStatusCalculator.Calculate(item.Quantity, item.Product.ReorderPoint, item.Product.MaximumStock).ToString(),
-                item.UpdatedAt))
+                item.UpdatedAt)
+            {
+                PurchasePrice = item.Product.PurchasePrice, EstimatedValue = item.Quantity * item.Product.PurchasePrice
+            })
             .ToListAsync(cancellationToken);
         var openAlertCount = await _dbContext.StockAlerts.AsNoTracking()
             .CountAsync(item => !item.IsResolved && inventory.Any(stock => stock.ProductId == item.ProductId && stock.WarehouseId == item.WarehouseId), cancellationToken);
-        return new InventoryReportDto(totalQuantity, openAlertCount, rows);
+        return new InventoryReportDto(totalQuantity, openAlertCount, rows) { EstimatedInventoryValue = rows.Sum(row => row.EstimatedValue) };
     }
 
     public async Task<ImportExportReportDto> GetImportExportAsync(UserSession session, int? warehouseId = null,

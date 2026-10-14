@@ -41,7 +41,10 @@ public sealed record ImportReceiptDetailsDto(
     decimal TotalAmount,
     string Status,
     string? Note,
-    IReadOnlyList<ReceiptDetailViewDto> Details);
+    IReadOnlyList<ReceiptDetailViewDto> Details)
+{
+    public ReceiptAuditDto Audit { get; init; } = new(null, null, null, null, null);
+}
 
 public sealed record ExportReceiptDetailsDto(
     int ExportReceiptId,
@@ -54,7 +57,10 @@ public sealed record ExportReceiptDetailsDto(
     decimal TotalAmount,
     string Status,
     string? Note,
-    IReadOnlyList<ReceiptDetailViewDto> Details);
+    IReadOnlyList<ReceiptDetailViewDto> Details)
+{
+    public ReceiptAuditDto Audit { get; init; } = new(null, null, null, null, null);
+}
 
 public sealed record InventoryHistoryDto(
     long TransactionId,
@@ -68,7 +74,18 @@ public sealed record InventoryHistoryDto(
     int? ReferenceId,
     string CreatorName,
     DateTime CreatedAt,
-    string? Note);
+    string? Note)
+{
+    public int? BeforeQuantity { get; init; }
+    public int? AfterQuantity { get; init; }
+    public int? SignedDifference { get; init; }
+    public string MovementCode => $"{(TransactionType == "TRANSFER_OUT" ? "OUT" : TransactionType == "TRANSFER_IN" ? "IN" : "MOV")}-{TransactionId}";
+    public string? TransferCode => (TransactionType is "TRANSFER_OUT" or "TRANSFER_IN") && ReferenceId.HasValue ? $"TRF-{ReferenceId.Value:D6}" : null;
+}
+
+public sealed record ReceiptAuditDto(int? CompletedBy, string? CompletedByName, DateTime? CompletedAt, string? CancelReason, string? RejectReason);
+public sealed record ReceiptRejectionDto(long Id, string ActorName, DateTime RejectedAt, string Reason);
+public sealed record ReceiptRejectionPageDto(int Total, int Page, int PageSize, IReadOnlyList<ReceiptRejectionDto> Rows);
 
 public sealed record LookupItemDto(int Id, string Code, string Name);
 
@@ -92,12 +109,19 @@ public sealed record InventoryReportRowDto(
     int ReorderPoint,
     int MaximumStock,
     string StockStatus,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt)
+{
+    public decimal PurchasePrice { get; init; }
+    public decimal EstimatedValue { get; init; }
+}
 
 public sealed record InventoryReportDto(
     long TotalQuantity,
     int OpenAlertCount,
-    IReadOnlyList<InventoryReportRowDto> Rows);
+    IReadOnlyList<InventoryReportRowDto> Rows)
+{
+    public decimal EstimatedInventoryValue { get; init; }
+}
 
 public sealed record ImportExportReportDto(
     DateTime? From,

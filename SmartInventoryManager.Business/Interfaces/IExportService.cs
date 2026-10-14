@@ -25,4 +25,5 @@ public interface IExportService
     Task CompleteAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default);
     Task UpdateDraftAsync(UserSession session, int exportReceiptId, ExportReceiptDto request, CancellationToken cancellationToken = default);
     Task CancelDraftAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default);
+    Task CancelAsync(UserSession session, int exportReceiptId, string reason, CancellationToken cancellationToken = default);
 }
