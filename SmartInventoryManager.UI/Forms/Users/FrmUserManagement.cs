@@ -19,6 +19,18 @@ public partial class FrmUserManagement : Form
             page.Action("Thêm người dùng",async()=> { using var detail=new FrmUserDetail(services); if(detail.ShowDialog(this)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
             if (services.Authorization.CanManageUser(services.Session))
             {
+                page.SelectedAction("Sửa thông tin", async (user, _) =>
+                {
+                    using var detail = new FrmUserDetail(services, user);
+                    detail.ShowDialog(this);
+                    await Task.CompletedTask;
+                }, "pencil");
+                page.SelectedAction("Đặt lại mật khẩu", async (user, _) =>
+                {
+                    using var detail = new FrmUserDetail(services, user, resetPassword: true);
+                    detail.ShowDialog(this);
+                    await Task.CompletedTask;
+                }, "key");
                 page.SelectedAction("Xóa tài khoản", async (user, _) =>
                 {
                     var confirm = MessageBox.Show(this,

@@ -213,7 +213,22 @@ internal static class WarehouseUi
         bool Matches(string code,string name,string search,bool active) => (string.IsNullOrEmpty(search) || code.Contains(search,StringComparison.CurrentCultureIgnoreCase) || name.Contains(search,StringComparison.CurrentCultureIgnoreCase)) && (state.SelectedIndex==0 || active==(state.SelectedIndex==1));
         if(location)
         {
-            var page=new DataListPage<LocationDto>(services,"Vị trí trong phạm vi được phép",[("WarehouseName","Kho"),("LocationCode","Mã vị trí"),("LocationName","Tên vị trí"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Locations.GetAsync(services.Session)).Where(row=>Matches(row.LocationCode,row.LocationName ?? "",search,row.IsActive)).ToList());
+            var warehouse = LiveUi.Choice("cboLocationWarehouse", "Kho");
+            warehouse.DisplayMember = "Name"; warehouse.ValueMember = "Id";
+            warehouse.DataSource = new List<LookupItemDto> { new(0, "", "Tất cả kho") };
+            var page=new DataListPage<LocationDto>(services,"Vị trí trong phạm vi được phép",[("WarehouseName","Kho"),("LocationCode","Mã vị trí"),("LocationName","Tên vị trí"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Locations.GetAsync(services.Session)).Where(row=>Matches(row.LocationCode,row.LocationName ?? "",search,row.IsActive) && (warehouse.SelectedItem is not LookupItemDto choice || choice.Id == 0 || row.WarehouseId == choice.Id)).ToList());
+            page.AddFilter("Kho", warehouse);
+            form.Shown += async (_, _) =>
+            {
+                try
+                {
+                    var rows = await services.RunAsync(() => services.Warehouses.GetAllAsync(services.Session));
+                    warehouse.DataSource = new[] { new LookupItemDto(0, "", "Tất cả kho") }
+                        .Concat(rows.Select(row => new LookupItemDto(row.WarehouseId, row.WarehouseCode, row.WarehouseName))).ToList();
+                }
+                catch (Exception ex) { MessageBox.Show(form, LiveUi.LoadError(ex), "Kho", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            };
+            warehouse.SelectedIndexChanged += async (_, _) => await page.RefreshAsync();
             page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
             if(canManage) {
                 page.Action("Thêm vị trí",async()=> { using var detail=new FrmWarehouseDetail(services,true); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");

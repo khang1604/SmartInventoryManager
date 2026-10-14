@@ -186,6 +186,7 @@ internal static class LiveUi
     public static string StatusText(string status) => status switch
     {
         "DRAFT" => "Nháp", "COMPLETED" => "Hoàn tất", "CANCELLED" => "Đã hủy",
+        "PENDING_APPROVAL" => "Chờ duyệt", "APPROVED" => "Đã duyệt", "REJECTED" => "Đã từ chối",
         "OutOfStock" or "OUT_OF_STOCK" => "Hết hàng", "LowStock" or "LOW_STOCK" => "Sắp hết",
         "Normal" or "NORMAL" => "Bình thường", "Overstock" or "OVERSTOCK" => "Vượt mức",
         "IMPORT" => "Nhập kho", "EXPORT" => "Xuất kho", "ADJUSTMENT" => "Điều chỉnh",
@@ -206,7 +207,7 @@ internal static class LiveUi
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."
                 => "Mức giảm vượt quá tồn hiện tại. Hãy kiểm tra số lượng điều chỉnh.",
-            DbUpdateException => "Cơ sở dữ liệu chưa đồng bộ cấu trúc. Hãy khởi động lại ứng dụng để áp dụng migration rồi thử lại.",
+            DbUpdateException => "Không lưu được dữ liệu. Hãy làm mới để kiểm tra kết quả; liên hệ quản trị viên nếu lỗi vẫn xảy ra.",
             _ => "Chưa thực hiện được thao tác. Hãy làm mới dữ liệu hoặc thử lại; không gửi lại khi chưa kiểm tra kết quả."
         };
     }

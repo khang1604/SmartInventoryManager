@@ -71,8 +71,10 @@ public partial class FrmProductDetail : Form
         var pricing = Section("Giá và ngưỡng tồn kho");
         AddField(pricing, 0, 0, "Giá nhập (đ) *", Number("numPurchasePrice", 2), 4);
         AddField(pricing, 1, 0, "Giá bán (đ) *", Number("numSellingPrice", 2), 5);
-        AddField(pricing, 0, 1, "Điểm đặt hàng lại *", Number("numReorderPoint", 0), 6);
-        AddField(pricing, 1, 1, "Tồn tối đa *", Number("numMaximumStock", 0), 7);
+        var reorderPoint = Number("numReorderPoint", 0); reorderPoint.Minimum = 1; reorderPoint.Value = 1;
+        var maximumStock = Number("numMaximumStock", 0); maximumStock.Minimum = 2; maximumStock.Value = 2;
+        AddField(pricing, 0, 1, "Điểm đặt hàng lại *", reorderPoint, 6);
+        AddField(pricing, 1, 1, "Tồn tối đa *", maximumStock, 7);
         sections.Controls.Add(pricing.Parent!, 0, 1);
         var active = new CheckBox
         {

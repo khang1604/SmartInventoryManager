@@ -9,7 +9,7 @@ public sealed class FrmUserDetail : Form
 {
     public FrmUserDetail() : this(null) { }
 
-    public FrmUserDetail(UiServices? services)
+    public FrmUserDetail(UiServices? services, UserListItemDto? user = null, bool resetPassword = false)
     {
         AutoScaleMode = AutoScaleMode.Font;
         var root = PreviewFormUi.Root(this, "Thông tin người dùng", new Size(760, 740));
@@ -60,6 +60,17 @@ public sealed class FrmUserDetail : Form
             BackColor = AppColors.Mint, ForeColor = AppColors.Text
         };
         body.Controls.Add(active, 0, 1);
+        if (user is not null)
+        {
+            username.Text = user.Username; username.ReadOnly = true;
+            fullName.Text = user.FullName; email.Text = user.Email ?? string.Empty;
+            role.SelectedIndex = user.RoleName switch { RoleNames.Admin => 1, RoleNames.WarehouseManager => 2, RoleNames.Staff => 3, _ => 0 };
+            active.Checked = user.IsActive;
+            fullName.Enabled = email.Enabled = role.Enabled = active.Enabled = !resetPassword;
+            password.Enabled = confirm.Enabled = resetPassword;
+            contextNote.Text = resetPassword ? "Nhập và xác nhận mật khẩu mới cho tài khoản đã chọn." : "Sửa thông tin tài khoản; thao tác này giữ nguyên mật khẩu.";
+            Text = resetPassword ? "Đặt lại mật khẩu" : "Sửa thông tin người dùng";
+        }
         root.Controls.Add(body, 0, 1);
 
         if (services is not null)
@@ -76,10 +87,13 @@ public sealed class FrmUserDetail : Form
                 errors.Clear(); contextNote.ForeColor = normalNoteColor;
                 if (string.IsNullOrWhiteSpace(username.Text)) errors.Set(username, "Nhập tên đăng nhập.");
                 if (string.IsNullOrWhiteSpace(fullName.Text)) errors.Set(fullName, "Nhập họ tên.");
-                if (!System.Net.Mail.MailAddress.TryCreate(email.Text.Trim(), out _)) errors.Set(email, "Email không đúng định dạng.");
+                if (!resetPassword && !string.IsNullOrWhiteSpace(email.Text) && !System.Net.Mail.MailAddress.TryCreate(email.Text.Trim(), out _)) errors.Set(email, "Email không đúng định dạng.");
                 if (role.SelectedIndex < 1) errors.Set(role, "Chọn vai trò.");
-                if (password.Text.Length < 8) errors.Set(password, "Mật khẩu phải có ít nhất 8 ký tự.");
-                if (confirm.Text != password.Text || string.IsNullOrEmpty(confirm.Text)) errors.Set(confirm, "Mật khẩu xác nhận không khớp.");
+                if (user is null || resetPassword)
+                {
+                    if (password.Text.Length < 8) errors.Set(password, "Mật khẩu phải có ít nhất 8 ký tự.");
+                    if (confirm.Text != password.Text || string.IsNullOrEmpty(confirm.Text)) errors.Set(confirm, "Mật khẩu xác nhận không khớp.");
+                }
                 if (errors.FocusInvalid()) return;
                 save.Enabled = false;
                 try
@@ -91,10 +105,17 @@ public sealed class FrmUserDetail : Form
                         3 => RoleNames.Staff,
                         _ => string.Empty
                     };
-                    await services.RunAsync(() => services.Users.CreateAsync(services.Session,
-                        new CreateUserRequest(username.Text, fullName.Text, email.Text, password.Text,
-                            confirm.Text, roleName, active.Checked)));
-                    MessageBox.Show(this, "Đã tạo tài khoản thành công.", "Thành công",
+                    if (user is null)
+                        await services.RunAsync(() => services.Users.CreateAsync(services.Session,
+                            new CreateUserRequest(username.Text, fullName.Text, email.Text, password.Text,
+                                confirm.Text, roleName, active.Checked)));
+                    else if (resetPassword)
+                        await services.RunAsync(() => services.Users.ResetPasswordAsync(services.Session, user.UserId,
+                            new ResetUserPasswordRequest(password.Text, confirm.Text)));
+                    else
+                        await services.RunAsync(() => services.Users.UpdateUserAsync(services.Session, user.UserId,
+                            new UpdateUserRequest(fullName.Text, email.Text, roleName, active.Checked)));
+                    MessageBox.Show(this, user is null ? "Đã tạo tài khoản thành công." : resetPassword ? "Đã đặt lại mật khẩu." : "Đã cập nhật tài khoản.", "Thành công",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     DialogResult = DialogResult.OK;
                     Close();

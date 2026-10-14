@@ -70,7 +70,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         {
             if (_grid.Columns[e.ColumnIndex].Name == "StockStatus" && e.Value is SmartInventoryManager.Business.Inventory.StockStatus stockStatus)
                 e.Value = LiveUi.StockStatusText(stockStatus);
-            if (_grid.Columns[e.ColumnIndex].Name is "StockStatus" or "ReceiptType" or "Status" && e.Value is string value) e.Value=LiveUi.StatusText(value);
+            else if (_grid.Columns[e.ColumnIndex].Name is "StockStatus" or "ReceiptType" or "Status" && e.Value is string value) e.Value=LiveUi.StatusText(value);
             if (e.Value is bool active) e.Value=_grid.Columns[e.ColumnIndex].Name=="IsRead" ? (active ? "Đã đọc" : "Chưa đọc") : (active ? "Đang hoạt động" : "Ngừng hoạt động");
             if (_grid.Columns[e.ColumnIndex].Name=="RoleName" && e.Value is string role) e.Value=role switch { "ADMIN"=>"Quản trị viên", "WAREHOUSE_MANAGER"=>"Quản lý kho", "STAFF"=>"Nhân viên kho", _=>role };
             if (_grid.Columns[e.ColumnIndex].Name is "AlertType" or "TransactionType" && e.Value is string status)
