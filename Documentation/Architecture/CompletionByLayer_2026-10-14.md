@@ -1,3 +1,57 @@
+## Cập nhật hiện hành ngày 14/10/2026 — sau nghiệm thu
+
+Phần này có ưu tiên so với các snapshot lịch sử phía dưới. Chuẩn là `.agent/SystemContract.md` hiện hành; người dùng đã cho phép hoàn thiện cả ba tầng, commit theo từng tầng và dùng `localhost / SmartInventoryManagerDB` làm DB TEST. Server production riêng chưa được cung cấp. SQL cũ được giữ nguyên; không drop/reset database và không push đợt này.
+
+| Tầng | Công việc đã triển khai, từ dễ đến khó | Commit |
+|---|---|---|
+| Data | Ngưỡng `0 < ReorderPoint < MaximumStock`; assignment IsActive; hai migration đã apply test. Query ADO.NET daily movement có parameters, scope kho và CreatedAt | `7282f26`, `455f838`, `3af355d` |
+| Business | Assignment active/revoke/reactivate; totals/export full filter; Dashboard 30 ngày gồm hôm nay, top 10 dòng sản phẩm–kho theo Quantity rồi mã sản phẩm/kho, recent20 với actor/reference receipt | `1e7463e`, `413e69b`, `28df10a` |
+| Business | Posting receipt nội bộ qua InventoryService, cùng context/transaction; log nghiệp vụ trong transaction; publisher chung sau commit, ReceiptCompleted tương thích, subscriber lỗi không replay stock | `28df10a` |
+| Business | SQL1205 retry tối đa hai lần khi SQL xác nhận rollback, transaction mới và clear tracker; không retry timeout/lost connection/unknown commit. Hết retry có BusinessConflictException/CONCURRENCY_RETRY_EXHAUSTED | `28df10a` |
+| Business | Cảnh báo sau commit best-effort cho ADMIN active và manager active đúng kho; không tự replay stock. Log có ở completion/adjust/transfer/product update-active/assignment, chưa phủ mọi CRUD | `28df10a` |
+| Tests | Ba SQL integration tests opt-in: posting/duplicate completion/insufficient-stock rollback/log-notification, deadlock thật và Dashboard ADO.NET | `bf57c25` |
+| Setup | CLI bootstrap tương tác riêng, 3 role, ADMIN đầu tiên, PBKDF2; không auto-seed khi mở UI; --check chỉ đọc, ADMIN active hiện hữu không bị ghi đè | `381ba7a`, `8941447` |
+| UI | Dashboard grouped daily chart, bốn trạng thái, top10 horizontal, recent actor/ref; log ADMIN; menu STAFF hạn chế; đổi kho xóa cache, cập nhật footer và giới hạn cảnh báo theo current kho | `d904a20` |
+| UI | PDF từng phiếu nhập/xuất A4 từ chi tiết được Business kiểm tra scope; mã/ngày/trạng thái/kho/người tạo/sản phẩm–SL–đơn giá–thành tiền; lặp table header, giữ nguyên dòng qua trang. In bằng trình đọc PDF, chưa có print dialog trực tiếp | `d904a20` |
+
+### Kết quả kiểm chứng
+
+- Solution 6 projects build thành công, 0 lỗi; 1 cảnh báo NU1900 do dịch vụ NuGet vulnerability không truy cập được. Không tắt NuGet audit để che cảnh báo.
+- Unit tests: **142 PASS, 0 fail, 0 skip**. SQL opt-in tests: **3 PASS, 0 fail, 0 skip** trên DB TEST. Chạy ngoài sandbox vì IPC/testhost và kết nối SQL bị chặn trong sandbox; các lần sandbox aborted không được tính là pass.
+- SQL probe sau cleanup: kết nối được, pending migration rỗng, sản phẩm ReorderPoint<=0 bằng0. Bằng chứng kiểm tra model/17 entity trước đó vẫn là lịch sử đã chạy, không phải test mới trong lượt cuối.
+- Bootstrap --check xác nhận localhost/SmartInventoryManagerDB có ADMIN active; không ghi đè. Unit chứng minh tạo3roles/hash/log và từ chối mật khẩu sai. Chưa nghiệm thu nhập bootstrap tương tác trên DB SQL trắng.
+- Native UI ADMIN: manager names/vị trí lọc theo kho; tìm STAFF fixture; deactivate assignment B giữ2rows, reactivate giữ2rows; user tự lưu fullname và reset password, đăng nhập STAFF thành công.
+- Native UI STAFF: không có menu user/log; kho A tồn0/Hết hàng, đổi sang B tồn5; sau sửa Dashboard cả hai kho tải được và footer cập nhật B. Fixture `UITEST_f23c6de6`/hai kho test đã cleanup theo lựa chọn của người dùng; dữ liệu demo giữ nguyên.
+- WinForms smoke PASS: 10 nhãn, manager ComboBox, khởi tạo form user. Chưa nghiệm thu Designer/keyboard/DPI đầy đủ hoặc mọi CRUD ở cả3role.
+- Export QA: 3 PDF và2Excel sinh thành công; mở lại Excel kiểm tra số liệu đúng dataset. PDF phiếu60dòng/A4/5trang và2reportPDF đã render và xem PNG; sửa row splitting rồi xem lại cả5trang. Chưa nghiệm thu SaveFileDialog trên UI, máy in thật hay dataset rất lớn.
+- Whitespace check cho13file sửa và style check cho5file bootstrap/PDF PASS; workspace load có warning NuGet. Không khẳng định toàn repository đã đạt format.
+- Harness local SQL/fixture từng restore có NU1902/NU1903 cho transitive System.Security.Cryptography.Pkcs9.0.18. Cần review nâng bản vá tương thích đã được team duyệt; chưa đổi dependencies.
+
+### Người dùng chọn bỏ qua để bàn với team — không tự triển khai
+
+| Nhóm | Câu hỏi cần chốt | Các tầng ảnh hưởng |
+|---|---|---|
+| Audit phiếu | Có thêm CompletedBy/CompletedAt, CancelReason/RejectReason riêng? Giữ reject gần nhất qua edit/resubmit hay lịch sử đầy đủ? | Data fields/migration, Business lifecycle, UI và PDF |
+| Adjustment/transfer | Có BeforeQuantity/AfterQuantity/SignedDifference? Cấp ReferenceId chung cho hai movement bằng SQL sequence hay phương án khác? | Data model/allocator, Business transaction, history UI |
+| Định giá/analytics | Công thức valuation, ABC, Dead Stock, Reorder Recommendation và mốc thời gian nào? | Business query/metrics, Data, UI/report |
+
+### Việc tiếp theo còn cần hoàn thiện, theo độ khó
+
+| Thứ tự | Việc cần làm | Điều kiện/giới hạn |
+|---|---|---|
+| 1 | Nghiệm thu SaveFileDialog/PDF viewer/print thật; Designer và DPI/keyboard; manager UI và CRUD còn lại | Chạy checklist UI bổ sung; không dùng smoke thay nghiệm thu toàn bộ |
+| 2 | Review cảnh báo dependency và test bản vá tương thích | Không tự nâng framework/major hoặc chọn package khi chưa review |
+| 3 | Bổ sung SQL races different exports/transfer và complete-vs-cancel/edit, failure injection | Fixture riêng; suite3tests hiện tại chưa chứng minh hết các races |
+| 4 | Nghiệm thu bootstrap tương tác với SQL database trắng, chuẩn bị deployment/recovery riêng | Target/quyền môi trường riêng được xác nhận; không vô hiệu hóa ADMIN demo để test |
+| 5 | Đồng bộ ERD/class/use-case/demo tài liệu cuối, paging/performance large datasets nếu yêu cầu | Schema cuối phụ thuộc ba quyết định team; hiện export trả toàn bộ filter, không cam kết snapshot giữa query đồng thời |
+| 6 | Triển khai ba nhóm nghiệp vụ bị bỏ qua ở bảng trên | Chỉ làm sau khi chủ dự án/team trả lời, không đoán công thức/schema |
+
+Các thay đổi `.github/copilot-instructions.md` và connection launchSettings có trước được giữ local ngoài commit code. README và checklist đã cập nhật nguồn schema/migration/bootstrap hiện hành. Dự án đã tiến thêm ở CORE, chưa chứng nhận hoàn thiện toàn bộ phạm vi hợp đồng.
+
+---
+
+## Snapshot lịch sử — đọc cùng cập nhật hiện hành ở trên
+
 # Tiến độ hoàn thiện theo ba tầng — 14/10/2026
 
 Chuẩn: `.agent/SystemContract.md` mới, được người dùng chọn ngày 14/10/2026. Người dùng hiện đảm nhận toàn bộ ba tầng và cho phép sửa liên tầng, commit riêng từng tầng. Triển khai từ dễ đến khó; quyết định nghiệp vụ chưa đủ bằng chứng được để mở. SQL cũ trong `Database/` giữ nguyên. Báo cáo này ghi một đợt triển khai, không chứng nhận toàn bộ dự án đã hoàn thiện.
