@@ -22,6 +22,8 @@ namespace SmartInventoryManager.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence<int>("TransferReferenceSequence");
+
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.Category", b =>
                 {
                     b.Property<int>("CategoryId")
@@ -96,6 +98,16 @@ namespace SmartInventoryManager.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ExportReceiptId"));
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CompletedBy")
+                        .HasColumnType("int");
+
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
@@ -113,6 +125,10 @@ namespace SmartInventoryManager.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSDATETIME()");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -132,6 +148,8 @@ namespace SmartInventoryManager.Data.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ExportReceiptId");
+
+                    b.HasIndex("CompletedBy");
 
                     b.HasIndex("CreatedBy");
 
@@ -192,6 +210,16 @@ namespace SmartInventoryManager.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImportReceiptId"));
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CompletedBy")
+                        .HasColumnType("int");
+
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
@@ -209,6 +237,10 @@ namespace SmartInventoryManager.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSDATETIME()");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -231,6 +263,8 @@ namespace SmartInventoryManager.Data.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ImportReceiptId");
+
+                    b.HasIndex("CompletedBy");
 
                     b.HasIndex("CreatedBy");
 
@@ -294,6 +328,12 @@ namespace SmartInventoryManager.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TransactionId"));
 
+                    b.Property<int?>("AfterQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BeforeQuantity")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -320,6 +360,9 @@ namespace SmartInventoryManager.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(30)");
 
+                    b.Property<int?>("SignedDifference")
+                        .HasColumnType("int");
+
                     b.Property<string>("TransactionType")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -337,9 +380,16 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.HasIndex("WarehouseId");
 
+                    b.HasIndex("ReferenceId", "TransactionType")
+                        .IsUnique()
+                        .HasDatabaseName("UX_InventoryTransactions_TransferReferenceType")
+                        .HasFilter("[ReferenceId] IS NOT NULL AND [TransactionType] IN ('TRANSFER_IN', 'TRANSFER_OUT')");
+
                     b.ToTable("InventoryTransactions", null, t =>
                         {
                             t.HasCheckConstraint("CK_InventoryTransactions_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_InventoryTransactions_QuantityAudit", "([BeforeQuantity] IS NULL AND [AfterQuantity] IS NULL AND [SignedDifference] IS NULL) OR ([BeforeQuantity] IS NOT NULL AND [AfterQuantity] IS NOT NULL AND [SignedDifference] IS NOT NULL AND [BeforeQuantity] >= 0 AND [AfterQuantity] >= 0 AND CONVERT(bigint, [AfterQuantity]) - [BeforeQuantity] = [SignedDifference])");
 
                             t.HasCheckConstraint("CK_InventoryTransactions_ReferenceType", "[ReferenceType] IS NULL OR [ReferenceType] IN ('IMPORT_RECEIPT', 'EXPORT_RECEIPT', 'MANUAL')");
 
@@ -499,6 +549,45 @@ namespace SmartInventoryManager.Data.Migrations
                             t.HasCheckConstraint("CK_Products_ReorderPoint", "[ReorderPoint] > 0");
 
                             t.HasCheckConstraint("CK_Products_SellingPrice", "[SellingPrice] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("SmartInventoryManager.Data.Entities.ReceiptRejection", b =>
+                {
+                    b.Property<long>("ReceiptRejectionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ReceiptRejectionId"));
+
+                    b.Property<int?>("ExportReceiptId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ImportReceiptId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("RejectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RejectedBy")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReceiptRejectionId");
+
+                    b.HasIndex("RejectedBy");
+
+                    b.HasIndex("ExportReceiptId", "RejectedAt");
+
+                    b.HasIndex("ImportReceiptId", "RejectedAt");
+
+                    b.ToTable("ReceiptRejections", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ReceiptRejections_Receipt", "([ImportReceiptId] IS NOT NULL AND [ExportReceiptId] IS NULL) OR ([ImportReceiptId] IS NULL AND [ExportReceiptId] IS NOT NULL)");
                         });
                 });
 
@@ -827,6 +916,11 @@ namespace SmartInventoryManager.Data.Migrations
 
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.ExportReceipt", b =>
                 {
+                    b.HasOne("SmartInventoryManager.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CompletedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SmartInventoryManager.Data.Entities.User", "Creator")
                         .WithMany("CreatedExportReceipts")
                         .HasForeignKey("CreatedBy")
@@ -865,6 +959,11 @@ namespace SmartInventoryManager.Data.Migrations
 
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.ImportReceipt", b =>
                 {
+                    b.HasOne("SmartInventoryManager.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CompletedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SmartInventoryManager.Data.Entities.User", "Creator")
                         .WithMany("CreatedImportReceipts")
                         .HasForeignKey("CreatedBy")
@@ -967,6 +1066,27 @@ namespace SmartInventoryManager.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("SmartInventoryManager.Data.Entities.ReceiptRejection", b =>
+                {
+                    b.HasOne("SmartInventoryManager.Data.Entities.ExportReceipt", null)
+                        .WithMany()
+                        .HasForeignKey("ExportReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SmartInventoryManager.Data.Entities.ImportReceipt", null)
+                        .WithMany()
+                        .HasForeignKey("ImportReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SmartInventoryManager.Data.Entities.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("RejectedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
                 });
 
             modelBuilder.Entity("SmartInventoryManager.Data.Entities.StockAlert", b =>

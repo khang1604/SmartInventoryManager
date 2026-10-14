@@ -19,6 +19,10 @@ namespace SmartInventoryManager.Data.Entities
         public string Status { get; set; } = "DRAFT";
 
         public string? Note { get; set; }
+        public int? CompletedBy { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string? CancelReason { get; set; }
+        public string? RejectReason { get; set; }
 
         // Navigation
         public Supplier Supplier { get; set; } = null!;

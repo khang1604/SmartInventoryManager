@@ -48,12 +48,38 @@ namespace SmartInventoryManager.Data.Context
 
 
         public DbSet<UserWarehouse> UserWarehouses => Set<UserWarehouse>();
+        public DbSet<ReceiptRejection> ReceiptRejections => Set<ReceiptRejection>();
 
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.HasSequence<int>("TransferReferenceSequence").StartsAt(1).IncrementsBy(1);
+            modelBuilder.Entity<ImportReceipt>().Property(x => x.CancelReason).HasMaxLength(500);
+            modelBuilder.Entity<ImportReceipt>().Property(x => x.RejectReason).HasMaxLength(500);
+            modelBuilder.Entity<ImportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.CompletedBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ExportReceipt>().Property(x => x.CancelReason).HasMaxLength(500);
+            modelBuilder.Entity<ExportReceipt>().Property(x => x.RejectReason).HasMaxLength(500);
+            modelBuilder.Entity<ExportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.CompletedBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ReceiptRejection>(entity =>
+            {
+                entity.ToTable("ReceiptRejections", table => table.HasCheckConstraint("CK_ReceiptRejections_Receipt", "([ImportReceiptId] IS NOT NULL AND [ExportReceiptId] IS NULL) OR ([ImportReceiptId] IS NULL AND [ExportReceiptId] IS NOT NULL)"));
+                entity.HasKey(x => x.ReceiptRejectionId);
+                entity.Property(x => x.Reason).IsRequired().HasMaxLength(500);
+                entity.HasOne<ImportReceipt>().WithMany().HasForeignKey(x => x.ImportReceiptId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<ExportReceipt>().WithMany().HasForeignKey(x => x.ExportReceiptId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.RejectedBy).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(x => new { x.ImportReceiptId, x.RejectedAt });
+                entity.HasIndex(x => new { x.ExportReceiptId, x.RejectedAt });
+            });
+            modelBuilder.Entity<InventoryTransaction>(entity =>
+            {
+                entity.ToTable("InventoryTransactions", table => table.HasCheckConstraint("CK_InventoryTransactions_QuantityAudit", "([BeforeQuantity] IS NULL AND [AfterQuantity] IS NULL AND [SignedDifference] IS NULL) OR ([BeforeQuantity] IS NOT NULL AND [AfterQuantity] IS NOT NULL AND [SignedDifference] IS NOT NULL AND [BeforeQuantity] >= 0 AND [AfterQuantity] >= 0 AND CONVERT(bigint, [AfterQuantity]) - [BeforeQuantity] = [SignedDifference])"));
+                entity.HasIndex(x => new { x.ReferenceId, x.TransactionType }).IsUnique().HasDatabaseName("UX_InventoryTransactions_TransferReferenceType")
+                    .HasFilter("[ReferenceId] IS NOT NULL AND [TransactionType] IN ('TRANSFER_IN', 'TRANSFER_OUT')");
+            });
 
             // ==========================================
             // Apply the 3 locked configurations
