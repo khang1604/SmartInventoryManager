@@ -366,6 +366,39 @@ public class IndependentBackendFixTests
         Assert.AreEqual(0, low.Rows.Count);
     }
 
+    [TestMethod]
+    public async Task Dashboard_UsesThirtyDaysAndCurrentStockDistribution()
+    {
+        await using var db = CreateContext();
+        Seed(db);
+        db.Inventories.Add(new Inventory { ProductId = 1, WarehouseId = 1, Quantity = 7 });
+        db.InventoryTransactions.AddRange(
+            new InventoryTransaction { ProductId = 1, WarehouseId = 1, TransactionType = "IMPORT", Quantity = 5, CreatedBy = 1, CreatedAt = DateTime.Today },
+            new InventoryTransaction { ProductId = 1, WarehouseId = 1, TransactionType = "EXPORT", Quantity = 2, CreatedBy = 1, CreatedAt = DateTime.Today },
+            new InventoryTransaction { ProductId = 1, WarehouseId = 1, TransactionType = "IMPORT", Quantity = 99, CreatedBy = 1, CreatedAt = DateTime.Today.AddDays(-40) });
+        await db.SaveChangesAsync();
+        var result = await new DashboardService(db, new AuthorizationService(db)).GetAsync(Admin(), 1);
+        Assert.AreEqual(30, result.DailyQuantities.Count);
+        Assert.AreEqual(5L, result.DailyQuantities.Last().ImportQuantity);
+        Assert.AreEqual(2L, result.DailyQuantities.Last().ExportQuantity);
+        Assert.AreEqual(1, result.StockDistribution.Single(item => item.Status == "NORMAL").Count);
+        Assert.AreEqual(1, result.StockDistribution.Sum(item => item.Count));
+        Assert.AreEqual(7, result.LowestStock.Single().Quantity);
+        Assert.AreEqual(2, result.RecentTransactions.Count);
+        Assert.AreEqual("Admin", result.RecentTransactions.First().ActorName);
+    }
+
+    [TestMethod]
+    public void PostCommitPublisher_SubscriberFailureDoesNotPreventOtherConsumers()
+    {
+        var publisher = new SmartInventoryManager.Business.Events.StockEventPublisher();
+        var count = 0;
+        publisher.InventoryChanged += (_, _) => throw new InvalidOperationException("Consumer failure");
+        publisher.InventoryChanged += (_, _) => count++;
+        publisher.Publish(new SmartInventoryManager.Business.Events.InventoryChangedEvent(1, 1, 0, 5));
+        Assert.AreEqual(1, count);
+    }
+
     private static UserSession Admin()
     {
         var session = new UserSession();

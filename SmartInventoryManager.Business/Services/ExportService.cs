@@ -15,14 +15,16 @@ public sealed class ExportService : IExportService
     private const int MaxListResults = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
-    private readonly StockMutationService _stockMutation;
+    private readonly InventoryService _inventory;
+    private readonly StockEventPublisher _publisher;
     private readonly ExportValidator _validator = new();
 
-    public ExportService(InventoryDbContext dbContext, AuthorizationService authorization)
+    public ExportService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
-        _stockMutation = new StockMutationService(_dbContext);
+        _publisher = publisher ?? new StockEventPublisher();
+        _inventory = new InventoryService(_dbContext, _authorization, _publisher);
     }
 
     public event EventHandler<ReceiptCompletedEvent>? ReceiptCompleted;
@@ -316,10 +318,17 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CompleteAsync(
+    public Task CompleteAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
+    {
+        var committed = false;
+        return DeadlockRetry.RunAsync(() => CompleteCoreAsync(session, exportReceiptId, cancellationToken, () => committed = true),
+            () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
+    }
+
+    private async Task CompleteCoreAsync(
         UserSession session,
         int exportReceiptId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken, Action onCommitted)
     {
         ValidateSession(session);
         ValidateReceiptId(exportReceiptId);
@@ -367,31 +376,19 @@ public sealed class ExportService : IExportService
             }
         }
 
+        var stockEvents = new List<InventoryChangedEvent>();
         foreach (var detail in receipt.Details)
-        {
-            await _stockMutation.DecreaseAsync(receipt.WarehouseId, detail.ProductId, detail.Quantity, cancellationToken);
-            _dbContext.InventoryTransactions.Add(new InventoryTransaction
-            {
-                ProductId = detail.ProductId,
-                WarehouseId = receipt.WarehouseId,
-                TransactionType = InventoryTransactionTypes.Export,
-                Quantity = detail.Quantity,
-                ReferenceType = InventoryTransactionTypes.ExportReceipt,
-                ReferenceId = exportReceiptId,
-                CreatedBy = session.CurrentUser!.UserId,
-                CreatedAt = DateTime.Now,
-                Note = receipt.Note
-            });
-        }
+            stockEvents.Add(await _inventory.PostReceiptLineAsync(session, receipt.WarehouseId, detail.ProductId,
+                detail.Quantity, false, exportReceiptId, receipt.Note, cancellationToken));
 
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         receipt.Status = "COMPLETED";
-        var alertService = new StockAlertService(_dbContext, _authorization);
+        var alertService = new StockAlertService(_dbContext, _authorization, _publisher);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        ReceiptCompleted?.Invoke(this, new ReceiptCompletedEvent(
+        await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "COMPLETE_EXPORT", "ExportReceipt", exportReceiptId, _publisher, onCommitted, cancellationToken);
+        foreach (var stockEvent in stockEvents) _publisher.Publish(stockEvent);
+        PublishReceiptCompleted(new ReceiptCompletedEvent(
             exportReceiptId,
             import: false,
             receipt.WarehouseId,
@@ -482,6 +479,14 @@ public sealed class ExportService : IExportService
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
+    }
+
+    private void PublishReceiptCompleted(ReceiptCompletedEvent value)
+    {
+        if (ReceiptCompleted is null) return;
+        foreach (EventHandler<ReceiptCompletedEvent> handler in ReceiptCompleted.GetInvocationList())
+            try { handler(this, value); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Receipt subscriber failed: {ex.GetType().Name}"); }
     }
 
     private async Task ValidateStoredReceiptAsync(ExportReceipt receipt, CancellationToken cancellationToken)

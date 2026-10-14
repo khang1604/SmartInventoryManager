@@ -18,6 +18,8 @@ public sealed class StockMutationService
         int productId,
         CancellationToken cancellationToken = default)
     {
+        var pending = _dbContext.Inventories.Local.SingleOrDefault(item => item.WarehouseId == warehouseId && item.ProductId == productId);
+        if (pending is not null) return pending;
         var inventory = await _dbContext.Inventories.SingleOrDefaultAsync(
             item => item.WarehouseId == warehouseId && item.ProductId == productId,
             cancellationToken);

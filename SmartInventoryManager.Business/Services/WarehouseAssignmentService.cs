@@ -44,6 +44,8 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
             db.UserWarehouses.Add(assignment);
         }
         assignment.IsActive = active;
+        db.SystemLogs.Add(new SystemLog { UserId = session.CurrentUser!.UserId, Action = active ? "ACTIVATE_ASSIGNMENT" : "DEACTIVATE_ASSIGNMENT",
+            EntityName = "UserWarehouse", Description = $"Tài khoản #{userId}; kho #{warehouseId}.", CreatedAt = DateTime.Now });
         await db.SaveChangesAsync(ct);
     }
 }
