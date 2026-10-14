@@ -4,6 +4,8 @@
 
 > Tài liệu này mô tả cách tham gia và phát triển dự án. Danh sách chức năng là phạm vi dự kiến, không phải xác nhận tất cả đã hoàn thiện. File hoặc màn hình khung chưa có nghiệp vụ được xem là chưa triển khai.
 
+**Cập nhật: 14/10/2026.** Quy tắc dùng chung tại [.github/copilot-instructions.md](.github/copilot-instructions.md); tiến độ và giới hạn nghiệm thu tại [báo cáo hoàn thiện ba tầng](Documentation/Architecture/CompletionByLayer_2026-10-14.md), trạng thái schema tại [Database Rebuild Checklist](Documentation/Architecture/DatabaseRebuildChecklist.md). `.agent/SystemContract.md` là bản contract hiện hành trên máy làm việc; `.agent/` không được chia sẻ qua Git. Các quyết định người dùng đã chốt sau contract được ghi trong quy tắc dùng chung và báo cáo; không suy rằng mọi yêu cầu contract đã có code.
+
 ## 1. Công nghệ sử dụng
 
 | Thành phần | Công nghệ / quy định |
@@ -14,11 +16,14 @@
 | Giao diện | Windows Forms - AntdUI |
 | Môi trường phát triển mặc định | Visual Studio 2026, workload `.NET desktop development` |
 | Database | Microsoft SQL Server; instance local phù hợp cho phát triển |
-| ORM | Entity Framework Core 10.x nếu solution dùng .NET 10 |
+| ORM | Entity Framework Core **10.0.12** |
 | Truy vấn | LINQ |
 | Truy cập SQL bổ sung | ADO.NET / Microsoft.Data.SqlClient |
 | Quản lý thư viện | NuGet, thông qua Visual Studio hoặc dotnet CLI |
 | Quản lý mã nguồn | Git / GitHub |
+| Kiểm thử | MSTest **3.8.3**, Microsoft.NET.Test.Sdk **17.14.1** |
+
+Dependencies đang khai báo: Microsoft.Data.SqlClient 7.1.1, AntdUI 2.4.12, ClosedXML 0.105.1, QuestPDF 2026.9.1. Đây là các thư viện đã có trong project, không phải yêu cầu cài thêm hoặc tự nâng phiên bản.
 
 Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Directory.Packages.props` nếu có. Nếu repository đã dùng .NET 8/EF Core 8.x, giữ cấu hình đó và dùng Visual Studio tương thích. Không tự nâng phiên bản hoặc trộn EF6 với EF Core.
 
@@ -36,6 +41,20 @@ Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Di
 - Theo dõi tồn theo sản phẩm và từng kho; lưu lịch sử biến động.
 - Cảnh báo hết hàng, sắp hết hàng và tồn vượt mức.
 - Dashboard, thống kê, biểu đồ, báo cáo và phân tích theo tiêu chí đã thống nhất.
+
+### 2.1. Trạng thái triển khai và nghiệm thu
+
+| Nhóm | Trạng thái đến 14/10/2026 |
+|---|---|
+| Phân quyền/phân kho | Ba role; ADMIN quản lý assignment, ngừng/kích hoạt lại giữ row. STAFF đổi kho làm việc, Business kiểm tra assignment active; đã test UI kho A/B |
+| Nhập/xuất/tồn | Sáu trạng thái phiếu; Complete mới post tồn trong transaction, chống post lại. Đã test SQL duplicate completion, thiếu tồn/rollback và deadlock; chưa phủ hết races |
+| Ngưỡng/cảnh báo | `0 < ReorderPoint < MaximumStock`, bốn trạng thái tồn; publisher sau commit, log cùng transaction và notification best-effort cho ADMIN/manager đúng kho |
+| Dashboard | Daily nhập/xuất theo CreatedAt; mặc định 30 ngày gồm hôm nay; top10 dòng sản phẩm–kho tồn thấp; bốn trạng thái và recent20 |
+| Báo cáo/export | Totals và Excel/PDF lấy toàn bộ dataset khớp bộ lọc được phép; PDF phiếu A4 cơ bản đã kiểm tra phân trang. Chưa nghiệm thu SaveFileDialog/máy in thật/dataset rất lớn |
+| Bootstrap | CLI tương tác riêng tạo ADMIN đầu tiên và ba role; PBKDF2; không ghi đè ADMIN active. Unit/--check đạt; SQL DB trắng tương tác chưa nghiệm thu |
+| Chờ team | Audit hoàn tất/hủy/từ chối; tồn trước/sau/chênh lệch; shared reference chuyển kho; valuation/ABC/Dead Stock/Reorder Recommendation |
+
+Kết quả kiểm thử đã chạy: **142 unit tests và 3 SQL tests PASS**; solution build thành công, có cảnh báo NU1900 khi không truy cập được dịch vụ NuGet vulnerability. Các cảnh báo dependency, kiểm thử còn thiếu và câu hỏi team được ghi rõ trong báo cáo. Không xem đây là chứng nhận hoàn thiện toàn bộ hợp đồng.
 
 ## 3. Phân công và phối hợp
 
@@ -60,7 +79,10 @@ Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Di
 | `SmartInventoryManager.Business/` | Services, Interfaces, DTOs, Validators, Events |
 | `SmartInventoryManager.Data/` | Context, Entities, Configurations, Repository/UnitOfWork nếu được dùng |
 | `SmartInventoryManager.Common/` | Constants, Enums, Helpers, Session |
-| `Database/` | Script tạo và cập nhật database |
+| `SmartInventoryManager.Tests/` | Unit tests và SQL Server integration tests opt-in |
+| `SmartInventoryManager.Setup/` | Bootstrap ADMIN tương tác riêng, không chạy khi mở UI |
+| `SmartInventoryManager.Data/Migrations/` | Nguồn quản lý schema EF và snapshot |
+| `Database/` | SQL legacy/seed/tham khảo; không thay thế migrations |
 | `Documentation/` | Yêu cầu, thiết kế, báo cáo và tài liệu tham khảo |
 | `.github/copilot-instructions.md` | Quy tắc AI Agent dùng chung, được chia sẻ qua Git |
 | `.agent/RULE.md` | Bản quy tắc cá nhân, không commit |
@@ -136,11 +158,11 @@ Nếu báo thiếu SDK hoặc package không tương thích, kiểm tra cấu h�
 1. EF Core Migrations trong `SmartInventoryManager.Data/Migrations` là nguồn quản lý schema. Giữ SQL cũ để tham khảo; không chạy script tạo schema chồng lên migrations.
 2. Cấu hình biến môi trường `SMART_INVENTORY_CONNECTION_STRING` cho đúng server/database. UI có fallback đọc `App.config` local khi không có biến môi trường; cấu hình bí mật không commit.
 3. Review script migration và dữ liệu hiện có trước khi apply. Migration ngưỡng dương yêu cầu xử lý các sản phẩm ReorderPoint=0 bằng quyết định nghiệp vụ, không tự chọn số thay thế.
-4. Với EF CLI 10.0.12 đã được cài trên máy, chạy `dotnet ef database update --project SmartInventoryManager.Data --startup-project SmartInventoryManager.UI` từ gốc repository. Ứng dụng không tự migrate khi mở.
+4. Với EF CLI 10.0.12 đã được cài trên máy, chạy `dotnet ef database update --project SmartInventoryManager.Data --startup-project SmartInventoryManager.UI` từ gốc repository sau khi xác nhận target và review migration. Factory đọc cùng biến môi trường, fallback `localhost/SmartInventoryManagerDB`; không dựa vào launchSettings của UI để cấu hình EF CLI. Ứng dụng không tự migrate khi mở.
 5. DB mới chưa có role/admin: chạy `dotnet run --project SmartInventoryManager.Setup -- --check` để kiểm tra chỉ đọc; bỏ `--check` để bootstrap tương tác. Công cụ yêu cầu xác nhận tên DB, nhập mật khẩu được che, tạo đúng ADMIN/WAREHOUSE_MANAGER/STAFF và ADMIN đầu tiên bằng PBKDF2. Nếu đã có ADMIN active thì không ghi đè; không seed tài khoản khi mở UI.
 6. Dữ liệu demo là thao tác riêng được duyệt. SQL seed cũ có thể ghi đè tài khoản; đọc kỹ trước khi chạy. Không dùng thông tin tài khoản demo trong production.
 
-Kiểm thử: `dotnet test SmartInventoryManager.Tests --filter "TestCategory!=SQLServer"`. Ba tests SQL opt-in yêu cầu `SMART_INVENTORY_SQL_TEST_CONNECTION_STRING` và `SMART_INVENTORY_SQL_TESTS_ALLOW_MUTATION=1`, chỉ cho phép target test đã xác nhận `localhost/SmartInventoryManagerDB`; dùng fixture riêng và tự dọn, không drop/reset DB. Đây không phải target production.
+Môi trường đã nghiệm thu là **TEST `localhost/SmartInventoryManagerDB`**; server production riêng chưa được cung cấp. DB TEST có ba migration: InitialCreate, RequirePositiveReorderPoint, AddUserWarehouseActiveState; probe đã xác nhận không có pending migrations/model changes. Không tự áp dụng kết luận này cho DB trên máy khác.
 
 Ví dụ connection string local, thay database/instance bằng tên thật đã thống nhất:
 
@@ -154,7 +176,9 @@ Hoặc nếu máy đã có instance SQL Server Express tên `SQLEXPRESS`:
 Server=.\SQLEXPRESS;Database=SmartInventoryDb;Integrated Security=True;
 ```
 
-Đây là ví dụ kết nối, không khẳng định database hoặc instance này đã có trên máy. Thông tin đăng nhập và cấu hình chứa bí mật phải được lưu theo cơ chế local của nhóm, không commit.
+Đây là ví dụ kết nối cho máy khác, không phải target đã được suite SQL hiện tại cho phép. Thông tin đăng nhập và cấu hình chứa bí mật phải được lưu local, không commit. Khi chạy CLI trong PowerShell, đặt biến môi trường của phiên làm việc bằng connection đã được phê duyệt. F5 dùng launch profile cấu hình trên máy; không ghi bí mật vào launchSettings đang được Git theo dõi.
+
+Nếu dùng `App.config` local, tên connection là `SmartInventoryManagerDb`. UI đọc config cạnh binary hoặc trong thư mục làm việc; không có build hook tự copy root App.config. Setup yêu cầu biến môi trường, không dùng fallback này.
 
 ### 6.5. Chạy ứng dụng
 
@@ -164,7 +188,7 @@ Nhấn **F5** trong Visual Studio, hoặc nếu project có đúng tên/đườn
 dotnet run --project SmartInventoryManager.UI/SmartInventoryManager.UI.csproj
 ```
 
-Nếu project UI đang có tên khác, dùng đường dẫn `.csproj` thực tế. Tài khoản demo do nhóm cung cấp sau khi phần đăng nhập và seed đã hoàn thiện. Màn hình khung chạy được chưa chứng minh chức năng nghiệp vụ đã hoàn thành.
+Nếu project UI đang có tên khác, dùng đường dẫn `.csproj` thực tế. DB mới dùng bootstrap ở mục 6.4; tài khoản demo chỉ dùng khi seed đã được duyệt. Màn hình chạy được chưa chứng minh mọi nghiệp vụ đã nghiệm thu.
 
 ## 7. Quy tắc nghiệp vụ quan trọng
 
@@ -175,6 +199,14 @@ Nếu project UI đang có tên khác, dùng đường dẫn `.csproj` thực t�
 - Không xuất vượt tồn hoặc cho tồn âm khi chưa có nghiệp vụ cho phép.
 - Sự kiện cập nhật UI/cảnh báo phát sau commit thành công.
 - Điều chỉnh phải có lý do, người thực hiện và số lượng trước/sau.
+
+Phạm vi kho: ADMIN không bị giới hạn một kho; WAREHOUSE_MANAGER theo `Warehouse.ManagerId`; STAFF theo `UserWarehouse.IsActive` và kho đang chọn đã được xác minh. User/kho phải active. Ngừng phân kho giữ row để kích hoạt lại; `Location` không cấp quyền kho.
+
+Phiếu có sáu trạng thái `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `COMPLETED`, `CANCELLED`; chỉ Complete mới tác động tồn. Posting nội bộ đi qua InventoryService cùng context/transaction. Log nghiệp vụ được lưu trong transaction; events và notification cảnh báo phát sau commit. Notification best-effort chỉ gửi ADMIN active và manager active của kho, lỗi gửi không chạy lại nghiệp vụ tồn.
+
+Retry tự động hiện chỉ áp dụng SQL deadlock1205 đã rollback, tối đa hai lần; không retry timeout/mất kết nối hoặc kết quả commit chưa rõ. Hết retry trả `CONCURRENCY_RETRY_EXHAUSTED`. Đây không phải cam kết mọi lỗi đồng thời đều được tự xử lý.
+
+Các trường riêng completion/cancel/reject, tồn trước/sau/chênh lệch và mã chung chuyển kho đang chờ team chốt. Không dùng việc đã có transaction/log để kết luận phần audit này hoàn thiện. Công thức định giá và analytics nâng cao cũng chưa được chốt.
 
 Ngưỡng cấu hình hợp lệ: `0 < ReorderPoint < MaximumStock`.
 
@@ -195,6 +227,7 @@ Tính trạng thái tại Business; UI hiển thị kết quả bằng tiếng V
 | `feature/<ten-viec>` | Thêm chức năng | Tạo từ `develop`, làm việc rồi gửi Pull Request về `develop` |
 | `fix/<ten-loi>` | Sửa lỗi | Tạo từ `develop`, sửa rồi gửi Pull Request về `develop` |
 | `chore/<ten-viec>` | Bảo trì, cấu hình | Tạo từ `develop`, sửa rồi gửi Pull Request về `develop` |
+| `Backend` | Nhánh đang được chủ dự án chỉ định cho đợt hoàn thiện hiện tại | Commit/push theo ủy quyền hiện hành, review qua PR về `develop`; tên nhánh không tự cấp quyền sửa liên tầng |
 
 Mỗi nhánh dành cho một nhiệm vụ. Tên nhánh ngắn, không dấu, không khoảng trắng. Nhóm không dùng quy trình gộp `develop` sang `main`.
 
@@ -289,7 +322,7 @@ File `.github/copilot-instructions.md` được commit cùng repository. Sau khi
 4. Mở cuộc trò chuyện mới.
 5. Kiểm tra **References** trong câu trả lời có file hướng dẫn.
 
-`.agent/RULE.md` là bản cá nhân, không tự thay thế file Copilot đọc. Khi sửa quy tắc dùng chung, tạo PR để nhóm review; đồng bộ bản cá nhân nếu đang giữ. Bản dịch tiếng Việt trong Documentation có thể lưu cùng repo để tham khảo.
+`.agent/RULE.md` là bản cá nhân, không tự thay thế file Copilot đọc và không được push. Khi sửa quy tắc dùng chung, tạo PR để nhóm review; đồng bộ bản cá nhân nếu đang giữ. Không dùng bản contract cũ hoặc snapshot audit để ghi đè quyết định mới đã được người dùng/team xác nhận.
 
 ### 10.2. Cách giao việc
 
@@ -383,13 +416,23 @@ dotnet restore
 dotnet build --no-restore
 ```
 
-Khi đã có project test được build và framework test được duyệt:
+Project test MSTest hiện có. Chạy unit tests sau build:
 
 ```powershell
-dotnet test --no-build
+dotnet test SmartInventoryManager.Tests/SmartInventoryManager.Tests.csproj --no-build --filter "TestCategory!=SQLServer"
 ```
 
-Nếu chưa có test, không coi việc lệnh chạy không lỗi là bằng chứng nghiệp vụ được kiểm thử. Dùng analyzer và `.editorconfig` của repository; chỉ chạy kiểm tra định dạng khi SDK/cấu hình hỗ trợ, không tự format toàn bộ code của đồng đội.
+Ba SQL tests là opt-in. Chỉ khi đã được phép dùng target TEST và ghi/dọn fixture, cấu hình connection riêng rồi chạy:
+
+```powershell
+$env:SMART_INVENTORY_SQL_TEST_CONNECTION_STRING = 'Server=localhost;Database=SmartInventoryManagerDB;Integrated Security=True;TrustServerCertificate=True;MultipleActiveResultSets=True'
+$env:SMART_INVENTORY_SQL_TESTS_ALLOW_MUTATION = '1'
+dotnet test SmartInventoryManager.Tests/SmartInventoryManager.Tests.csproj --no-build --filter "TestCategory=SQLServer"
+```
+
+Suite hiện chỉ cho phép chính xác `localhost/SmartInventoryManagerDB`, cần migration đã apply và ADMIN active; dùng fixture riêng và tự dọn, không drop/reset DB. Không có đủ biến opt-in thì SQL tests báo inconclusive/skipped, không phải PASS. Không đổi guard để chạy trên production. Nếu target test của team thay đổi, phải thống nhất và cập nhật suite trước.
+
+Dùng analyzer và `.editorconfig` của repository; kiểm tra whitespace/style trên file sửa, không tự format toàn bộ code của đồng đội. Không tắt audit/analyzer để che cảnh báo; review dependency rồi chọn bản vá tương thích được duyệt. Kết quả lần nghiệm thu gần nhất ở mục 2.1 là bằng chứng đã chạy, không phải kết quả mỗi lần clone/build.
 
 - Unit test: Business, validation, tính tồn/trạng thái, cảnh báo, phân quyền khi có thể kiểm tra độc lập.
 - Integration test: dùng database test riêng cho truy vấn, lưu dữ liệu, constraint, transaction và concurrency.

@@ -1,6 +1,6 @@
 ## Cập nhật hiện hành ngày 14/10/2026 — sau nghiệm thu
 
-Phần này có ưu tiên so với các snapshot lịch sử phía dưới. Chuẩn là `.agent/SystemContract.md` hiện hành; người dùng đã cho phép hoàn thiện cả ba tầng, commit theo từng tầng và dùng `localhost / SmartInventoryManagerDB` làm DB TEST. Server production riêng chưa được cung cấp. SQL cũ được giữ nguyên; không drop/reset database và không push đợt này.
+Phần này có ưu tiên so với các snapshot lịch sử phía dưới. Chuẩn là `.agent/SystemContract.md` hiện hành; người dùng đã cho phép hoàn thiện cả ba tầng, commit theo từng tầng và dùng `localhost / SmartInventoryManagerDB` làm DB TEST. Server production riêng chưa được cung cấp. SQL cũ được giữ nguyên; không drop/reset database. Các commit code/tài liệu đến `e0efd85` đã push Backend theo yêu cầu người dùng; remote develop đã nhận qua PR #50. README/rule/checklist tiếp tục được đồng bộ theo các quyết định đã chốt.
 
 | Tầng | Công việc đã triển khai, từ dễ đến khó | Commit |
 |---|---|---|
@@ -46,7 +46,7 @@ Phần này có ưu tiên so với các snapshot lịch sử phía dưới. Chu�
 | 5 | Đồng bộ ERD/class/use-case/demo tài liệu cuối, paging/performance large datasets nếu yêu cầu | Schema cuối phụ thuộc ba quyết định team; hiện export trả toàn bộ filter, không cam kết snapshot giữa query đồng thời |
 | 6 | Triển khai ba nhóm nghiệp vụ bị bỏ qua ở bảng trên | Chỉ làm sau khi chủ dự án/team trả lời, không đoán công thức/schema |
 
-Các thay đổi `.github/copilot-instructions.md` và connection launchSettings có trước được giữ local ngoài commit code. README và checklist đã cập nhật nguồn schema/migration/bootstrap hiện hành. Dự án đã tiến thêm ở CORE, chưa chứng nhận hoàn thiện toàn bộ phạm vi hợp đồng.
+README, `.github/copilot-instructions.md` và checklist được đồng bộ trong đợt tài liệu được người dùng yêu cầu push; `.agent/RULE.md` đồng bộ local, không đưa vào Git. Connection launchSettings có trước giữ local ngoài commit. Dự án đã tiến thêm ở CORE, chưa chứng nhận hoàn thiện toàn bộ phạm vi hợp đồng.
 
 ---
 
