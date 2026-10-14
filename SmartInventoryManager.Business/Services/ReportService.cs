@@ -18,16 +18,20 @@ public sealed class ReportService
     }
 
     public async Task<InventoryReportDto> GetInventoryAsync(UserSession session, int? warehouseId = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, string? search = null)
     {
         var warehouseIds = await GetWarehouseScopeAsync(session, warehouseId, cancellationToken);
         var inventory = _dbContext.Inventories.AsNoTracking()
             .Where(item => warehouseIds.Contains(item.WarehouseId));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var value = search.Trim();
+            inventory = inventory.Where(item => item.Product.ProductCode.Contains(value) || item.Product.ProductName.Contains(value));
+        }
         var totalQuantity = await inventory.Select(item => (long)item.Quantity).SumAsync(cancellationToken);
         var rows = await inventory
             .OrderBy(item => item.Warehouse.WarehouseName)
             .ThenBy(item => item.Product.ProductCode)
-            .Take(5000)
             .Select(item => new InventoryReportRowDto(
                 item.ProductId,
                 item.Product.ProductCode,
@@ -41,12 +45,13 @@ public sealed class ReportService
                 item.UpdatedAt))
             .ToListAsync(cancellationToken);
         var openAlertCount = await _dbContext.StockAlerts.AsNoTracking()
-            .CountAsync(item => warehouseIds.Contains(item.WarehouseId) && !item.IsResolved, cancellationToken);
+            .CountAsync(item => !item.IsResolved && inventory.Any(stock => stock.ProductId == item.ProductId && stock.WarehouseId == item.WarehouseId), cancellationToken);
         return new InventoryReportDto(totalQuantity, openAlertCount, rows);
     }
 
     public async Task<ImportExportReportDto> GetImportExportAsync(UserSession session, int? warehouseId = null,
-        DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default)
+        DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default,
+        string? search = null, string? receiptType = null)
     {
         if (from.HasValue && to.HasValue && to.Value.Date < from.Value.Date)
             throw new ArgumentException("Khoảng ngày không hợp lệ.", nameof(to));
@@ -55,6 +60,18 @@ public sealed class ReportService
             .Where(item => warehouseIds.Contains(item.WarehouseId) && item.Status == "COMPLETED");
         var exports = _dbContext.ExportReceipts.AsNoTracking()
             .Where(item => warehouseIds.Contains(item.WarehouseId) && item.Status == "COMPLETED");
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var value = search.Trim();
+            imports = imports.Where(item => item.ReceiptCode.Contains(value));
+            exports = exports.Where(item => item.ReceiptCode.Contains(value));
+        }
+        if (!string.IsNullOrWhiteSpace(receiptType))
+        {
+            if (receiptType == "IMPORT") exports = exports.Where(item => false);
+            else if (receiptType == "EXPORT") imports = imports.Where(item => false);
+            else throw new ArgumentException("Loại phiếu không hợp lệ.", nameof(receiptType));
+        }
         if (from.HasValue)
         {
             imports = imports.Where(item => item.ReceiptDate >= from.Value.Date);
@@ -68,11 +85,11 @@ public sealed class ReportService
         }
         var importTotal = await imports.Select(item => item.TotalAmount).SumAsync(cancellationToken);
         var exportTotal = await exports.Select(item => item.TotalAmount).SumAsync(cancellationToken);
-        var importRows = await imports.OrderByDescending(item => item.ReceiptDate).Take(5000)
+        var importRows = await imports.OrderByDescending(item => item.ReceiptDate).ThenBy(item => item.ImportReceiptId)
             .Select(item => new ImportReceiptListItemDto(item.ImportReceiptId, item.ReceiptCode, item.Supplier.SupplierName,
                 item.Warehouse.WarehouseName, item.Creator.FullName, item.ReceiptDate, item.TotalAmount, item.Status))
             .ToListAsync(cancellationToken);
-        var exportRows = await exports.OrderByDescending(item => item.ReceiptDate).Take(5000)
+        var exportRows = await exports.OrderByDescending(item => item.ReceiptDate).ThenBy(item => item.ExportReceiptId)
             .Select(item => new ExportReceiptListItemDto(item.ExportReceiptId, item.ReceiptCode,
                 item.Warehouse.WarehouseName, item.Creator.FullName, item.ReceiptDate, item.TotalAmount, item.Status))
             .ToListAsync(cancellationToken);

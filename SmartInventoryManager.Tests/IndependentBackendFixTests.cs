@@ -267,7 +267,7 @@ public class IndependentBackendFixTests
         db.ChangeTracker.Clear();
         var report = await new ReportService(db, new AuthorizationService(db)).GetInventoryAsync(Admin(), 1);
         Assert.AreEqual(5001L, report.TotalQuantity);
-        Assert.AreEqual(5000, report.Rows.Count);
+        Assert.AreEqual(5001, report.Rows.Count);
     }
 
     [TestMethod]
@@ -311,8 +311,53 @@ public class IndependentBackendFixTests
         var report = await new ReportService(db, new AuthorizationService(db)).GetImportExportAsync(Admin(), 1);
         Assert.AreEqual(10002m, report.ImportTotalAmount);
         Assert.AreEqual(15003m, report.ExportTotalAmount);
-        Assert.AreEqual(5000, report.Imports.Count);
-        Assert.AreEqual(5000, report.Exports.Count);
+        Assert.AreEqual(5001, report.Imports.Count);
+        Assert.AreEqual(5001, report.Exports.Count);
+    }
+
+    [TestMethod]
+    public async Task Assignment_DeactivationRetainsRowAndRevokesCurrentScope_ReactivationRestoresScope()
+    {
+        await using var db = CreateContext();
+        Seed(db);
+        db.Users.Add(new User { UserId = 4, Username = "staff", FullName = "Staff", PasswordHash = "test", IsActive = true,
+            Role = new Role { RoleId = 3, RoleName = RoleNames.Staff } });
+        await db.SaveChangesAsync();
+        var staff = new UserSession();
+        staff.SignIn(new AuthenticatedUserDto(4, "staff", "Staff", null, RoleNames.Staff));
+        staff.SetCurrentWarehouse(1);
+        var auth = new AuthorizationService(db);
+        var service = new WarehouseAssignmentService(db, auth);
+        await service.SetActiveAsync(Admin(), 4, 1, true);
+        Assert.IsTrue((await auth.GetAccessibleWarehouseIdsAsync(staff)).Contains(1));
+        await service.SetActiveAsync(Admin(), 4, 1, false);
+        Assert.AreEqual(1, await db.UserWarehouses.CountAsync());
+        Assert.AreEqual(0, (await auth.GetAccessibleWarehouseIdsAsync(staff)).Count);
+        await service.SetActiveAsync(Admin(), 4, 1, true);
+        Assert.IsTrue((await auth.GetAccessibleWarehouseIdsAsync(staff)).Contains(1));
+        await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.SetActiveAsync(staff, 4, 1, false));
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.SetActiveAsync(Admin(), 1, 1, true));
+    }
+
+    [TestMethod]
+    public async Task Reports_ApplySearchAndTypeBeforeTotalsAndRows()
+    {
+        await using var db = CreateContext();
+        Seed(db);
+        db.Inventories.Add(new Inventory { ProductId = 1, WarehouseId = 1, Quantity = 7 });
+        db.ImportReceipts.Add(new ImportReceipt { ImportReceiptId = 1, ReceiptCode = "MATCH", WarehouseId = 1, SupplierId = 1, CreatedBy = 1, Status = "COMPLETED", TotalAmount = 12 });
+        db.ImportReceipts.Add(new ImportReceipt { ImportReceiptId = 2, ReceiptCode = "OTHER", WarehouseId = 1, SupplierId = 1, CreatedBy = 1, Status = "COMPLETED", TotalAmount = 99 });
+        db.ExportReceipts.Add(new ExportReceipt { ExportReceiptId = 1, ReceiptCode = "MATCH", WarehouseId = 1, CreatedBy = 1, Status = "COMPLETED", TotalAmount = 10 });
+        await db.SaveChangesAsync();
+        var reports = new ReportService(db, new AuthorizationService(db));
+        var report = await reports.GetImportExportAsync(Admin(), 1, search: "MATCH", receiptType: "IMPORT");
+        Assert.AreEqual(12m, report.ImportTotalAmount);
+        Assert.AreEqual(0m, report.ExportTotalAmount);
+        Assert.AreEqual(1, report.Imports.Count);
+        Assert.AreEqual(0, report.Exports.Count);
+        var inventory = await reports.GetInventoryAsync(Admin(), 1, search: "missing");
+        Assert.AreEqual(0L, inventory.TotalQuantity);
+        Assert.AreEqual(0, inventory.Rows.Count);
     }
 
     private static UserSession Admin()
