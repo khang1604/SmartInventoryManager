@@ -45,7 +45,7 @@ public class ProductValidatorTests
     {
         var errors = StockStatusCalculator.ValidateThresholds(-1, 0);
 
-        Assert.AreEqual(1, errors.Count);
+        Assert.AreEqual(2, errors.Count);
     }
 
     [TestMethod]
@@ -88,7 +88,18 @@ public class ProductValidatorTests
         var errors = new ProductValidator().Validate(
             "P001", "Sản phẩm", "cái", 1m, 2m, 0, 0);
 
-        Assert.AreEqual(1, errors.Count);
+        Assert.AreEqual(2, errors.Count);
+    }
+
+    [TestMethod]
+    public void ProductValidator_RejectsZeroReorderPointWithPositiveMaximumStock()
+    {
+        var errors = new ProductValidator().Validate(
+            "P001", "Sản phẩm", "cái", 1m, 2m, 0, 10);
+
+        CollectionAssert.Contains(errors.ToList(), "Điểm đặt hàng lại phải lớn hơn 0.");
+        Assert.IsFalse(new ProductValidator().IsValid(
+            "P001", "Sản phẩm", "cái", 1m, 2m, 0, 10));
     }
 
     [TestMethod]

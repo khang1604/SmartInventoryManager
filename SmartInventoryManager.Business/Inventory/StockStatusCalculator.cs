@@ -6,17 +6,17 @@ public static class StockStatusCalculator
     {
         var errors = new List<string>();
 
-        if (reorderPoint < 0)
+        if (reorderPoint <= 0)
         {
-            errors.Add("Điểm đặt hàng lại không được âm.");
+            errors.Add("Điểm đặt hàng lại phải lớn hơn 0.");
         }
 
-        if (maximumStock < 0)
+        if (maximumStock <= 0)
         {
-            errors.Add("Mức tồn tối đa không được âm.");
+            errors.Add("Mức tồn tối đa phải lớn hơn 0.");
         }
 
-        if (reorderPoint >= 0 && maximumStock >= 0 && reorderPoint >= maximumStock)
+        if (reorderPoint > 0 && maximumStock > 0 && reorderPoint >= maximumStock)
         {
             errors.Add("Mức tồn tối đa phải lớn hơn điểm đặt hàng lại.");
         }

@@ -258,6 +258,7 @@ public class IndependentBackendFixTests
                 ProductName = "Paper",
                 Unit = "piece",
                 IsActive = true,
+                ReorderPoint = 1,
                 MaximumStock = 20
             });
             db.Inventories.Add(new Inventory { ProductId = id, WarehouseId = 1, Quantity = 1 });
@@ -319,6 +320,25 @@ public class IndependentBackendFixTests
         var session = new UserSession();
         session.SignIn(new AuthenticatedUserDto(1, "admin", "Admin", null, RoleNames.Admin));
         return session;
+    }
+
+    [TestMethod]
+    public async Task WarehouseAndLocationLists_IncludeDisplayNamesAndOnlyActiveManagers()
+    {
+        await using var db = CreateContext();
+        Seed(db);
+        (await db.Warehouses.SingleAsync()).ManagerId = 2;
+        db.Locations.Add(new Location { LocationId = 1, WarehouseId = 1, LocationCode = "A1", IsActive = true });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var authorization = new AuthorizationService(db);
+        var warehouses = new WarehouseService(db, authorization);
+
+        Assert.AreEqual("Manager", (await warehouses.GetAllAsync(Admin())).Single().ManagerName);
+        Assert.AreEqual("Warehouse", (await new LocationService(db, authorization).GetAsync(Admin())).Single().WarehouseName);
+        var managers = await warehouses.GetActiveManagersAsync(Admin());
+        Assert.AreEqual(1, managers.Count);
+        Assert.AreEqual(2, managers.Single().Id);
     }
 
     private static void Seed(InventoryDbContext db)

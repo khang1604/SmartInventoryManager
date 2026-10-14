@@ -23,7 +23,10 @@ public sealed class LocationService
         var warehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
         return await _dbContext.Locations.AsNoTracking().Where(item => warehouseIds.Contains(item.WarehouseId))
             .OrderBy(item => item.LocationCode)
-            .Select(item => new LocationDto(item.LocationId, item.WarehouseId, item.LocationCode, item.LocationName, item.IsActive))
+            .Select(item => new LocationDto(item.LocationId, item.WarehouseId, item.LocationCode, item.LocationName, item.IsActive)
+            {
+                WarehouseName = item.Warehouse.WarehouseName
+            })
             .ToListAsync(cancellationToken);
     }
 
