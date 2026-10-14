@@ -4,4 +4,5 @@
   <Project Path="SmartInventoryManager.UI/SmartInventoryManager.UI.csproj" />
   <Project Path="SmartInventoryManager.Data/SmartInventoryManager.Data.csproj" />
   <Project Path="SmartInventoryManager.Tests/SmartInventoryManager.Tests.csproj" />
+  <Project Path="SmartInventoryManager.Setup/SmartInventoryManager.Setup.csproj" />
 </Solution>
