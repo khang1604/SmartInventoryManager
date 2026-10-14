@@ -41,7 +41,21 @@ public sealed class WarehouseService
         return await _dbContext.Warehouses.AsNoTracking()
             .Where(item => warehouseIds.Contains(item.WarehouseId))
             .OrderBy(item => item.WarehouseCode)
-            .Select(item => new WarehouseDto(item.WarehouseId, item.WarehouseCode, item.WarehouseName, item.Location, item.ManagerId, item.IsActive)).ToListAsync(cancellationToken);
+            .Select(item => new WarehouseDto(item.WarehouseId, item.WarehouseCode, item.WarehouseName, item.Location, item.ManagerId, item.IsActive)
+            {
+                ManagerName = item.Manager == null ? null : item.Manager.FullName
+            }).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<LookupItemDto>> GetActiveManagersAsync(UserSession session, CancellationToken cancellationToken = default)
+    {
+        EnsureCanManage(session);
+        await _authorization.EnsureActiveActorAsync(session, cancellationToken);
+        return await _dbContext.Users.AsNoTracking()
+            .Where(user => user.IsActive && user.Role.RoleName == RoleNames.WarehouseManager)
+            .OrderBy(user => user.FullName).ThenBy(user => user.UserId)
+            .Select(user => new LookupItemDto(user.UserId, user.Username, user.FullName))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<int> CreateAsync(UserSession session, WarehouseRequestDto request, CancellationToken cancellationToken = default)

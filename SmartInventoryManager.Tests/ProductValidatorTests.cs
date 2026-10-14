@@ -33,11 +33,11 @@ public class ProductValidatorTests
     }
 
     [TestMethod]
-    public void ValidateThresholds_AcceptsEqualReorderPointAndMaximumStock()
+    public void ValidateThresholds_RejectsEqualReorderPointAndMaximumStock()
     {
         var errors = StockStatusCalculator.ValidateThresholds(100, 100);
 
-        Assert.AreEqual(0, errors.Count);
+        Assert.AreEqual(1, errors.Count);
     }
 
     [TestMethod]
@@ -45,13 +45,13 @@ public class ProductValidatorTests
     {
         var errors = StockStatusCalculator.ValidateThresholds(-1, 0);
 
-        Assert.AreEqual(1, errors.Count);
+        Assert.AreEqual(2, errors.Count);
     }
 
     [TestMethod]
-    public void Calculate_AcceptsZeroMaximumWhenReorderPointIsZero()
+    public void Calculate_RejectsZeroMaximumWhenReorderPointIsZero()
     {
-        Assert.AreEqual(StockStatus.Overstock, StockStatusCalculator.Calculate(5, 0, 0));
+        Assert.ThrowsException<ArgumentException>(() => StockStatusCalculator.Calculate(5, 0, 0));
     }
 
     [TestMethod]
@@ -77,18 +77,29 @@ public class ProductValidatorTests
         var errors = new ProductValidator().Validate(
             " ", null, "", -1m, -2m, 100, 100);
 
-        Assert.AreEqual(5, errors.Count);
+        Assert.AreEqual(6, errors.Count);
         CollectionAssert.Contains(errors.ToList(), "Mã sản phẩm là bắt buộc và không quá 50 ký tự.");
         CollectionAssert.Contains(errors.ToList(), "Giá nhập không được âm.");
     }
 
     [TestMethod]
-    public void ProductValidator_AcceptsEqualZeroThresholds()
+    public void ProductValidator_RejectsEqualZeroThresholds()
     {
         var errors = new ProductValidator().Validate(
             "P001", "Sản phẩm", "cái", 1m, 2m, 0, 0);
 
-        Assert.AreEqual(0, errors.Count);
+        Assert.AreEqual(2, errors.Count);
+    }
+
+    [TestMethod]
+    public void ProductValidator_RejectsZeroReorderPointWithPositiveMaximumStock()
+    {
+        var errors = new ProductValidator().Validate(
+            "P001", "Sản phẩm", "cái", 1m, 2m, 0, 10);
+
+        CollectionAssert.Contains(errors.ToList(), "Điểm đặt hàng lại phải lớn hơn 0.");
+        Assert.IsFalse(new ProductValidator().IsValid(
+            "P001", "Sản phẩm", "cái", 1m, 2m, 0, 10));
     }
 
     [TestMethod]

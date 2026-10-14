@@ -73,7 +73,9 @@ public sealed class FrmWarehouseDetail : Form
             var address = Input("txtAddress", maxLength: 255);
             address.Multiline = true;
             Field(fields, 2, "Địa chỉ", address, 110);
-            Field(fields, 3, "Người quản lý", Input("cboManager", "Chọn người quản lý", dropdown: true));
+            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+            fields.Controls.Add(ProductUi.Label("Người quản lý", 10, true), 0, 3);
+            fields.Controls.Add(LiveUi.Choice("cboManager", "Người quản lý kho"), 1, 3);
             fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 14));
         }
         fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
@@ -118,6 +120,31 @@ public sealed class FrmWarehouseDetail : Form
         Controls.Add(root);
         if (warehouse is not null) LoadWarehouse(warehouse);
         if (locationDto is not null) LoadLocation(locationDto);
+        if (!location && services is not null)
+            Shown += async (_, _) =>
+            {
+                var save = Controls.Find("btnSave", true).Single();
+                save.Enabled = false;
+                try
+                {
+                    var managers = await services.RunAsync(() => services.Warehouses.GetActiveManagersAsync(services.Session));
+                    var picker = Controls.Find("cboManager", true).OfType<ComboBox>().Single();
+                    picker.DisplayMember = "Name";
+                    picker.ValueMember = "Id";
+                    var choices = new List<LookupItemDto> { new(0, "", "Không chọn người quản lý") };
+                    choices.AddRange(managers);
+                    // Preserve an existing disabled manager until the user explicitly changes the assignment.
+                    if (warehouse?.ManagerId is int managerId && choices.All(item => item.Id != managerId))
+                        choices.Add(new LookupItemDto(managerId, "", (warehouse.ManagerName ?? "Người quản lý hiện tại") + " (không còn hợp lệ)"));
+                    picker.DataSource = choices;
+                    picker.SelectedValue = warehouse?.ManagerId ?? 0;
+                    save.Enabled = true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, LiveUi.LoadError(ex), "Người quản lý kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
         if(location && services is not null) Shown+=async(_,_)=> { try { var choices=await services.RunAsync(()=>services.Warehouses.GetActiveAsync(services.Session)); var picker=Controls.Find("cboWarehouse",true).OfType<ComboBox>().Single(); picker.DisplayMember="Name"; picker.ValueMember="Id"; picker.DataSource=new[]{new LookupItemDto(0,"","Chọn kho")}.Concat(choices).ToList(); picker.SelectedValue=locationDto?.WarehouseId ?? 0; } catch(Exception ex) { MessageBox.Show(this,LiveUi.LoadError(ex),"Kho",MessageBoxButtons.OK,MessageBoxIcon.Warning); } };
     }
 
@@ -142,7 +169,8 @@ public sealed class FrmWarehouseDetail : Form
                 await _services.RunAsync(()=>_id.HasValue ? _services.Locations.UpdateAsync(_services.Session,_id.Value,locationRequest) : _services.Locations.CreateAsync(_services.Session,locationRequest));
                 DialogResult=DialogResult.OK; Close(); return;
             }
-            var request = new WarehouseRequestDto { WarehouseCode = Input("txtWarehouseCode").Text, WarehouseName = Input("txtWarehouseName").Text, Location = Input("txtAddress").Text, IsActive = Check().Checked };
+            var manager = Controls.Find("cboManager", true).OfType<ComboBox>().Single().SelectedItem as LookupItemDto;
+            var request = new WarehouseRequestDto { WarehouseCode = Input("txtWarehouseCode").Text, WarehouseName = Input("txtWarehouseName").Text, Location = Input("txtAddress").Text, ManagerId = manager is { Id: > 0 } ? manager.Id : null, IsActive = Check().Checked };
             await _services.RunAsync(() => _id.HasValue ? _services.Warehouses.UpdateAsync(_services.Session, _id.Value, request) : _services.Warehouses.CreateAsync(_services.Session, request));
             DialogResult = DialogResult.OK; Close();
         }

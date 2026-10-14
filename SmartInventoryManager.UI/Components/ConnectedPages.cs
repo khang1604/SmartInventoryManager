@@ -95,9 +95,9 @@ internal static class ConnectedPages
                 ("StockStatus", "Trạng thái tồn"), ("UpdatedAt", "Cập nhật")],
             async (warehouseId, search, _, _) =>
             {
-                var report = await services.Reports.GetInventoryAsync(services.Session, warehouseId);
-                page?.SetSummary($"Tổng tồn toàn kho: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
-                return report.Rows.Where(row => Match(row.ProductCode, row.ProductName, search)).ToList();
+                var report = await services.Reports.GetInventoryAsync(services.Session, warehouseId, search: search, stockStatus: InventoryStatusFilter(page));
+                page?.SetSummary($"Tổng tồn theo bộ lọc: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
+                return report.Rows;
             }, requiresWarehouse: true);
         page.Action("Xuất Excel", async () => await ExportInventoryAsync(page, services, false), "file-earmark-spreadsheet");
         page.Action("Xuất PDF", async () => await ExportInventoryAsync(page, services, true), "file-earmark-pdf");
@@ -106,7 +106,8 @@ internal static class ConnectedPages
 
     private static async Task ExportInventoryAsync(DataListPage<InventoryReportRowDto> page, UiServices services, bool pdf)
     {
-        var report = await services.RunAsync(() => services.Reports.GetInventoryAsync(services.Session, page.SelectedWarehouseId));
+        var report = await services.RunAsync(() => services.Reports.GetInventoryAsync(services.Session, page.SelectedWarehouseId,
+            search: page.SearchText, stockStatus: InventoryStatusFilter(page)));
         using var dialog = new SaveFileDialog
         {
             Filter = pdf ? "PDF (*.pdf)|*.pdf" : "Excel (*.xlsx)|*.xlsx",
@@ -138,8 +139,9 @@ internal static class ConnectedPages
                 ("WarehouseName", "Kho"), ("TotalAmount", "Tổng tiền"), ("Status", "Trạng thái")],
             async (warehouseId, search, from, to) =>
             {
-                var report = await services.Reports.GetImportExportAsync(services.Session, warehouseId, from, to);
-                page?.SetSummary($"Tổng tiền theo kho/ngày: Nhập {report.ImportTotalAmount:N2} đ • Xuất {report.ExportTotalAmount:N2} đ");
+                var report = await services.Reports.GetImportExportAsync(services.Session, warehouseId, from, to,
+                    search: search, receiptType: ReceiptTypeFilter(page));
+                page?.SetSummary($"Tổng tiền theo bộ lọc: Nhập {report.ImportTotalAmount:N2} đ • Xuất {report.ExportTotalAmount:N2} đ");
                 var rows = report.Imports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
                     "IMPORT", item.WarehouseName, item.TotalAmount, item.Status))
                     .Concat(report.Exports.Select(item => new ImportExportReportRowDto(item.ReceiptDate, item.ReceiptCode,
@@ -155,7 +157,7 @@ internal static class ConnectedPages
     private static async Task ExportImportExportAsync(DataListPage<ImportExportReportRowDto> page, UiServices services, bool pdf)
     {
         var report = await services.RunAsync(() => services.Reports.GetImportExportAsync(services.Session,
-            page.SelectedWarehouseId, page.SelectedFrom, page.SelectedTo));
+            page.SelectedWarehouseId, page.SelectedFrom, page.SelectedTo, search: page.SearchText, receiptType: ReceiptTypeFilter(page)));
         using var dialog = new SaveFileDialog
         {
             Filter = pdf ? "PDF (*.pdf)|*.pdf" : "Excel (*.xlsx)|*.xlsx",
@@ -177,6 +179,12 @@ internal static class ConnectedPages
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
+
+    private static string? ReceiptTypeFilter(DataListPage<ImportExportReportRowDto>? page) => page?.SelectedType switch
+    { 1 => "IMPORT", 2 => "EXPORT", _ => null };
+
+    private static string? InventoryStatusFilter(DataListPage<InventoryReportRowDto>? page) => page?.SelectedType switch
+    { 1 => "OUT_OF_STOCK", 2 => "LOW_STOCK", 3 => "NORMAL", 4 => "OVERSTOCK", _ => null };
 
     public static Control History(UiServices services, int? productId = null) => new DataListPage<InventoryHistoryDto>(services,
         "Lịch sử tồn kho",

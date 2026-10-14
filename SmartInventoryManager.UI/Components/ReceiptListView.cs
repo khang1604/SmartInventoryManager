@@ -47,6 +47,7 @@ internal sealed class ReceiptListView : UserControl
         });
         _create = AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
         AddAction("Xem chi tiết", () => OpenAsync(SelectedId(), false), "eye");
+        AddAction("Xuất PDF phiếu", ExportReceiptAsync);
         AddAction("Sửa phiếu", () => OpenAsync(SelectedId(), true), "pencil");
         AddAction("Gửi duyệt", () => TransitionAsync("submit"));
         AddAction("Duyệt", () => TransitionAsync("approve"));
@@ -147,7 +148,7 @@ internal sealed class ReceiptListView : UserControl
                 _warehouse.DisplayMember = nameof(LookupItemDto.Name);
                 _warehouse.ValueMember = nameof(LookupItemDto.Id);
                 _warehouse.DataSource = new[] { new LookupItemDto(0, "", "Tất cả kho") }.Concat(warehouses).ToList();
-                if(_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId.HasValue) _warehouse.SelectedValue=_services.Session.CurrentWarehouseId.Value;
+                if (_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId.HasValue) _warehouse.SelectedValue = _services.Session.CurrentWarehouseId.Value;
             }
             var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id;
             if (warehouseId == 0) warehouseId = null;
@@ -188,13 +189,14 @@ internal sealed class ReceiptListView : UserControl
         if (!id.HasValue) return;
 
         EnableAction("Xem chi tiết", true);
+        EnableAction("Xuất PDF phiếu", true);
         try
         {
             var rights = await _services.RunAsync(async () =>
             {
                 int warehouseId, creatorId;
-                if (_import) { var receipt = await _services.Imports.GetByIdAsync(_services.Session, id.Value); if (receipt is null) return (false,false,false,false); warehouseId=receipt.WarehouseId; creatorId=receipt.CreatedBy; }
-                else { var receipt = await _services.Exports.GetByIdAsync(_services.Session, id.Value); if (receipt is null) return (false,false,false,false); warehouseId=receipt.WarehouseId; creatorId=receipt.CreatedBy; }
+                if (_import) { var receipt = await _services.Imports.GetByIdAsync(_services.Session, id.Value); if (receipt is null) return (false, false, false, false); warehouseId = receipt.WarehouseId; creatorId = receipt.CreatedBy; }
+                else { var receipt = await _services.Exports.GetByIdAsync(_services.Session, id.Value); if (receipt is null) return (false, false, false, false); warehouseId = receipt.WarehouseId; creatorId = receipt.CreatedBy; }
                 return (await _services.Authorization.CanEditReceiptAsync(_services.Session, warehouseId, creatorId, SelectedStatus() ?? ""),
                     await _services.Authorization.CanApproveReceiptAsync(_services.Session, warehouseId),
                     await _services.Authorization.CanCompleteReceiptAsync(_services.Session, warehouseId),
@@ -212,6 +214,33 @@ internal sealed class ReceiptListView : UserControl
             EnableAction("Xóa nháp", status == "DRAFT" && rights.Item1);
         }
         catch (Exception ex) { if (!IsDisposed) _message.Text = LiveUi.Error(ex); }
+    }
+
+    private async Task ExportReceiptAsync()
+    {
+        var id = SelectedId();
+        if (_busy || !id.HasValue) return;
+        using var dialog = new SaveFileDialog { Filter = "PDF (*.pdf)|*.pdf", DefaultExt = "pdf", AddExtension = true, FileName = $"{(_import ? "Import" : "Export")}-{id.Value}.pdf" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        _busy = true;
+        try
+        {
+            if (_import)
+            {
+                var receipt = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_services.Session, id.Value)) ?? throw new KeyNotFoundException("Không tìm thấy phiếu trong phạm vi kho.");
+                ReportExportService.ExportReceiptPdf(dialog.FileName, "PHIẾU NHẬP KHO", receipt.ReceiptCode, receipt.ReceiptDate, receipt.Status,
+                    receipt.WarehouseName, receipt.CreatorName, receipt.SupplierName, receipt.Note, receipt.Details, receipt.TotalAmount);
+            }
+            else
+            {
+                var receipt = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_services.Session, id.Value)) ?? throw new KeyNotFoundException("Không tìm thấy phiếu trong phạm vi kho.");
+                ReportExportService.ExportReceiptPdf(dialog.FileName, "PHIẾU XUẤT KHO", receipt.ReceiptCode, receipt.ReceiptDate, receipt.Status,
+                    receipt.WarehouseName, receipt.CreatorName, null, receipt.Note, receipt.Details, receipt.TotalAmount);
+            }
+            _message.Text = "Đã xuất PDF phiếu. Mở file để xem hoặc in A4.";
+        }
+        catch (Exception ex) { _message.Text = LiveUi.Error(ex); }
+        finally { _busy = false; await UpdateActionsAsync(); }
     }
 
     private void EnableAction(string text, bool enabled)
@@ -240,7 +269,7 @@ internal sealed class ReceiptListView : UserControl
         if (_busy) return;
         var id = SelectedId();
         if (!id.HasValue) { _message.Text = "Chọn một phiếu để thao tác."; return; }
-        if (transition=="complete" && MessageBox.Show(FindForm(),"Hoàn tất phiếu đã duyệt và cập nhật tồn kho?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.OK) return;
+        if (transition == "complete" && MessageBox.Show(FindForm(), "Hoàn tất phiếu đã duyệt và cập nhật tồn kho?", "Xác nhận", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
         var reason = transition == "reject" ? Microsoft.VisualBasic.Interaction.InputBox("Nhập lý do từ chối:", "Từ chối phiếu", "") : string.Empty;
         if (transition == "reject" && string.IsNullOrWhiteSpace(reason)) return;
         Busy(true);
@@ -266,18 +295,18 @@ internal sealed class ReceiptListView : UserControl
                     else await _services.Exports.CompleteAsync(_services.Session, id.Value);
                 }
             });
-            updated=true;
+            updated = true;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine(ex);
-            var expected=transition switch { "submit"=>"PENDING_APPROVAL", "approve"=>"APPROVED", "reject"=>"REJECTED", "resubmit"=>"DRAFT", _=>"COMPLETED" };
-            try { var actual=await _services.RunAsync(async()=>_import ? (await _services.Imports.GetByIdAsync(_services.Session,id.Value))?.Status : (await _services.Exports.GetByIdAsync(_services.Session,id.Value))?.Status); updated=actual==expected; }
-            catch(Exception readError) { System.Diagnostics.Debug.WriteLine(readError); }
-            if(!updated && !IsDisposed) _message.Text=LiveUi.Error(ex);
+            var expected = transition switch { "submit" => "PENDING_APPROVAL", "approve" => "APPROVED", "reject" => "REJECTED", "resubmit" => "DRAFT", _ => "COMPLETED" };
+            try { var actual = await _services.RunAsync(async () => _import ? (await _services.Imports.GetByIdAsync(_services.Session, id.Value))?.Status : (await _services.Exports.GetByIdAsync(_services.Session, id.Value))?.Status); updated = actual == expected; }
+            catch (Exception readError) { System.Diagnostics.Debug.WriteLine(readError); }
+            if (!updated && !IsDisposed) _message.Text = LiveUi.Error(ex);
         }
         finally { if (!IsDisposed) Busy(false); }
-        if(updated && !IsDisposed) { await LoadAsync(); if(!IsDisposed) _message.Text="Đã cập nhật trạng thái phiếu. " + _message.Text; }
+        if (updated && !IsDisposed) { await LoadAsync(); if (!IsDisposed) _message.Text = "Đã cập nhật trạng thái phiếu. " + _message.Text; }
     }
 
     private async Task PostAsync(bool cancel)

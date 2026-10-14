@@ -205,7 +205,7 @@ public sealed class AuthorizationService
             query = query.Where(warehouse => warehouse.ManagerId == session.CurrentUser!.UserId);
         else if (IsStaff(session))
             query = query.Where(warehouse => _dbContext.UserWarehouses.Any(assignment =>
-                assignment.UserId == session.CurrentUser!.UserId && assignment.WarehouseId == warehouse.WarehouseId));
+                assignment.IsActive && assignment.UserId == session.CurrentUser!.UserId && assignment.WarehouseId == warehouse.WarehouseId));
         else if (!IsAdmin(session))
             return new HashSet<int>();
 

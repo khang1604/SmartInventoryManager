@@ -1,3 +1,11 @@
+# Database — trạng thái hiện hành 14/10/2026
+
+EF Core Migrations là nguồn schema. Trên TEST `localhost/SmartInventoryManagerDB` đã có InitialCreate, RequirePositiveReorderPoint và AddUserWarehouseActiveState; pending migration rỗng, ReorderPoint<=0 bằng0. UserWarehouse có IsActive, composite PK và Restrict FKs. Không truy cập production, không xóa SQL cũ. App không auto-migrate/auto-seed. Bootstrap ADMIN tương tác riêng ở SmartInventoryManager.Setup; --check chỉ đọc, không ghi đè ADMIN active.
+
+Ba SQL integration tests đã PASS; chi tiết phạm vi và giới hạn tại [CompletionByLayer_2026-10-14.md](CompletionByLayer_2026-10-14.md). Audit receipt/adjustment/shared transfer reference và valuation/analytics được người dùng bỏ qua để bàn team. Những checkbox chưa apply hoặc SQLEXPRESS bên dưới là snapshot trước khi xác minh môi trường, không phải trạng thái hiện tại.
+
+## Checklist lịch sử trước apply
+
 # SmartInventoryManager — Database Rebuild Checklist
 
 Phạm vi checklist: tái tạo schema SQL Server bằng EF Core Migration từ model hiện hành gồm 17 entity. Migration chỉ tạo cấu trúc; không chạy seed, không áp dụng lên SQL Server, và không backfill dữ liệu.
@@ -76,3 +84,7 @@ Phạm vi checklist: tái tạo schema SQL Server bằng EF Core Migration từ 
 - [ ] Kiểm tra 17 bảng, relationship, cascade/restrict, unique/check constraints, filtered index và migration history.
 - [ ] Hoàn thiện seed được phê duyệt và kiểm tra tạo tài khoản STAFF + gán kho qua `UserWarehouse`.
 - [ ] Bàn giao các thay đổi Business cần thiết cho Khang và luồng phân công kho UI cho Khiêm.
+
+## Cập nhật contract 14/10/2026
+
+SystemContract.md hiện hành yêu cầu `0 < ReorderPoint < MaximumStock`. Mapping/migration hiện còn CHECK ReorderPoint >=0; Bảo Anh cần migration mới chuyển sang >0 sau khi kiểm tra dữ liệu bằng 0. Không sửa baseline đã áp dụng, không tự apply hoặc sửa dữ liệu. UserWarehouse đã có composite PK và hai FK Restrict; không tạo lại entity.

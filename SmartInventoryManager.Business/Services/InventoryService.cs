@@ -16,15 +16,36 @@ public sealed class InventoryService : IInventoryService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
     private readonly StockMutationService _stockMutation;
+    private readonly StockEventPublisher _publisher;
 
-    public InventoryService(InventoryDbContext dbContext, AuthorizationService authorization)
+    public InventoryService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
         _stockMutation = new StockMutationService(_dbContext);
+        _publisher = publisher ?? new StockEventPublisher();
     }
 
-    public event EventHandler<InventoryChangedEvent>? InventoryChanged;
+    public event EventHandler<InventoryChangedEvent>? InventoryChanged
+    { add => _publisher.InventoryChanged += value; remove => _publisher.InventoryChanged -= value; }
+
+    internal async Task<InventoryChangedEvent> PostReceiptLineAsync(UserSession session, int warehouseId, int productId, int quantity,
+        bool import, int receiptId, string? note, CancellationToken ct)
+    {
+        if (_dbContext.Database.IsRelational() && _dbContext.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("Stock posting requires the receipt transaction.");
+        if (!await _authorization.CanCompleteReceiptAsync(session, warehouseId))
+            throw new UnauthorizedAccessException("Bạn không có quyền ghi nhận tồn kho này.");
+        var stock = await _stockMutation.GetOrCreateAsync(warehouseId, productId, ct);
+        var before = stock.Quantity;
+        stock = import ? await _stockMutation.IncreaseAsync(warehouseId, productId, quantity, ct)
+            : await _stockMutation.DecreaseAsync(warehouseId, productId, quantity, ct);
+        var type = import ? InventoryTransactionTypes.Import : InventoryTransactionTypes.Export;
+        _dbContext.InventoryTransactions.Add(new InventoryTransaction { ProductId = productId, WarehouseId = warehouseId,
+            TransactionType = type, Quantity = quantity, ReferenceType = import ? InventoryTransactionTypes.ImportReceipt : InventoryTransactionTypes.ExportReceipt,
+            ReferenceId = receiptId, CreatedBy = session.CurrentUser!.UserId, CreatedAt = DateTime.Now, Note = note });
+        return new InventoryChangedEvent(productId, warehouseId, before, stock.Quantity, type, session.CurrentUser!.UserId);
+    }
 
     public async Task<IReadOnlyList<InventoryDto>> GetByWarehouseAsync(
         UserSession session,
@@ -117,13 +138,20 @@ public sealed class InventoryService : IInventoryService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task AdjustAsync(
+    public Task AdjustAsync(UserSession session, int warehouseId, int productId, int quantityDelta, string reason, CancellationToken cancellationToken = default)
+    {
+        var committed = false;
+        return DeadlockRetry.RunAsync(() => AdjustCoreAsync(session, warehouseId, productId, quantityDelta, reason, cancellationToken, () => committed = true),
+            () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
+    }
+
+    private async Task AdjustCoreAsync(
         UserSession session,
         int warehouseId,
         int productId,
         int quantityDelta,
         string reason,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken, Action onCommitted)
     {
         ValidateSession(session);
         ValidateWarehouseId(warehouseId);
@@ -171,11 +199,10 @@ public sealed class InventoryService : IInventoryService
             CreatedAt = DateTime.Now,
             Note = reason.Trim()
         });
-        await new StockAlertService(_dbContext, _authorization)
+        await new StockAlertService(_dbContext, _authorization, _publisher)
             .RefreshAsync(productId, warehouseId, cancellationToken, persistChanges: false, publishEvent: false);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+        await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "ADJUST", "Product", productId, _publisher, onCommitted, cancellationToken);
+        _publisher.Publish(new InventoryChangedEvent(
             productId,
             warehouseId,
             previousQuantity,
@@ -184,14 +211,21 @@ public sealed class InventoryService : IInventoryService
             session.CurrentUser!.UserId));
     }
 
-    public async Task TransferAsync(
+    public Task TransferAsync(UserSession session, int sourceWarehouseId, int destinationWarehouseId, int productId, int quantity, string note, CancellationToken cancellationToken = default)
+    {
+        var committed = false;
+        return DeadlockRetry.RunAsync(() => TransferCoreAsync(session, sourceWarehouseId, destinationWarehouseId, productId, quantity, note, cancellationToken, () => committed = true),
+            () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
+    }
+
+    private async Task TransferCoreAsync(
         UserSession session,
         int sourceWarehouseId,
         int destinationWarehouseId,
         int productId,
         int quantity,
         string note,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken, Action onCommitted)
     {
         ValidateSession(session);
         ValidateWarehouseId(sourceWarehouseId);
@@ -267,19 +301,18 @@ public sealed class InventoryService : IInventoryService
                 CreatedAt = now,
                 Note = note.Trim()
             });
-        var alertService = new StockAlertService(_dbContext, _authorization);
+        var alertService = new StockAlertService(_dbContext, _authorization, _publisher);
         await alertService.RefreshAsync(productId, sourceWarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
         await alertService.RefreshAsync(productId, destinationWarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+        await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "TRANSFER", "Product", productId, _publisher, onCommitted, cancellationToken);
+        _publisher.Publish(new InventoryChangedEvent(
             productId,
             sourceWarehouseId,
             previousSourceQuantity,
             previousSourceQuantity - quantity,
             InventoryTransactionTypes.TransferOut,
             session.CurrentUser!.UserId));
-        InventoryChanged?.Invoke(this, new InventoryChangedEvent(
+        _publisher.Publish(new InventoryChangedEvent(
             productId,
             destinationWarehouseId,
             previousDestinationQuantity,

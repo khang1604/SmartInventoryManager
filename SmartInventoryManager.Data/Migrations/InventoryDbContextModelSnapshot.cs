@@ -496,7 +496,7 @@ namespace SmartInventoryManager.Data.Migrations
 
                             t.HasCheckConstraint("CK_Products_PurchasePrice", "[PurchasePrice] >= 0");
 
-                            t.HasCheckConstraint("CK_Products_ReorderPoint", "[ReorderPoint] >= 0");
+                            t.HasCheckConstraint("CK_Products_ReorderPoint", "[ReorderPoint] > 0");
 
                             t.HasCheckConstraint("CK_Products_SellingPrice", "[SellingPrice] >= 0");
                         });
@@ -577,9 +577,8 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.HasIndex("ProductId", "WarehouseId", "AlertType")
                         .IsUnique()
-
-                        .HasFilter("[IsResolved] = 0")
-                        .HasDatabaseName("UX_StockAlerts_Open_ProductWarehouseType");
+                        .HasDatabaseName("UX_StockAlerts_Open_ProductWarehouseType")
+                        .HasFilter("[IsResolved] = 0");
 
                     b.ToTable("StockAlerts", null, t =>
                         {
@@ -748,6 +747,11 @@ namespace SmartInventoryManager.Data.Migrations
 
                     b.Property<int>("WarehouseId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.HasKey("UserId", "WarehouseId");
 

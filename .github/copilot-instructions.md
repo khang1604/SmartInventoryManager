@@ -100,7 +100,7 @@ Before coding, follow this order and stop at the first sufficient solution:
 ## 6. Stock Alert Rules
 
 - CurrentStock (Quantity) is stock for the relevant product/warehouse. ReorderPoint is the reorder-alert threshold. MaximumStock is the intended upper limit.
-- Require configured thresholds with 0 <= ReorderPoint <= MaximumStock. Reject invalid configuration; do not invent missing thresholds. Reject negative quantities rather than assigning a normal status.
+- Require configured thresholds with 0 <= ReorderPoint < MaximumStock. Reject invalid configuration; do not invent missing thresholds. Reject negative quantities rather than assigning a normal status.
 - Apply these mutually exclusive rules, including the boundary values:
   - Quantity = 0 -> OUT_OF_STOCK.
   - 0 < Quantity <= ReorderPoint -> LOW_STOCK.

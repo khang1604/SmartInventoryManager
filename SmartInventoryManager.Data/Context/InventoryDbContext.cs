@@ -711,6 +711,8 @@ namespace SmartInventoryManager.Data.Context
 
                 entity.HasKey(x => new { x.UserId, x.WarehouseId });
 
+                entity.Property(x => x.IsActive).IsRequired().HasDefaultValue(true);
+
                 entity.HasOne(x => x.User)
                     .WithMany(x => x.UserWarehouses)
                     .HasForeignKey(x => x.UserId)

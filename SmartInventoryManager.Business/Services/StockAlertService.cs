@@ -13,14 +13,17 @@ public sealed class StockAlertService : IStockAlertService
 {
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
+    private readonly StockEventPublisher _publisher;
 
-    public StockAlertService(InventoryDbContext dbContext, AuthorizationService authorization)
+    public StockAlertService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _publisher = publisher ?? new StockEventPublisher();
     }
 
-    public event EventHandler<StockAlertEvent>? AlertChanged;
+    public event EventHandler<StockAlertEvent>? AlertChanged
+    { add => _publisher.AlertChanged += value; remove => _publisher.AlertChanged -= value; }
 
     public async Task<IReadOnlyList<StockAlertDto>> GetOpenAsync(
         UserSession session,
@@ -127,7 +130,7 @@ public sealed class StockAlertService : IStockAlertService
         }
         if (publishEvent)
         {
-            AlertChanged?.Invoke(this, new StockAlertEvent(
+            _publisher.Publish(new StockAlertEvent(
                 productId,
                 warehouseId,
                 alertType,
@@ -162,7 +165,7 @@ public sealed class StockAlertService : IStockAlertService
         alert.ResolvedAt = DateTime.Now;
         alert.ResolvedBy = session.CurrentUser!.UserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
-        AlertChanged?.Invoke(this, new StockAlertEvent(
+        _publisher.Publish(new StockAlertEvent(
             alert.ProductId,
             alert.WarehouseId,
             alert.AlertType,
@@ -201,7 +204,7 @@ public sealed class StockAlertService : IStockAlertService
         {
             foreach (var alert in alerts)
             {
-                AlertChanged?.Invoke(this, new StockAlertEvent(
+                _publisher.Publish(new StockAlertEvent(
                     alert.ProductId,
                     alert.WarehouseId,
                     alert.AlertType,

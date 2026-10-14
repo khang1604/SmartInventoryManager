@@ -29,6 +29,7 @@ public partial class FrmMain : Form
     private readonly Panel _content = new() { Dock = DockStyle.Fill, AutoScroll = true };
     private readonly Label _heading = new();
     private readonly Label _breadcrumb = new();
+    private Label _warehouseStatus = null!;
 
     public FrmMain()
     {
@@ -105,11 +106,13 @@ public partial class FrmMain : Form
         workspace.Controls.Add(_content, 0, 1);
         root.Controls.Add(workspace, 1, 0);
         var status = TextLabel($"{UiBrand.ApplicationName} • {UiBrand.ProjectName} • Dữ liệu theo quyền tài khoản", 8.5F);
+        _warehouseStatus = status;
         status.Padding = new Padding(12, 0, 0, 0);
-        if(_services is not null && _session is not null && _authorization?.IsStaff(_session)==true)
-            Shown += async (_,_) => {
-                try { var warehouses=await _services.RunAsync(()=>_services.Warehouses.GetActiveAsync(_session)); var current=warehouses.FirstOrDefault(row=>row.Id==_session.CurrentWarehouseId); if(!IsDisposed) status.Text=$"{UiBrand.ApplicationName} • Kho làm việc: {current?.Name ?? "Chưa chọn kho"}"; }
-                catch(Exception ex) { if(!IsDisposed) status.Text=LiveUi.LoadError(ex); }
+        if (_services is not null && _session is not null && _authorization?.IsStaff(_session) == true)
+            Shown += async (_, _) =>
+            {
+                try { var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync(_session)); var current = warehouses.FirstOrDefault(row => row.Id == _session.CurrentWarehouseId); if (!IsDisposed) status.Text = $"{UiBrand.ApplicationName} • Kho làm việc: {current?.Name ?? "Chưa chọn kho"}"; }
+                catch (Exception ex) { if (!IsDisposed) status.Text = LiveUi.LoadError(ex); }
             };
         root.Controls.Add(status, 0, 1);
         root.SetColumnSpan(status, 2);
@@ -177,8 +180,11 @@ public partial class FrmMain : Form
         _toolTips.SetToolTip(toggle, "Thu gọn menu");
         var menu = _menu = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown,
-            WrapContents = false, AutoScroll = true, Margin = Padding.Empty
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            Margin = Padding.Empty
         };
         (string title, string icon)[] pages =
         [
@@ -186,11 +192,11 @@ public partial class FrmMain : Form
             ("Nhà cung cấp", "supplier"), ("Kho & vị trí", "building"),
             ("Nhập kho", "box-arrow-in-down"), ("Xuất kho", "box-arrow-up"),
             ("Tồn kho", "boxes"), ("Lịch sử tồn kho", "file-earmark-text"),
-            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Người dùng", "people")
+            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Người dùng", "people"), ("Nhật ký", "file-earmark-text")
         ];
         foreach (var (title, icon) in pages)
         {
-            if (title == "Người dùng" && !CanOpenPage(title)) continue;
+            if (title is "Người dùng" or "Nhật ký" && !CanOpenPage(title)) continue;
             var button = new MainNavigationButton(title, icon);
             button.Size = new Size(175, 43);
             button.TextAlign = ContentAlignment.MiddleLeft;
@@ -214,7 +220,11 @@ public partial class FrmMain : Form
         _account.Text = "Tài khoản";
         var accountButton = _logout = new MainNavigationButton("Tài khoản", "person")
         {
-            Selected = true, CornerRadius = 12, UseAvatar = true, ShowChevron = true, Dock = DockStyle.Fill
+            Selected = true,
+            CornerRadius = 12,
+            UseAvatar = true,
+            ShowChevron = true,
+            Dock = DockStyle.Fill
         };
         accountButton.AccessibleName = "Mở menu tài khoản";
         footer.Controls.Add(accountButton, 0, 0);
@@ -301,11 +311,13 @@ public partial class FrmMain : Form
 
     private Control BuildHeader()
     {
-        var header = CreateLayout(3, 1);
+        var header = CreateLayout(4, 1);
         header.Padding = new Padding(20, 12, 20, 8);
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 145));
+        var canSwitchWarehouse = _services is not null && _authorization?.IsStaff(_session!) == true;
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, canSwitchWarehouse ? 125 : 0));
         header.Controls.Add(_sidebarToggle, 0, 0);
         var titles = CreateLayout(1, 2);
         titles.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
@@ -323,6 +335,35 @@ public partial class FrmMain : Form
         notifications.Name = "btnNotifications";
         notifications.Click += (_, _) => ShowPage("Thông báo");
         header.Controls.Add(notifications, 2, 0);
+        var switchWarehouse = ActionButton("Đổi kho", "building");
+        switchWarehouse.Name = "btnSwitchWarehouse";
+        switchWarehouse.Visible = canSwitchWarehouse;
+        switchWarehouse.Dock = DockStyle.Fill;
+        switchWarehouse.Click += async (_, _) =>
+        {
+            if (_services is null || _session is null || _services.HasPendingOperations) return;
+            switchWarehouse.Enabled = false;
+            try
+            {
+                using var chooser = new SmartInventoryManager.UI.Forms.Login.FrmWarehouseContext(_services);
+                if (chooser.ShowDialog(this) != DialogResult.OK) return;
+                _content.Controls.Clear();
+                foreach (var page in _pages.Values) page.Dispose();
+                _pages.Clear();
+                var assigned = await _services.RunAsync(() => _services.Authorization.GetAssignedWarehouseIdsAsync(_session));
+                if (_session.CurrentWarehouseId is not int selected || !assigned.Contains(selected))
+                {
+                    _session.SetCurrentWarehouseFromAssignments(Array.Empty<int>());
+                    throw new UnauthorizedAccessException("Kho đã chọn không còn trong phân công hiện hành.");
+                }
+                var warehouses = await _services.RunAsync(() => _services.Warehouses.GetActiveAsync(_session));
+                _warehouseStatus.Text = $"{UiBrand.ApplicationName} • Kho làm việc: {warehouses.First(row => row.Id == selected).Name}";
+                ShowPage("Tổng quan");
+            }
+            catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Đổi kho", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            finally { if (!IsDisposed) switchWarehouse.Enabled = true; }
+        };
+        header.Controls.Add(switchWarehouse, 3, 0);
         return header;
     }
 
@@ -365,8 +406,8 @@ public partial class FrmMain : Form
     private bool CanOpenPage(string title)
     {
         // Constructor không tham số phục vụ Designer, không mở phiên nghiệp vụ.
-        if (_authorization is null || _session is null) return title != "Người dùng";
-        return title == "Người dùng"
+        if (_authorization is null || _session is null) return title is not "Người dùng" and not "Nhật ký";
+        return title is "Người dùng" or "Nhật ký"
             ? _authorization.CanManageUser(_session)
             : _authorization.CanView(_session);
     }
@@ -407,6 +448,9 @@ public partial class FrmMain : Form
             ("Nhập / xuất", new SmartInventoryManager.Forms.Reports.FrmImportExportReport())),
         "Người dùng" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
         "Thông báo" when _services is not null => new NotificationPanel(_services),
+        "Nhật ký" when _services is not null => new DataListPage<SmartInventoryManager.Business.Services.SystemLogDto>(_services,
+            "Nhật ký • tối đa 500 bản ghi gần nhất", [("CreatedAt", "Thời điểm"), ("ActorName", "Người thực hiện"), ("Action", "Thao tác"), ("EntityName", "Đối tượng"), ("Description", "Nội dung")],
+            (_, search, _, _) => _services.Logs.GetAsync(_services.Session, search)),
         "Thông báo" => new NotificationPanel(),
         _ => throw new ArgumentOutOfRangeException(nameof(title))
     };
@@ -473,8 +517,10 @@ public partial class FrmMain : Form
     {
         var filter = new ComboBox
         {
-            DropDownStyle = ComboBoxStyle.DropDownList, Width = 165,
-            Enabled = false, AccessibleName = accessibleName,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Width = 165,
+            Enabled = false,
+            AccessibleName = accessibleName,
             AccessibleDescription = "Chức năng dữ liệu đang được hoàn thiện"
         };
         filter.Items.Add(value);
@@ -486,10 +532,18 @@ public partial class FrmMain : Form
     {
         return new AntdUI.Button
         {
-            Text = text, IconSvg = MainIcons.Get(icon), IconSize = new Size(26, 26), UseMnemonic = false,
-            Font = new Font("Segoe UI", 10F), TextCenterHasIcon = false, IconGap = 0.6F,
-            Radius = 6, WaveSize = 0, Margin = new Padding(0, 2, 0, 2),
-            Cursor = Cursors.Hand, AccessibleName = text,
+            Text = text,
+            IconSvg = MainIcons.Get(icon),
+            IconSize = new Size(26, 26),
+            UseMnemonic = false,
+            Font = new Font("Segoe UI", 10F),
+            TextCenterHasIcon = false,
+            IconGap = 0.6F,
+            Radius = 6,
+            WaveSize = 0,
+            Margin = new Padding(0, 2, 0, 2),
+            Cursor = Cursors.Hand,
+            AccessibleName = text,
             // [COLOR CONFIG]: nền sáng #F7F7FF cho nút mặc định.
             DefaultBack = AppColors.Workspace,
             // [COLOR CONFIG]: chữ tối #2D3142 cho nút và icon SVG currentColor.
@@ -503,19 +557,25 @@ public partial class FrmMain : Form
 
     private static TableLayoutPanel CreateLayout(int columns, int rows) => new()
     {
-        Dock = DockStyle.Fill, ColumnCount = columns, RowCount = rows,
-        Margin = Padding.Empty, GrowStyle = TableLayoutPanelGrowStyle.FixedSize
+        Dock = DockStyle.Fill,
+        ColumnCount = columns,
+        RowCount = rows,
+        Margin = Padding.Empty,
+        GrowStyle = TableLayoutPanelGrowStyle.FixedSize
     };
 
     private static Label TextLabel(string text, float size, bool bold = false, int width = 0, bool center = false)
     {
         var label = new Label
         {
-            Text = text, Dock = width == 0 ? DockStyle.Fill : DockStyle.None,
-            Width = width == 0 ? 100 : width, Height = 36,
+            Text = text,
+            Dock = width == 0 ? DockStyle.Fill : DockStyle.None,
+            Width = width == 0 ? 100 : width,
+            Height = 36,
             Font = new Font("Segoe UI", size, bold ? FontStyle.Bold : FontStyle.Regular),
             TextAlign = center ? ContentAlignment.MiddleCenter : ContentAlignment.MiddleLeft,
-            AutoEllipsis = true, Margin = new Padding(4, 0, 4, 0),
+            AutoEllipsis = true,
+            Margin = new Padding(4, 0, 4, 0),
             // [COLOR CONFIG]: chữ tối trên nền pastel, hỗ trợ High Contrast.
             ForeColor = AppColors.Text
         };

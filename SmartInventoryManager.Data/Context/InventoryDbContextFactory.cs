@@ -10,8 +10,10 @@ namespace SmartInventoryManager.Data.Context
         {
             var optionsBuilder = new DbContextOptionsBuilder<InventoryDbContext>();
 
-            optionsBuilder.UseSqlServer(
-                "Server=.\\SQLEXPRESS;Database=SmartInventoryManagerDB;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True");
+            var connectionString = Environment.GetEnvironmentVariable("SMART_INVENTORY_CONNECTION_STRING");
+            if (string.IsNullOrWhiteSpace(connectionString))
+                connectionString = "Server=localhost;Database=SmartInventoryManagerDB;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True";
+            optionsBuilder.UseSqlServer(connectionString);
 
             return new InventoryDbContext(optionsBuilder.Options);
         }

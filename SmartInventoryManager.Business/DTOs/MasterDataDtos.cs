@@ -22,7 +22,10 @@ public sealed class SupplierRequestDto
     public bool IsActive { get; init; } = true;
 }
 
-public sealed record WarehouseDto(int WarehouseId, string WarehouseCode, string WarehouseName, string? Location, int? ManagerId, bool IsActive);
+public sealed record WarehouseDto(int WarehouseId, string WarehouseCode, string WarehouseName, string? Location, int? ManagerId, bool IsActive)
+{
+    public string? ManagerName { get; init; }
+}
 
 public sealed class WarehouseRequestDto
 {
@@ -33,7 +36,10 @@ public sealed class WarehouseRequestDto
     public bool IsActive { get; init; } = true;
 }
 
-public sealed record LocationDto(int LocationId, int WarehouseId, string LocationCode, string? LocationName, bool IsActive);
+public sealed record LocationDto(int LocationId, int WarehouseId, string LocationCode, string? LocationName, bool IsActive)
+{
+    public string WarehouseName { get; init; } = string.Empty;
+}
 
 public sealed class LocationRequestDto
 {

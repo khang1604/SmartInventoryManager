@@ -8,12 +8,54 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ReportExportService
 {
+    public static void ExportReceiptPdf(string path, string title, string code, DateTime date, string status,
+        string warehouse, string creator, string? supplier, string? note, IReadOnlyList<ReceiptDetailViewDto> details, decimal total)
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+        Document.Create(document => document.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(30);
+            page.DefaultTextStyle(style => style.FontSize(10));
+            page.Header().Text(title).Bold().FontSize(18);
+            page.Content().PaddingVertical(15).Column(column =>
+            {
+                column.Spacing(8);
+                column.Item().Text($"Mã phiếu: {code} • Ngày: {date:dd/MM/yyyy HH:mm}");
+                column.Item().Text($"Trạng thái: {LiveUi.StatusText(status)}");
+                column.Item().Text($"Kho: {warehouse}");
+                column.Item().Text($"Người tạo: {creator}");
+                if (!string.IsNullOrWhiteSpace(supplier)) column.Item().Text($"Nhà cung cấp: {supplier}");
+                column.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(columns => { columns.RelativeColumn(3); columns.RelativeColumn(); columns.RelativeColumn(); columns.RelativeColumn(2); columns.RelativeColumn(2); });
+                    table.Header(header =>
+                    {
+                        foreach (var name in new[] { "Sản phẩm", "Đơn vị", "SL", "Đơn giá (đ)", "Thành tiền (đ)" })
+                            header.Cell().Background(Colors.Grey.Lighten2).Padding(5).Text(name).Bold();
+                    });
+                    foreach (var row in details)
+                    {
+                        table.Cell().ShowEntire().Padding(5).Text($"{row.ProductCode}\n{row.ProductName}");
+                        table.Cell().ShowEntire().Padding(5).Text(row.Unit);
+                        table.Cell().ShowEntire().Padding(5).AlignRight().Text(row.Quantity.ToString("N0"));
+                        table.Cell().ShowEntire().Padding(5).AlignRight().Text(row.UnitPrice.ToString("N2"));
+                        table.Cell().ShowEntire().Padding(5).AlignRight().Text(row.LineTotal.ToString("N2"));
+                    }
+                });
+                column.Item().AlignRight().Text($"Tổng tiền: {total:N2} đ").Bold();
+                if (!string.IsNullOrWhiteSpace(note)) column.Item().Text($"Ghi chú: {note}");
+            });
+            page.Footer().AlignRight().Text(text => { text.Span("Trang "); text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+        })).GeneratePdf(path);
+    }
+
     public static void ExportInventoryExcel(string filePath, InventoryReportDto report)
     {
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("Tồn kho");
         sheet.Cell(1, 1).Value = "Báo cáo tồn kho";
-        sheet.Cell(2, 1).Value = "Tổng số lượng toàn phạm vi kho";
+        sheet.Cell(2, 1).Value = "Tổng số lượng khớp bộ lọc";
         sheet.Cell(2, 2).Value = report.TotalQuantity;
         sheet.Cell(3, 1).Value = "Cảnh báo đang mở";
         sheet.Cell(3, 2).Value = report.OpenAlertCount;
@@ -28,8 +70,8 @@ internal static class ReportExportService
             for (var columnIndex = 0; columnIndex < values.Length; columnIndex++)
                 sheet.Cell(rowIndex + 6, columnIndex + 1).Value = XLCellValue.FromObject(values[columnIndex]);
         }
-        sheet.Column(9).Style.DateFormat.Format="dd/MM/yyyy HH:mm";
-        sheet.Columns(5,7).Style.NumberFormat.Format="#,##0";
+        sheet.Column(9).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
+        sheet.Columns(5, 7).Style.NumberFormat.Format = "#,##0";
         sheet.Row(5).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
         workbook.SaveAs(filePath);
@@ -41,7 +83,7 @@ internal static class ReportExportService
         Document.Create(document => document.Page(page =>
         {
             page.Size(PageSizes.A4.Landscape());
-            page.DefaultTextStyle(style=>style.FontSize(9));
+            page.DefaultTextStyle(style => style.FontSize(9));
             page.Margin(30);
             page.Header().Text("BÁO CÁO TỒN KHO").Bold().FontSize(18);
             page.Content().Table(table =>
@@ -67,7 +109,7 @@ internal static class ReportExportService
                     table.Cell().Padding(4).Text(row.UpdatedAt.ToString("dd/MM/yyyy HH:mm"));
                 }
             });
-            page.Footer().AlignRight().Text($"Tổng số lượng toàn kho: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
+            page.Footer().AlignRight().Text($"Tổng số lượng khớp bộ lọc: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
         })).GeneratePdf(filePath);
     }
 
@@ -87,11 +129,11 @@ internal static class ReportExportService
                 sheet.Cell(rowIndex, columnIndex + 1).Value = XLCellValue.FromObject(row[columnIndex]);
             rowIndex++;
         }
-        sheet.Column(1).Style.DateFormat.Format="dd/MM/yyyy HH:mm";
-        sheet.Column(5).Style.NumberFormat.Format="#,##0.00";
-        sheet.Cell(rowIndex+1,1).Value="Tổng tiền theo kho/ngày (đ)";
-        sheet.Cell(rowIndex+2,1).Value="Nhập"; sheet.Cell(rowIndex+2,5).Value=report.ImportTotalAmount;
-        sheet.Cell(rowIndex+3,1).Value="Xuất"; sheet.Cell(rowIndex+3,5).Value=report.ExportTotalAmount;
+        sheet.Column(1).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
+        sheet.Column(5).Style.NumberFormat.Format = "#,##0.00";
+        sheet.Cell(rowIndex + 1, 1).Value = "Tổng tiền khớp bộ lọc (đ)";
+        sheet.Cell(rowIndex + 2, 1).Value = "Nhập"; sheet.Cell(rowIndex + 2, 5).Value = report.ImportTotalAmount;
+        sheet.Cell(rowIndex + 3, 1).Value = "Xuất"; sheet.Cell(rowIndex + 3, 5).Value = report.ExportTotalAmount;
         sheet.Row(1).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
         workbook.SaveAs(filePath);
@@ -106,7 +148,7 @@ internal static class ReportExportService
         Document.Create(document => document.Page(page =>
         {
             page.Size(PageSizes.A4.Landscape());
-            page.DefaultTextStyle(style=>style.FontSize(9));
+            page.DefaultTextStyle(style => style.FontSize(9));
             page.Margin(30);
             page.Header().Text("BÁO CÁO NHẬP XUẤT").Bold().FontSize(18);
             page.Content().Table(table =>
@@ -127,7 +169,7 @@ internal static class ReportExportService
                     table.Cell().Padding(4).Text(row.TotalAmount.ToString("N2"));
                 }
             });
-            page.Footer().AlignRight().Text($"Tổng tiền theo kho/ngày (đ) • Nhập: {report.ImportTotalAmount:N0} • Xuất: {report.ExportTotalAmount:N0}");
+            page.Footer().AlignRight().Text($"Tổng tiền khớp bộ lọc (đ) • Nhập: {report.ImportTotalAmount:N0} • Xuất: {report.ExportTotalAmount:N0}");
         })).GeneratePdf(filePath);
     }
 }

@@ -20,7 +20,7 @@ internal sealed class DateRangeControl : UserControl
         root.Controls.Add(ProductUi.Label("Từ ngày", 10, true), 0, 0); root.Controls.Add(ProductUi.Label("Đến ngày", 10, true), 1, 0);
         _from.Margin = new Padding(0, 7, 8, 0); _to.Margin = new Padding(0, 7, 8, 0);
         _from.Font = _to.Font = new Font("Segoe UI", 10);
-        _from.Value = DateTime.Today.AddDays(-30); _to.Value = DateTime.Today;
+        _from.Value = DateTime.Today.AddDays(-29); _to.Value = DateTime.Today;
         _from.AccessibleName = "Từ ngày"; _to.AccessibleName = "Đến ngày";
         root.Controls.Add(_from, 0, 1); root.Controls.Add(_to, 1, 1);
         // [COLOR CONFIG]: thông báo ngày không hợp lệ bằng chữ đỏ đậm.

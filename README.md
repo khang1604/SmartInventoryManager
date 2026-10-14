@@ -133,12 +133,14 @@ Nếu báo thiếu SDK hoặc package không tương thích, kiểm tra cấu h�
 
 ### 6.4. Thiết lập database
 
-1. Lấy bản SQL script/schema được Bảo Anh xác nhận đã hoàn thiện.
-2. Kết nối đúng SQL Server instance trên máy bằng SSMS hoặc công cụ nhóm đang dùng.
-3. Chạy script theo thứ tự và hướng dẫn của bản schema đó. Các file được đánh số `01` đến `08` trong `Database/` là cấu trúc dự kiến; file chỉ có comment chưa phải script hoạt động.
-4. Seed data chỉ chạy khi đã được nhóm duyệt. Không tự tạo tài khoản/mật khẩu chung hoặc chạy seed nhiều lần gây trùng dữ liệu.
-5. Cấu hình connection string bằng cơ chế ứng dụng đã triển khai. Nếu chưa có cơ chế đọc cấu hình, cần hoàn thiện với người phụ trách; không tự tạo `appsettings.json` hoặc mặc định `App.config` sẽ được đọc.
-6. Không tự chạy `Update-Database`, migration và script tạo schema cùng lúc. Nhóm chọn một nguồn quản lý schema rõ ràng.
+1. EF Core Migrations trong `SmartInventoryManager.Data/Migrations` là nguồn quản lý schema. Giữ SQL cũ để tham khảo; không chạy script tạo schema chồng lên migrations.
+2. Cấu hình biến môi trường `SMART_INVENTORY_CONNECTION_STRING` cho đúng server/database. UI có fallback đọc `App.config` local khi không có biến môi trường; cấu hình bí mật không commit.
+3. Review script migration và dữ liệu hiện có trước khi apply. Migration ngưỡng dương yêu cầu xử lý các sản phẩm ReorderPoint=0 bằng quyết định nghiệp vụ, không tự chọn số thay thế.
+4. Với EF CLI 10.0.12 đã được cài trên máy, chạy `dotnet ef database update --project SmartInventoryManager.Data --startup-project SmartInventoryManager.UI` từ gốc repository. Ứng dụng không tự migrate khi mở.
+5. DB mới chưa có role/admin: chạy `dotnet run --project SmartInventoryManager.Setup -- --check` để kiểm tra chỉ đọc; bỏ `--check` để bootstrap tương tác. Công cụ yêu cầu xác nhận tên DB, nhập mật khẩu được che, tạo đúng ADMIN/WAREHOUSE_MANAGER/STAFF và ADMIN đầu tiên bằng PBKDF2. Nếu đã có ADMIN active thì không ghi đè; không seed tài khoản khi mở UI.
+6. Dữ liệu demo là thao tác riêng được duyệt. SQL seed cũ có thể ghi đè tài khoản; đọc kỹ trước khi chạy. Không dùng thông tin tài khoản demo trong production.
+
+Kiểm thử: `dotnet test SmartInventoryManager.Tests --filter "TestCategory!=SQLServer"`. Ba tests SQL opt-in yêu cầu `SMART_INVENTORY_SQL_TEST_CONNECTION_STRING` và `SMART_INVENTORY_SQL_TESTS_ALLOW_MUTATION=1`, chỉ cho phép target test đã xác nhận `localhost/SmartInventoryManagerDB`; dùng fixture riêng và tự dọn, không drop/reset DB. Đây không phải target production.
 
 Ví dụ connection string local, thay database/instance bằng tên thật đã thống nhất:
 
@@ -174,7 +176,7 @@ Nếu project UI đang có tên khác, dùng đường dẫn `.csproj` thực t�
 - Sự kiện cập nhật UI/cảnh báo phát sau commit thành công.
 - Điều chỉnh phải có lý do, người thực hiện và số lượng trước/sau.
 
-Ngưỡng cấu hình hợp lệ: `0 <= ReorderPoint < MaximumStock`.
+Ngưỡng cấu hình hợp lệ: `0 < ReorderPoint < MaximumStock`.
 
 | Điều kiện | Trạng thái |
 |---|---|

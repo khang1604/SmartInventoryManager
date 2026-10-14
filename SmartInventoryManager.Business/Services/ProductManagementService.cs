@@ -3,6 +3,7 @@ using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Business.DTOs;
 using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Validators;
+using SmartInventoryManager.Business.Events;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
 
@@ -14,11 +15,13 @@ public sealed class ProductManagementService : IProductService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
     private readonly ProductValidator _validator = new();
+    private readonly StockEventPublisher _publisher;
 
-    public ProductManagementService(InventoryDbContext dbContext, AuthorizationService authorization)
+    public ProductManagementService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _publisher = publisher ?? new StockEventPublisher();
     }
 
     public async Task<PagedResultDto<ProductDto>> SearchAsync(
@@ -128,11 +131,7 @@ public sealed class ProductManagementService : IProductService
         {
             await RefreshProductAlertsAsync(productId, cancellationToken);
         }
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        if (transaction is not null)
-        {
-            await transaction.CommitAsync(cancellationToken);
-        }
+        await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "UPDATE_PRODUCT", "Product", productId, _publisher, () => { }, cancellationToken);
     }
 
     public async Task SetActiveAsync(
@@ -160,14 +159,10 @@ public sealed class ProductManagementService : IProductService
         }
         else
         {
-            await new StockAlertService(_dbContext, _authorization)
+            await new StockAlertService(_dbContext, _authorization, _publisher)
                 .ResolveForProductAsync(productId, cancellationToken, persistChanges: false, publishEvent: false);
         }
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        if (transaction is not null)
-        {
-            await transaction.CommitAsync(cancellationToken);
-        }
+        await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "SET_PRODUCT_ACTIVE", "Product", productId, _publisher, () => { }, cancellationToken);
     }
 
     private async Task RefreshProductAlertsAsync(int productId, CancellationToken cancellationToken)
@@ -180,7 +175,7 @@ public sealed class ProductManagementService : IProductService
                 .Select(item => item.WarehouseId))
             .Distinct()
             .ToListAsync(cancellationToken);
-        var alertService = new StockAlertService(_dbContext, _authorization);
+        var alertService = new StockAlertService(_dbContext, _authorization, _publisher);
         foreach (var warehouseId in warehouseIds)
         {
             await alertService.RefreshAsync(
