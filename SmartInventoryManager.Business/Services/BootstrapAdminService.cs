@@ -36,8 +36,16 @@ public sealed class BootstrapAdminService(InventoryDbContext db)
         {
             var role = new Role { RoleName = roleName }; db.Roles.Add(role); roles.Add(role);
         }
-        var admin = new User { Username = name, FullName = request.FullName.Trim(), Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
-            Role = roles.Single(role => role.RoleName == RoleNames.Admin), PasswordHash = new PasswordHasher().HashPassword(request.Password), IsActive = true, CreatedAt = DateTime.Now };
+        var admin = new User
+        {
+            Username = name,
+            FullName = request.FullName.Trim(),
+            Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
+            Role = roles.Single(role => role.RoleName == RoleNames.Admin),
+            PasswordHash = new PasswordHasher().HashPassword(request.Password),
+            IsActive = true,
+            CreatedAt = DateTime.Now
+        };
         db.Users.Add(admin); await db.SaveChangesAsync(ct);
         db.SystemLogs.Add(new SystemLog { UserId = admin.UserId, EntityName = "User", EntityId = admin.UserId, Action = "BOOTSTRAP_ADMIN", Description = "Đã khởi tạo quản trị viên đầu tiên.", CreatedAt = DateTime.Now });
         await db.SaveChangesAsync(ct);
