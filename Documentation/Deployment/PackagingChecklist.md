@@ -1,63 +1,67 @@
-# Chuẩn bị bộ cài VioWare
+# Đóng gói VioWare và cấu hình máy khách
 
-Đây là hướng dẫn đóng gói, kết quả kiểm tra hiện hành nằm trong [ProjectStatus.md](../Architecture/ProjectStatus.md). Chưa có bộ cài Inno Setup hoặc nghiệm thu trên máy sạch.
+Bản hiện hành: **v1.0.1**, Windows x64 self-contained. Source phục vụ chấm đồ án được giữ đầy đủ; binary phát hành qua GitHub Releases. Kết quả và giới hạn kiểm tra nằm tại [ProjectStatus.md](../Architecture/ProjectStatus.md).
 
-## Payload đã publish ngày 15/10/2026
+## Cài trước, cấp quyền sau
 
-Từ repository root:
+1. Người nhận cài VioWare; .NET10 đóng kèm. Không cài SQL Server trên máy khách.
+2. Có thể chọn cài MSI Tailscale chính thức nếu máy chưa có. MSI hiển thị bước cài riêng và có thể yêu cầu ADMIN Windows. Installer không đăng nhập VPN hoặc lưu authkey.
+3. Chưa có quyền server: đóng màn hình cấu hình bằng **Để sau / Đóng**; không yêu cầu mạng/DB hoặc tạo ADMIN để cài phần mềm.
+4. Quản trị viên gửi lời mời VPN, duyệt thiết bị và giới hạn quyền máySQL/cổngSQL trong policy/firewall. Cài xong hoặc chấp nhận lời mời không tự cấp quyền SQL.
+5. Mở shortcut **VioWare - Configure server** hoặc link cấu hình ở màn hình đăng nhập. Nhập server (không kèm instance/cổng), cổng, database và SQLlogin được cấp. Chọn WindowsAuthentication chỉ khi tài khoản/domain thực sự có quyền.
+6. Kiểm tra kết nối → lưu → đăng nhập VioWare bằng tài khoản do quản trị viên cấp. Không có bootstrap ADMIN trong bộ cài máy khách.
+
+Cấu hình được bảo vệ bằng DPAPI CurrentUser tại `%LOCALAPPDATA%\VioWare\connection.dat`. Không lưu password dạng rõ. Người khác trên máy không dùng được profile của user này; mã chạy với cùng quyền Windows vẫn có thể giải mã, nên DPAPI không thay thế quyềnSQL/VPN. Không gửi file profile cho máy khác; nhập lại khi đổi tài khoản Windows.
+
+Thứ tự chọn connection: **environment SMART_INVENTORY_CONNECTION_STRING → profileDPAPI → XMLlegacy**. Environment có ưu tiên được thông báo ở màn hình cấu hình. Profile hỏng/khônggiảimãđược quay lại cấu hình, không âm thầm chọn DB khác. Đổi thông tin sau lần test thành công phải test lại trước Save. Probe chỉ đọc, không migrate/seed; không phải chứng nhận đầy đủ quyền ghi/schema.
+
+SQL luôn bật mã hóa. Mặc định không tin chứng chỉ tự ký; quản trị viên cần certificate hợp lệ cho tên/IP client sử dụng. Checkbox chấp nhận chứng chỉ tự ký chỉ dùng theo hướng dẫn cho môi trường kiểm soát; không mặc định bật cho production.
+
+## Build lại từ source
+
+Từ repository root, trên Windows có SDK.NET10 và InnoSetup6.7.3+:
 
 ```powershell
-dotnet publish SmartInventoryManager.UI/SmartInventoryManager.UI.csproj -c Release --no-restore --self-contained false -o .temp/FinalAcceptance/publish/app -m:1 -nr:false
-dotnet publish SmartInventoryManager.Setup/SmartInventoryManager.Setup.csproj -c Release --no-restore --self-contained false -o .temp/FinalAcceptance/publish/setup -m:1 -nr:false
+dotnet restore SmartInventoryManager.slnx
+dotnet build SmartInventoryManager.slnx -c Release --no-restore -m:1 -nr:false
+dotnet publish SmartInventoryManager.UI/SmartInventoryManager.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -o artifacts/publish/app-win-x64 -m:1 -nr:false
+winget download --id Tailscale.Tailscale --version 1.104.1 --exact --source winget --architecture x64 --download-directory artifacts/tools/Tailscale --accept-package-agreements --accept-source-agreements
 ```
 
-- App chính: `.temp/FinalAcceptance/publish/app/SmartInventoryManager.UI.exe`.
-- Bootstrap ADMIN riêng: `.temp/FinalAcceptance/publish/setup/SmartInventoryManager.Setup.exe`. Công cụ này không phải trình cài Inno Setup, không tự migrate.
-- Đưa toàn bộ cây thư mục `app` vào bộ cài, gồm DLL, `runtimes`, resources, `.deps.json` và `.runtimeconfig.json`; không chỉ copy EXE. Có thể bỏ PDB khỏi bản phân phối.
-- Đây là framework-dependent, app cần **.NET 10 Desktop Runtime** phù hợp kiến trúc EXE trên máy đích. Máy phát triển có runtime chưa chứng minh máy đích đã có. SQL Server và database được cấu hình riêng; không nằm trong payload này.
-- `launchSettings.json` chỉ phục vụ chạy từ IDE, không cấu hình ứng dụng đã cài. Không đưa file này, TEST credentials, `.agent`, `.temp` QA, seed/demo hoặc legacy SQL vào payload app.
+MSI phải có tên `Tailscale_1.104.1_Machine_X64_wix_en-US.msi` trong `artifacts/tools/Tailscale`, SHA256:
 
-## Kết nối và schema
-
-1. Quản trị viên xác nhận server/database triển khai, backup và người chịu trách nhiệm migration trước khi cấu hình. App không tự migrate/seed khi mở.
-2. Đặt `SMART_INVENTORY_CONNECTION_STRING` cho tiến trình/người dùng chạy app. Nếu dùng XML fallback, đặt `SmartInventoryManager.UI.dll.config` cạnh EXE với cấu trúc sau và thay placeholder ở máy đích:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <connectionStrings>
-    <add name="SmartInventoryManagerDb"
-         connectionString="Server=YOUR_SERVER;Database=YOUR_DATABASE;Integrated Security=True;Encrypt=True;TrustServerCertificate=False;" />
-  </connectionStrings>
-</configuration>
+```text
+6DA8BCDB0D45A214CAE0E8A88C2987AD48DEC134BF04DFFB9C05F1354C02B0B4
 ```
 
-Mẫu dùng Windows Authentication; quyền SQL và chứng chỉ phải được quản trị viên cấu hình phù hợp. XML không tự lấy giá trị từ launchSettings; biến môi trường có ưu tiên cao hơn XML. Không hard-code mật khẩu thật vào repository hoặc script installer dùng chung. Mẫu trên chưa trỏ tới DB nào.
+Sau đó mở `Installer/VioWare.iss` bằng InnoSetupCompiler → **Build → Compile**, hoặc chạy `ISCC.exe Installer/VioWare.iss`. Output:
 
-3. Apply migrations đã review từ source/EF CLI được pin theo README; xác nhận không pending/model mismatch. Không chạy SQL schema legacy chồng lên migrations.
-4. Với DB mới đã có schema, dùng bootstrap riêng và biến môi trường nói trên: chạy `SmartInventoryManager.Setup.exe --check`, sau đó bỏ `--check` để tạo ADMIN đầu tiên qua nhập tương tác. Nếu đã có ADMIN active, công cụ không ghi đè. Setup không đọc XML fallback của UI.
+```text
+artifacts/installer/VioWare-Setup-1.0.1-win-x64-self-contained.exe
+```
 
-## Kiểm tra bộ cài sau khi có Inno Setup
+Script giữ AppId cố định để cập nhật, cài per-user tại `%LOCALAPPDATA%\Programs\VioWare`. VioWare không cần nâng quyền; bước cài VPN có thể cần. MSI chỉ được chạy khi người cài chọn task và chưa phát hiện Tailscale ở vị trí cài chuẩn. Không update/gỡ Tailscale đã có. Có link tải chính thức ở màn hình cấu hình nếu VPN nằm tại đường dẫn khác.
 
-### Tạo bằng Script Wizard
+Giữ cả payload .NET/resources/nativeDLL khi đóng gói. PDB, XMLcredentials, connection.dat và launchSettings không được đưa vào installer. ProfileDPAPI nằm ngoài thư mụcapp nên upgrade/uninstall không tự xóa. Installer không thay firewall, không mởrouterport, không chạySQL hoặc ghi đè cấu hình riêng.
 
-1. Mở Inno Setup Compiler, chọn **File → New → Create a new script file using the Script Wizard**.
-2. Application name: **VioWare**; version: phiên bản phát hành team chốt (ví dụ `1.0.0`); publisher: tên nhóm của bạn.
-3. Application folder: chọn thư mục cài VioWare theo wizard; bật tạo thư mục ứng dụng.
-4. Main executable: chọn `C:\Project\SmartInventoryManager\.temp\FinalAcceptance\publish\app\SmartInventoryManager.UI.exe`.
-5. Other application files: **Add folder** chọn toàn bộ thư mục `app` ở trên, đồng ý gồm subfolders. Đảm bảo có DLL và `runtimes`; loại PDB nếu muốn giảm dung lượng. Không chọn cả `.temp/FinalAcceptance`.
-6. Tạo Start Menu shortcut và desktop shortcut nếu cần; không chọn license giả nếu nhóm chưa có tài liệu license.
-7. Compiler output folder: `C:\Project\SmartInventoryManager\.temp\Installer\Output`; tên file, ví dụ `VioWare-Setup-1.0.0`. Tạo thư mục trước nếu wizard yêu cầu. Icon dùng `SmartInventoryManager.UI\Resources\Images\vioware.ico` trong repository.
-8. Lưu script tại `C:\Project\SmartInventoryManager\.temp\Installer\VioWare.iss`, chọn **Build → Compile**. File installer nằm trong output folder đã chọn.
-9. Trước khi phân phối, thực hiện checklist bên dưới. Wizard cơ bản chưa tự cài/check .NET Runtime, chưa cấu hình SQL hoặc chạy migrations/bootstrap. Cài .NET 10 Desktop Runtime phù hợp kiến trúc và cấu hình DB trước khi mở ứng dụng.
+Bootstrap máy chủ riêng (quản trị viên, không phân phối cho máy khách):
 
-Tham khảo chính thức: [Creating Installations](https://jrsoftware.org/ishelp/topic_creatinginstallations.htm), [Files/subdirectories](https://jrsoftware.org/ishelp/topic_filessection.htm).
+```powershell
+dotnet publish SmartInventoryManager.Setup/SmartInventoryManager.Setup.csproj -c Release -r win-x64 --self-contained true -o artifacts/publish/setup-win-x64 -m:1 -nr:false
+```
 
-- [ ] Chốt kiến trúc máy đích, đường dẫn cài, phiên bản, icon, shortcut và runtime prerequisite theo payload thực tế.
-- [ ] Cài trên máy sạch; mở qua shortcut bằng tài khoản Windows thường, kiểm tra kết nối SQL và đăng nhập.
-- [ ] Kiểm tra xuất PDF/Excel vào thư mục người dùng có quyền ghi; PDF tiếng Việt, nhiều trang và native DLL đầy đủ.
-- [ ] Kiểm tra cập nhật không ghi đè cấu hình kết nối riêng của máy; uninstall không xóa DB hoặc file người dùng đã xuất.
-- [ ] Kiểm tra Windows DPI125/150/200%, màn hình nhỏ, chuyển màn hình và máy in/PDF viewer thực tế.
-- [ ] Ghi lại ca ADMIN cuối cùng và bootstrap trắng SQL còn chưa kiểm tra lại; chỉ dùng môi trường cô lập khi được duyệt.
+Setup yêu cầu environmentconnection và nhập tương tác. Apply migrations bằng tài khoản triển khai riêng trước; appSQLlogin không có quyền migrate. Chi tiết tại [ExpressAndVpnSetup.md](ExpressAndVpnSetup.md), quyềnruntime tại [ConfigureRuntimePermissions.sql](ConfigureRuntimePermissions.sql).
 
-Payload publish nằm trong `.temp` và không commit. Không lấy việc publish thành công làm chứng nhận bộ cài hoặc production.
+## Đổi sang máy chủ công ty
+
+IT phê duyệt SQLedition, network/VPN/certificate. Backup/restore DB để giữ dữ liệu/tài khoản hoặc migrations tạo DBtrắng; SQLlogin cấpserver phải tạo/map lại đúngSID/quyền. Kiểmtra backuprestore, toàn bộ workflow với runtimeSQLlogin rồi chốt thời điểm chuyển; tránh ghi song song haiDB. Máy khách đổi server/cổng trong cấu hình và test lại; không phải sửa source hoặc phát hành lại installer chỉ vì đổi IP.
+
+## Kiểm tra trước dùng thật
+
+- [ ] Cài mới/upgrade/uninstall trên máy sạch, cả khi chưa cóVPN/DB.
+- [ ] MSI Tailscale khi thiếu VPN, UAC, người dùng từ chối/hủy càiVPN.
+- [ ] SQL quaVPN từmáykhác, policy/firewall giới hạn, certificate và quyềnghi thực tế.
+- [ ] WindowsDPI125/150/200%, HighContrast, màn hình nhỏ và máyin.
+- [ ] Backup/restore production và SQLlogin sau restore.
+
+Build, tests, harnessDPAPI và nativeform trên máy phát triển không thay thế các ca trên. Runtime self-contained không tự nhận bảnvá.NETglobal; cậpnhật runtime cần publish lại. `artifacts/` và `.temp/` không commit.

@@ -1,12 +1,17 @@
 # Agent state
 .agent/
+/.temp/
 
 # Visual Studio
 .vs/
 *.csproj.user
+/SmartInventoryManager.UI/Properties/launchSettings.json
 
 # Build output
 bin/
 obj/
+
+# Generated release payloads and installers
+/artifacts/
 
 .nuget-project-cache/
