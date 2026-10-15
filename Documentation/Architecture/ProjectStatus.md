@@ -1,5 +1,33 @@
 # Báo cáo tổng hợp SmartInventoryManager
 
+## Cập nhật rà soát UI và UX ngày 15/10/2026
+
+Phạm vi được người dùng duyệt: giữ giao diện team đã chốt, chỉ chỉnh thông số bố cục và các lỗi hiển thị cơ bản. Không thay Business, Data, schema hoặc công thức; không ghi SQL trong lượt kiểm tra. ProjectReport.docx và launchSettings.json đang có thay đổi từ trước được giữ nguyên ngoài phạm vi chỉnh UI.
+
+| Mã | Phát hiện và cách xử lý | Bằng chứng và giới hạn |
+|---|---|---|
+| UI-L01 | Tên thương hiệu trong sidebar bị ellipsis; giảm font từ 14.5 xuống 13 pt | UI ADMIN sau sửa hiển thị đủ VioWare và Quản lý kho |
+| UI-L02 | Tiêu đề cột Lịch sử tồn bị cắt dòng cuối do header cố định; cho header tự tính chiều cao theo nội dung | Native UI sau sửa hiển thị đủ các tiêu đề nhiều dòng |
+| UI-L03 | Màu chọn Danh mục dùng màu mặc định khác bảng còn lại; dùng Lavender và SelectedText sẵn có | Native UI sau sửa: hàng chọn và Chi tiết cùng nền, chữ/icon đọc được; không đổi palette |
+| UI-L04 | Ghi chú và hướng dẫn trong ReceiptEditor tràn ngang ở chiều rộng nhỏ; dùng cơ chế wrap/fit toolbar đã có | Ảnh layout trước/sau ở width800/1024/1366; ghi chú và hint xuống dòng |
+| UI-L05 | Lý do chuyển/điều chỉnh là multiline nhưng chỉ cao36px; Field giữ đủ chiều cao control, form cao hơn và fields wrap | Layout sau sửa giữ reason70px; có vùng cuộn khi thiếu chỗ |
+| UI-L06 | Các hàng filter/action chiếm hết bảng khi viewport thấp; giữ phần bảng tối thiểu160px theo DPI và cuộn nội dung | Component danh sách/phiếu/Analytics ở width800 vẫn có bảng và truy cập nội dung; không đổi query/paging |
+| UI-L07 | Form chi tiết có thể vượt working area; giới hạn kích thước ban đầu theo màn hình của owner, giữ nội dung có thể cuộn | Test form user ở clientheight640 cuộn tới Đóng được; bảo vệ dock/height sau khi phát hiện DockFill không tạo scroll range |
+| UI-L08 | Login bố trí bằng tọa độ chưa nhân DPI, panel chưa dock; thêm hệ số DPI và fit working area | Native login96DPI giữ hình thức cũ; kiểm tra DPI Windows125–200% thực vẫn cần riêng |
+| UI-L09 | Hàng action giữ khoảng trống cho nút đã ẩn; tính chiều cao theo control visible và cập nhật khi layout | Thay đổi chỉ ở layout; không đổi điều kiện phân quyền |
+| UI-L10 | Nhãn Nhật ký còn nói giới hạn500 dù service đã paging đầy đủ | Đổi nhãn thành Nhật ký hệ thống; không đổi service |
+
+Kiểm tra đã thực hiện:
+
+- Native ADMIN trước sửa: Dashboard, sản phẩm, danh mục, nhà cung cấp, kho/vị trí, nhập, xuất, tồn, lịch sử, cảnh báo, báo cáo, Analytics, người dùng, log và thông báo; mở phiếu nhập và chuyển kho chỉ xem. Sau build: xác minh lại thương hiệu, history headers, category selection; mở và cuộn cài đặt tài khoản. Menu vẫn cuộn tới Người dùng/Nhật ký khi ẩn scrollbar. Không bấm Lưu, Complete, Transfer, Resolve, MarkRead hoặc đổi cấu hình.
+- Harness layout cuối: **45 tổ hợp** gồm15 form/component ×3chiều rộng800/1024/1366 tại96DPI, không phát hiện flow overflow/multiline quá thấp. Dùng fixture EF InMemory cho component cần services, không kết nối SQL. Với form user/receipt/stock kiểm tra thêm nút Đóng sau cuộn. Hình ảnh fixture không có dữ liệu không phải lỗi tải dữ liệu của ứng dụng thật.
+- Mô phỏng co giãn: **144 tổ hợp** của12 form ×3width ×Scale1/1.25/1.5/2, không phát hiện lỗi hình học được harness kiểm tra sau sửa. Đây là Control.Scale và kiểm tra biên, không phải chứng nhận render/font trên Windows DPI thật hoặc xác nhận đã xem thủ công toàn bộ144ảnh.
+- Smoke component đạt:10nhãn trạng thái, manager ComboBox, khởi tạo form user; nhớ username chỉ lưuUsername, opt-out và corrupt-file fallback. Fixture ở .temp.
+- UI và toàn solution sau sửa đều build đạt0warning/0error; kiểm tra whitespace đạt. Harness restore có NU1900 do không truy cập được NuGet vulnerability service; không coi đó là audit package đạt.
+- Các lần harness ban đầu lỗi do services=null đã được loại khỏi kết quả; bản mở rộng dùng UiServices và fixture InMemory hợp lệ. Các bản thử dock ban đầu không cuộn tới Đóng được đã sửa rồi chạy lại. Kết quả cuối nằm ở .temp/UiLayoutQA/all-components-verified/layout.json; so sánh/backup/ảnh chỉ trong .temp và không commit.
+
+Giới hạn còn lại: chưa nghiệm thu DPI Windows125/150/200% thật, nhiều màn hình chuyển DPI, High Contrast, VS Designer đầy đủ, máy in và mọi tương tác lưu của ba role. Công cụ native không target được modal Cài đặt tài khoản độc lập để xác minh Escape; không kết luận đây là lỗi ứng dụng vì source đã có CancelButton. Các thay đổi dock cuối được kiểm chứng bằng harness trên DLL mới; không coi lượt native chạy binary trước các sửa dock cuối là nghiệm thu toàn bộ binary cuối. Dữ liệu SQL giữ nguyên; không dọn fixture SQL. UI commit 3f7d91d; báo cáo đi cùng đợt bàn giao Backend theo yêu cầu commit/push ngày15/10/2026.
+
 Cập nhật 15/10/2026. Đây là báo cáo tiến độ/nghiệm thu hiện hành duy nhất, hợp nhất báo cáo UI13/10, các bản tổng hợp và hai báo cáo hoàn thiện14/10. Quy tắc/contract/quyết định nghiệp vụ và checklist DB là tài liệu chuyên biệt, không phải các báo cáo tiến độ cạnh tranh. Dữ liệu lịch sử chưa được kiểm tra lại không tự trở thành kết quả hiện tại.
 
 ## 0. Kết quả sau rà soát và sửa các điểm còn sót — 15/10/2026
