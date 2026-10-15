@@ -18,7 +18,9 @@ Phần này là trạng thái hiện hành, ưu tiên hơn các snapshot triển
 
 Chưa nghiệm thu: cài mới/upgrade/uninstall trên máy sạch, MSI Tailscale/UAC, SQL từ máy khác qua VPN, policy/firewall/chứng chỉ, backup/restore production, Windows DPI thật/máy in và các giới hạn UI/SQL ADMIN cuối cùng ghi dưới đây. Chưa công bố production sẵn sàng sử dụng thực tế.
 
-Source bàn giao trên `Backend`, dự kiến tag/Release `v1.0.1`; publish và archive repo được xác nhận riêng sau khi thao tác thành công. Giữ quy trình PR vào `develop`, không tự merge khi chưa có người khác duyệt.
+Source bàn giao trên `Backend`; kênh phân phối bộ cài là [Release v1.0.1](https://github.com/khang1604/SmartInventoryManager/releases/tag/v1.0.1). Trạng thái publish/archive tra trên GitHub. Giữ quy trình PR vào `develop`, không tự merge khi chưa có người khác duyệt; sau archive phải unarchive trước khi review/merge.
+
+Sau merge develop mới nhất (không thay application source), build lại đạt 0 lỗi/0 cảnh báo; chạy lại 169 unit nghiệp vụ + 5 cấu hình/DPAPI đều đạt, không fail/skip. Lượt VSTest trong sandbox bị abort vì không kết nối testhost; kết quả xác nhận là lượt chạy lại ngoài sandbox, evidence riêng tại `.temp/ClientRelease/PostMergeVerified`. Không tính lượt abort là pass.
 
 ### Các snapshot triển khai trước bản v1.0.1
 
