@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Business.Interfaces;
 
 public interface IExportService
 {
+    Task<PagedResultDto<ExportReceiptListItemDto>> GetPageAsync(UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default);
     Task<int> CreateDraftAsync(UserSession session, ExportReceiptDto request, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ExportReceiptListItemDto>> GetListAsync(
@@ -25,4 +26,5 @@ public interface IExportService
     Task CompleteAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default);
     Task UpdateDraftAsync(UserSession session, int exportReceiptId, ExportReceiptDto request, CancellationToken cancellationToken = default);
     Task CancelDraftAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default);
+    Task CancelAsync(UserSession session, int exportReceiptId, string reason, CancellationToken cancellationToken = default);
 }

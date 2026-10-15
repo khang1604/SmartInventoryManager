@@ -22,18 +22,29 @@ internal sealed class ReceiptListView : UserControl
     private bool _initialized;
     private bool _hiddenAfterLoad;
     private int _actionsVersion;
+    private int _page = 1;
+    private (int?, string?, DateTime?, DateTime?, string, int)? _lastFilter;
+    private readonly AntdUI.Button _previous = ProductUi.Button("btnPreviousPage", "Trang trước", "chevron-left");
+    private readonly AntdUI.Button _next = ProductUi.Button("btnNextPage", "Trang sau", "chevron-right");
 
     public ReceiptListView(UiServices services, bool import)
     {
         _services = services;
         _import = import;
         Dock = DockStyle.Fill;
-        var root = ProductUi.Layout(1, 4);
+        var root = ProductUi.Layout(1, 5);
+        LiveUi.KeepTableVisible(this, root);
         root.Padding = new Padding(20, 12, 20, 16);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        var pager = LiveUi.Toolbar();
+        _previous.Enabled = _next.Enabled = false;
+        pager.Controls.AddRange([_previous, _next]);
+        _previous.Click += async (_, _) => { if (_busy || _page <= 1) return; _page--; await LoadAsync(); };
+        _next.Click += async (_, _) => { if (_busy || !_next.Enabled) return; _page++; await LoadAsync(); };
         _status.Items.AddRange(["Tất cả trạng thái", "Nháp", "Chờ duyệt", "Đã duyệt", "Bị từ chối", "Hoàn tất", "Đã hủy"]);
         _status.SelectedIndex = 0;
         _filters.Controls.AddRange([LiveUi.Field("Mã phiếu", _search), LiveUi.Field("Kho", _warehouse),
@@ -48,6 +59,8 @@ internal sealed class ReceiptListView : UserControl
         _create = AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
         AddAction("Xem chi tiết", () => OpenAsync(SelectedId(), false), "eye");
         AddAction("Xuất PDF phiếu", ExportReceiptAsync);
+        AddAction("Lịch sử từ chối", async () => { var id = SelectedId(); if (id.HasValue) { using var form = new ReceiptRejectionHistoryForm(_services, _import, id.Value); form.ShowDialog(FindForm()); } });
+        AddAction("Lịch sử xử lý", async () => { var id = SelectedId(); if (id.HasValue) { using var form = new ReceiptRejectionHistoryForm(_services, _import, id.Value, statusHistory: true); form.ShowDialog(FindForm()); } });
         AddAction("Sửa phiếu", () => OpenAsync(SelectedId(), true), "pencil");
         AddAction("Gửi duyệt", () => TransitionAsync("submit"));
         AddAction("Duyệt", () => TransitionAsync("approve"));
@@ -87,10 +100,18 @@ internal sealed class ReceiptListView : UserControl
         };
         for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
         root.Controls.Add(_filters, 0, 0);
+        LiveUi.FitWrappedToolbar(_filters, root, 0);
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
+        root.Controls.Add(pager, 0, 4);
         Controls.Add(root);
+        _search.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode != Keys.Enter) return;
+            e.SuppressKeyPress = true;
+            await LoadAsync();
+        };
         Load += async (_, _) => await LoadAsync();
         VisibleChanged += async (_, _) =>
         {
@@ -129,6 +150,7 @@ internal sealed class ReceiptListView : UserControl
     {
         _busy = value;
         _actions.Enabled = _filters.Enabled = _grid.Enabled = !value;
+        _previous.Parent!.Enabled = !value;
     }
 
     private async Task LoadAsync()
@@ -156,22 +178,28 @@ internal sealed class ReceiptListView : UserControl
             var from = _from.Checked ? _from.Value.Date : (DateTime?)null;
             var to = _to.Checked ? _to.Value.Date : (DateTime?)null;
             var search = _search.Text.Trim();
+            var size = Math.Clamp(UiPreferences.Current.PageSize, 1, 100);
+            var filter = (warehouseId, status, from, to, search, size);
+            if (_lastFilter != filter) { _page = 1; _lastFilter = filter; }
+            var request = new ReceiptSearchDto { WarehouseId = warehouseId, Status = status, From = from, To = to, Search = search, PageNumber = _page, PageSize = size };
+            int total;
             if (_import)
             {
-                var rows = await _services.RunAsync(() => _services.Imports.GetListAsync(_services.Session, warehouseId, status, from, to, search));
+                var result = await _services.RunAsync(() => _services.Imports.GetPageAsync(_services.Session, request));
                 if (IsDisposed) return;
-                _grid.DataSource = rows.ToList();
+                _grid.DataSource = result.Items.ToList(); _page = result.PageNumber; total = result.TotalCount;
             }
             else
             {
-                var rows = await _services.RunAsync(() => _services.Exports.GetListAsync(_services.Session, warehouseId, status, from, to, search));
+                var result = await _services.RunAsync(() => _services.Exports.GetPageAsync(_services.Session, request));
                 if (IsDisposed) return;
-                _grid.DataSource = rows.ToList();
+                _grid.DataSource = result.Items.ToList(); _page = result.PageNumber; total = result.TotalCount;
             }
+            _previous.Enabled = _page > 1; _next.Enabled = (long)_page * size < total;
             var filtered = warehouseId.HasValue || status is not null || from.HasValue || to.HasValue || search.Length > 0;
             _message.Text = _grid.Rows.Count == 0
                 ? (filtered ? "Không có phiếu phù hợp bộ lọc. Thử bỏ bộ lọc." : "Chưa có phiếu. Chọn Tạo phiếu để bắt đầu.")
-                : $"{_grid.Rows.Count:N0} phiếu • Chọn một dòng để xem hoặc thao tác.";
+                : $"Trang {_page:N0}/{Math.Max(1, (total + (long)size - 1) / size):N0} • Tổng {total:N0} phiếu • {_grid.Rows.Count:N0} phiếu trên trang.";
         }
         catch (Exception ex) { if (!IsDisposed) { _grid.DataSource = null; _message.Text = LiveUi.LoadError(ex); } }
         finally { if (!IsDisposed) Busy(false); }
@@ -190,6 +218,8 @@ internal sealed class ReceiptListView : UserControl
 
         EnableAction("Xem chi tiết", true);
         EnableAction("Xuất PDF phiếu", true);
+        EnableAction("Lịch sử từ chối", true);
+        EnableAction("Lịch sử xử lý", true);
         try
         {
             var rights = await _services.RunAsync(async () =>
@@ -229,13 +259,13 @@ internal sealed class ReceiptListView : UserControl
             {
                 var receipt = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_services.Session, id.Value)) ?? throw new KeyNotFoundException("Không tìm thấy phiếu trong phạm vi kho.");
                 ReportExportService.ExportReceiptPdf(dialog.FileName, "PHIẾU NHẬP KHO", receipt.ReceiptCode, receipt.ReceiptDate, receipt.Status,
-                    receipt.WarehouseName, receipt.CreatorName, receipt.SupplierName, receipt.Note, receipt.Details, receipt.TotalAmount);
+                    receipt.WarehouseName, receipt.CreatorName, receipt.SupplierName, receipt.Note, receipt.Details, receipt.TotalAmount, receipt.Audit);
             }
             else
             {
                 var receipt = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_services.Session, id.Value)) ?? throw new KeyNotFoundException("Không tìm thấy phiếu trong phạm vi kho.");
                 ReportExportService.ExportReceiptPdf(dialog.FileName, "PHIẾU XUẤT KHO", receipt.ReceiptCode, receipt.ReceiptDate, receipt.Status,
-                    receipt.WarehouseName, receipt.CreatorName, null, receipt.Note, receipt.Details, receipt.TotalAmount);
+                    receipt.WarehouseName, receipt.CreatorName, null, receipt.Note, receipt.Details, receipt.TotalAmount, receipt.Audit);
             }
             _message.Text = "Đã xuất PDF phiếu. Mở file để xem hoặc in A4.";
         }
@@ -319,6 +349,8 @@ internal sealed class ReceiptListView : UserControl
         var action = cancel ? "Hủy phiếu" : "Hoàn tất phiếu và cập nhật tồn kho";
         if (MessageBox.Show(FindForm(), $"{action} {code}?", "Xác nhận", MessageBoxButtons.OKCancel,
             MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
+        var reason = Microsoft.VisualBasic.Interaction.InputBox("Nhập lý do hủy phiếu (bắt buộc):", "Hủy phiếu", "");
+        if (string.IsNullOrWhiteSpace(reason)) { _message.Text = "Chưa nhập lý do; phiếu chưa bị hủy."; return; }
         Busy(true);
         _message.Text = "Đang xử lý phiếu…";
         var committed = false;
@@ -328,12 +360,12 @@ internal sealed class ReceiptListView : UserControl
             {
                 if (_import)
                 {
-                    if (cancel) await _services.Imports.CancelDraftAsync(_services.Session, id.Value);
+                    if (cancel) await _services.Imports.CancelAsync(_services.Session, id.Value, reason);
                     else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
                 }
                 else
                 {
-                    if (cancel) await _services.Exports.CancelDraftAsync(_services.Session, id.Value);
+                    if (cancel) await _services.Exports.CancelAsync(_services.Session, id.Value, reason);
                     else throw new InvalidOperationException("Phiếu phải được duyệt trước khi hoàn tất.");
                 }
             });

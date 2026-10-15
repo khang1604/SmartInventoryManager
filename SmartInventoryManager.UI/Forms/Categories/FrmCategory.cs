@@ -153,6 +153,8 @@ public partial class FrmCategory : Form
         grid.Columns.AddRange(Column("CategoryName", "Tên danh mục", 35),
             Column("Description", "Mô tả", 45), Column("Status", "Trạng thái", 20));
         UiDetails.AddColumn(grid);
+        grid.DefaultCellStyle.SelectionBackColor = AppColors.Lavender;
+        grid.DefaultCellStyle.SelectionForeColor = AppColors.SelectedText;
         tableArea.Controls.Add(grid, 0, 0);
         var empty = ProductUi.Layout(1, 5);
         empty.RowStyles.Add(new RowStyle(SizeType.Percent, 50));

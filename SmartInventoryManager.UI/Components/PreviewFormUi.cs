@@ -13,6 +13,11 @@ internal static class PreviewFormUi
         form.StartPosition = FormStartPosition.CenterParent;
         form.ShowInTaskbar = false;
         var root = ProductUi.Layout(1, 3);
+        form.AutoScroll = true;
+        root.MinimumSize = new Size(0, size.Height);
+        root.Dock = DockStyle.Top;
+        root.Height = size.Height;
+        form.ClientSizeChanged += (_, _) => root.Height = Math.Max(form.ClientSize.Height, root.MinimumSize.Height);
         root.Padding = new Padding(20, 14, 20, 12);
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));

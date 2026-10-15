@@ -11,4 +11,7 @@ public sealed record StockAlertDto(
     int? Threshold,
     bool IsResolved,
     DateTime CreatedAt,
-    DateTime? ResolvedAt);
+    DateTime? ResolvedAt)
+{
+    public string? ResolvedByName { get; init; }
+}

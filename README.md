@@ -4,7 +4,7 @@
 
 > Tài liệu này mô tả cách tham gia và phát triển dự án. Danh sách chức năng là phạm vi dự kiến, không phải xác nhận tất cả đã hoàn thiện. File hoặc màn hình khung chưa có nghiệp vụ được xem là chưa triển khai.
 
-**Cập nhật: 14/10/2026.** Quy tắc dùng chung tại [.github/copilot-instructions.md](.github/copilot-instructions.md); tiến độ và giới hạn nghiệm thu tại [báo cáo hoàn thiện ba tầng](Documentation/Architecture/CompletionByLayer_2026-10-14.md), trạng thái schema tại [Database Rebuild Checklist](Documentation/Architecture/DatabaseRebuildChecklist.md). `.agent/SystemContract.md` là bản contract hiện hành trên máy làm việc; `.agent/` không được chia sẻ qua Git. Các quyết định người dùng đã chốt sau contract được ghi trong quy tắc dùng chung và báo cáo; không suy rằng mọi yêu cầu contract đã có code.
+**Cập nhật: 15/10/2026.** Quy tắc dùng chung tại [.github/copilot-instructions.md](.github/copilot-instructions.md); tiến độ và giới hạn nghiệm thu tại [báo cáo hoàn thiện ba tầng](Documentation/Architecture/ProjectStatus.md), trạng thái schema tại [Database Rebuild Checklist](Documentation/Architecture/DatabaseRebuildChecklist.md). `.agent/SystemContract.md` là bản contract hiện hành trên máy làm việc; `.agent/` không được chia sẻ qua Git. Các quyết định người dùng đã chốt sau contract được ghi trong quy tắc dùng chung và báo cáo; không suy rằng mọi yêu cầu contract đã có code.
 
 ## 1. Công nghệ sử dụng
 
@@ -23,7 +23,7 @@
 | Quản lý mã nguồn | Git / GitHub |
 | Kiểm thử | MSTest **3.8.3**, Microsoft.NET.Test.Sdk **17.14.1** |
 
-Dependencies đang khai báo: Microsoft.Data.SqlClient 7.1.1, AntdUI 2.4.12, ClosedXML 0.105.1, QuestPDF 2026.9.1. Đây là các thư viện đã có trong project, không phải yêu cầu cài thêm hoặc tự nâng phiên bản.
+Dependencies đang khai báo (Data pin bản vá được duyệt System.Security.Cryptography.Pkcs 9.0.21): Microsoft.Data.SqlClient 7.1.1, AntdUI 2.4.12, ClosedXML 0.105.1, QuestPDF 2026.9.1. Đây là các thư viện đã có trong project, không phải yêu cầu cài thêm hoặc tự nâng phiên bản.
 
 Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Directory.Packages.props` nếu có. Nếu repository đã dùng .NET 8/EF Core 8.x, giữ cấu hình đó và dùng Visual Studio tương thích. Không tự nâng phiên bản hoặc trộn EF6 với EF Core.
 
@@ -47,14 +47,15 @@ Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Di
 | Nhóm | Trạng thái đến 14/10/2026 |
 |---|---|
 | Phân quyền/phân kho | Ba role; ADMIN quản lý assignment, ngừng/kích hoạt lại giữ row. STAFF đổi kho làm việc, Business kiểm tra assignment active; đã test UI kho A/B |
-| Nhập/xuất/tồn | Sáu trạng thái phiếu; Complete mới post tồn trong transaction, chống post lại. Đã test SQL duplicate completion, thiếu tồn/rollback và deadlock; chưa phủ hết races |
+| Nhập/xuất/tồn | Sáu trạng thái; Complete post tồn một lần. SQL đã kiểm tra duplicate completion, transfer đồng thời, hai phiếu xuất cạnh tranh, complete/cancel race và rollback khi ghi log lỗi |
 | Ngưỡng/cảnh báo | `0 < ReorderPoint < MaximumStock`, bốn trạng thái tồn; publisher sau commit, log cùng transaction và notification best-effort cho ADMIN/manager đúng kho |
 | Dashboard | Daily nhập/xuất theo CreatedAt; mặc định 30 ngày gồm hôm nay; top10 dòng sản phẩm–kho tồn thấp; bốn trạng thái và recent20 |
 | Báo cáo/export | Totals và Excel/PDF lấy toàn bộ dataset khớp bộ lọc được phép; PDF phiếu A4 cơ bản đã kiểm tra phân trang. Chưa nghiệm thu SaveFileDialog/máy in thật/dataset rất lớn |
-| Bootstrap | CLI tương tác riêng tạo ADMIN đầu tiên và ba role; PBKDF2; không ghi đè ADMIN active. Unit/--check đạt; SQL DB trắng tương tác chưa nghiệm thu |
-| Chờ team | Audit hoàn tất/hủy/từ chối; tồn trước/sau/chênh lệch; shared reference chuyển kho; valuation/ABC/Dead Stock/Reorder Recommendation |
+| Bootstrap | CLI tương tác tạo ba role và ADMIN đầu tiên/PBKDF2; nghiệm thu trên SQL trắng, đăng nhập thật và guard ADMIN active đạt; DB tạm đã dọn |
+| Audit/analytics/UI | CompletedBy/At, CancelReason/RejectReason, lịch sử từ chối phân trang20, movement before/after/difference, shared transfer sequence; giá trị ước tính/ABC/luân chuyển/đề xuất nhập; ẩn scrollbar và sửa màu Chi tiết |
+| Giai đoạn sau | Bình quân gia quyền, tồn đầu kỳ/chi phí chuyển và điều chỉnh, retention/archive, production; Designer/DPI/máy in thật chưa nghiệm thu đầy đủ |
 
-Kết quả kiểm thử đã chạy: **142 unit tests và 3 SQL tests PASS**; solution build thành công, có cảnh báo NU1900 khi không truy cập được dịch vụ NuGet vulnerability. Các cảnh báo dependency, kiểm thử còn thiếu và câu hỏi team được ghi rõ trong báo cáo. Không xem đây là chứng nhận hoàn thiện toàn bộ hợp đồng.
+Kết quả15/10: **169 unit tests PASS**, build **0 lỗi/0 cảnh báo**; schema **19 bảng**,6migrations khôngpending. SQL chỉ đọc mới xác nhận paging và dữ liệuTEST không có trùngidentifier/managerkhônghợplệ. Bốn SQL mutation tests và nativeUI14/10 là lịch sử; chưa nghiệm thu SQLconcurrency/account hoặc nativeUI/PDF mới. Chi tiết tại [báo cáo duy nhất](Documentation/Architecture/ProjectStatus.md).
 
 ## 3. Phân công và phối hợp
 
@@ -206,7 +207,7 @@ Phiếu có sáu trạng thái `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `REJECTE
 
 Retry tự động hiện chỉ áp dụng SQL deadlock1205 đã rollback, tối đa hai lần; không retry timeout/mất kết nối hoặc kết quả commit chưa rõ. Hết retry trả `CONCURRENCY_RETRY_EXHAUSTED`. Đây không phải cam kết mọi lỗi đồng thời đều được tự xử lý.
 
-Các trường riêng completion/cancel/reject, tồn trước/sau/chênh lệch và mã chung chuyển kho đang chờ team chốt. Không dùng việc đã có transaction/log để kết luận phần audit này hoàn thiện. Công thức định giá và analytics nâng cao cũng chưa được chốt.
+Audit đã triển khai theo quyết định TeamChot: completion actor/time, lý do riêng và history từ chối; before/after/difference và shared reference chuyển kho. Analytics giai đoạn đầu dùng giá trị ước tính, ABC, luân chuyển90ngày và đề xuất nhập; bình quân gia quyền kế toán để giai đoạn sau.
 
 Ngưỡng cấu hình hợp lệ: `0 < ReorderPoint < MaximumStock`.
 
@@ -489,3 +490,9 @@ Nếu trước đây đã bỏ qua file Copilot trong `.git/info/exclude`, bỏ 
 - [Tùy chỉnh Copilot Chat trong Visual Studio](https://learn.microsoft.com/en-us/visualstudio/ide/copilot-chat-context?view=visualstudio)
 
 Mọi thay đổi về công nghệ, nghiệp vụ và phân công dùng chung cần được cập nhật trong tài liệu/quy tắc qua PR, tránh để mỗi thành viên áp dụng một phiên bản khác nhau.
+
+### Bổ sung nghiệp vụ 15/10/2026
+
+Người dùng chốt audit đầy đủ chuyển trạng thái: latest người/thời gian gửi duyệt, duyệt, hủy; ReceiptStatusChanges lưu mỗi chuyển trạng thái với actor/time/from/to/reason, không snapshot detail hoặc đoán dữ liệu cũ. Giữ lịch sử từ chối hiện có và không hard-delete phiếu đã có history. UI/PDF hiển thị latest audit; history xử lý20/trang. Best-effort và giá trị tồn ước tính giữ nguyên; WAC giai đoạn2. Kết quả kiểm tra của đợt14/10 không tự áp dụng cho code mới. Xem [báo cáo lifecycle](Documentation/Architecture/ProjectStatus.md).
+
+Bổ sung sau rà soát15/10: bảo vệ namespaceusername/email, ADMINcuốicùng và managerđangphânkho; serverpaging phiếu/user/log/notification và lookup khôngcắt200. Ghi nhớ chỉ lưuusername, không password/token/autologin; ẩn nútđổiavatar; kiểm kêtheophiên cùngWAC đểgiaiđoạn2.

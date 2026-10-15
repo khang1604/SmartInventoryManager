@@ -21,6 +21,10 @@ namespace SmartInventoryManager.Data.Entities
         public DateTime CreatedAt { get; set; }
 
         public string? Note { get; set; }
+        // Existing movements remain unknown; never fabricate historical quantities.
+        public int? BeforeQuantity { get; set; }
+        public int? AfterQuantity { get; set; }
+        public int? SignedDifference { get; set; }
 
         // Navigation
         public Product Product { get; set; } = null!;

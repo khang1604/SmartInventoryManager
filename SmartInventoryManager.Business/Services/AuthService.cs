@@ -45,14 +45,16 @@ namespace SmartInventoryManager.Business.Services
                 return null;
             }
 
-            var normalizedIdentifier = username!.Trim();
-            var user = await _dbContext.Users
+            var normalizedIdentifier = username!.Trim().ToUpperInvariant();
+            var candidates = await _dbContext.Users
                 .AsNoTracking()
                 .Include(candidate => candidate.Role)
-                .SingleOrDefaultAsync(
-                    candidate => candidate.Email == normalizedIdentifier ||
-                        candidate.Username == normalizedIdentifier,
-                    cancellationToken);
+                .Where(candidate => (candidate.Email != null && candidate.Email.ToUpper() == normalizedIdentifier)
+                    || candidate.Username.ToUpper() == normalizedIdentifier)
+                .Take(2).ToListAsync(cancellationToken);
+            if (candidates.Count > 1)
+                throw new InvalidOperationException("Thông tin đăng nhập bị trùng giữa các tài khoản. Vui lòng liên hệ ADMIN để kiểm tra.");
+            var user = candidates.SingleOrDefault();
 
             if (user is null || !user.IsActive ||
                 !_passwordHasher.VerifyPassword(password, user.PasswordHash))

@@ -11,6 +11,11 @@ public partial class FrmMain : Form
     private readonly UserSession? _session;
     private readonly UiServices? _services;
     public bool LogoutRequested { get; private set; }
+    internal void RequestSignInAgain()
+    {
+        LogoutRequested = true;
+        Close();
+    }
     private readonly Dictionary<string, MainNavigationButton> _navigation = new();
     private readonly Dictionary<string, Control> _pages = new();
     private TableLayoutPanel _root = null!;
@@ -64,6 +69,8 @@ public partial class FrmMain : Form
 
     private void BuildLayout()
     {
+        ScrollbarAppearance.Apply(this);
+        Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
         FormClosed += (_, _) =>
         {
             foreach (var page in _pages.Values) page.Dispose();
@@ -141,7 +148,7 @@ public partial class FrmMain : Form
         logo.TabStop = false;
         logo.AccessibleName = "Logo VioWare";
         brand.Controls.Add(logo, 0, 0);
-        _brandText = TextLabel($"{UiBrand.ApplicationName}\nQuản lý kho", 14.5F, true);
+        _brandText = TextLabel($"{UiBrand.ApplicationName}\nQuản lý kho", 13F, true);
         _brandText.AccessibleDescription = UiBrand.ProjectName;
         brand.Controls.Add(_brandText, 1, 0);
         sidebar.Controls.Add(brand, 0, 0);
@@ -192,7 +199,7 @@ public partial class FrmMain : Form
             ("Nhà cung cấp", "supplier"), ("Kho & vị trí", "building"),
             ("Nhập kho", "box-arrow-in-down"), ("Xuất kho", "box-arrow-up"),
             ("Tồn kho", "boxes"), ("Lịch sử tồn kho", "file-earmark-text"),
-            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Người dùng", "people"), ("Nhật ký", "file-earmark-text")
+            ("Cảnh báo", "bell"), ("Báo cáo", "file-earmark-bar-graph"), ("Phân tích", "file-earmark-bar-graph"), ("Người dùng", "people"), ("Nhật ký", "file-earmark-text")
         ];
         foreach (var (title, icon) in pages)
         {
@@ -414,6 +421,8 @@ public partial class FrmMain : Form
 
     private Control CreatePage(string title) => title switch
     {
+        "Phân tích" when _services is not null => PrepareForm(new AnalyticsPage(_services), title),
+        "Phân tích" => EmptyPanel("Phân tích", "Đăng nhập để xem dữ liệu phân tích trong phạm vi kho.", "file-earmark-bar-graph"),
         "Tổng quan" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(_services), title),
         "Tổng quan" => PrepareForm(new SmartInventoryManager.Forms.Dashboard.FrmDashboard(), title),
         "Sản phẩm" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Products.FrmProductList(_services), title),
@@ -449,8 +458,9 @@ public partial class FrmMain : Form
         "Người dùng" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
         "Thông báo" when _services is not null => new NotificationPanel(_services),
         "Nhật ký" when _services is not null => new DataListPage<SmartInventoryManager.Business.Services.SystemLogDto>(_services,
-            "Nhật ký • tối đa 500 bản ghi gần nhất", [("CreatedAt", "Thời điểm"), ("ActorName", "Người thực hiện"), ("Action", "Thao tác"), ("EntityName", "Đối tượng"), ("Description", "Nội dung")],
-            (_, search, _, _) => _services.Logs.GetAsync(_services.Session, search)),
+            "Nhật ký hệ thống", [("CreatedAt", "Thời điểm"), ("ActorName", "Người thực hiện"), ("Action", "Thao tác"), ("EntityName", "Đối tượng"), ("Description", "Nội dung")],
+            (_, search, _, _) => _services.Logs.GetAsync(_services.Session, search))
+            .UsePagination((_, search, _, _, number, size) => _services.Logs.GetPageAsync(_services.Session, number, size, search)),
         "Thông báo" => new NotificationPanel(),
         _ => throw new ArgumentOutOfRangeException(nameof(title))
     };

@@ -6,6 +6,7 @@ using SmartInventoryManager.Business.Interfaces;
 using SmartInventoryManager.Business.Inventory;
 using SmartInventoryManager.Data.Context;
 using SmartInventoryManager.Data.Entities;
+using SmartInventoryManager.Data.Queries;
 using InventoryEntity = SmartInventoryManager.Data.Entities.Inventory;
 
 namespace SmartInventoryManager.Business.Services;
@@ -43,7 +44,8 @@ public sealed class InventoryService : IInventoryService
         var type = import ? InventoryTransactionTypes.Import : InventoryTransactionTypes.Export;
         _dbContext.InventoryTransactions.Add(new InventoryTransaction { ProductId = productId, WarehouseId = warehouseId,
             TransactionType = type, Quantity = quantity, ReferenceType = import ? InventoryTransactionTypes.ImportReceipt : InventoryTransactionTypes.ExportReceipt,
-            ReferenceId = receiptId, CreatedBy = session.CurrentUser!.UserId, CreatedAt = DateTime.Now, Note = note });
+            ReferenceId = receiptId, CreatedBy = session.CurrentUser!.UserId, CreatedAt = DateTime.Now, Note = note,
+            BeforeQuantity = before, AfterQuantity = stock.Quantity, SignedDifference = stock.Quantity - before });
         return new InventoryChangedEvent(productId, warehouseId, before, stock.Quantity, type, session.CurrentUser!.UserId);
     }
 
@@ -134,7 +136,10 @@ public sealed class InventoryService : IInventoryService
                 transaction.ReferenceId,
                 transaction.Creator.FullName,
                 transaction.CreatedAt,
-                transaction.Note))
+                transaction.Note)
+            {
+                BeforeQuantity = transaction.BeforeQuantity, AfterQuantity = transaction.AfterQuantity, SignedDifference = transaction.SignedDifference
+            })
             .ToListAsync(cancellationToken);
     }
 
@@ -197,7 +202,7 @@ public sealed class InventoryService : IInventoryService
             ReferenceType = InventoryTransactionTypes.Manual,
             CreatedBy = session.CurrentUser!.UserId,
             CreatedAt = DateTime.Now,
-            Note = reason.Trim()
+            Note = reason.Trim(), BeforeQuantity = previousQuantity, AfterQuantity = newQuantity, SignedDifference = quantityDelta
         });
         await new StockAlertService(_dbContext, _authorization, _publisher)
             .RefreshAsync(productId, warehouseId, cancellationToken, persistChanges: false, publishEvent: false);
@@ -278,12 +283,15 @@ public sealed class InventoryService : IInventoryService
         destinationInventory.Quantity = checked(destinationInventory.Quantity + quantity);
         destinationInventory.UpdatedAt = DateTime.Now;
         var now = DateTime.Now;
+        var transferReference = await TransferReferenceAllocator.NextAsync(_dbContext, cancellationToken);
         _dbContext.InventoryTransactions.AddRange(
             new InventoryTransaction
             {
                 ProductId = productId,
                 WarehouseId = sourceWarehouseId,
                 TransactionType = InventoryTransactionTypes.TransferOut,
+                ReferenceId = transferReference, BeforeQuantity = previousSourceQuantity,
+                AfterQuantity = previousSourceQuantity - quantity, SignedDifference = -quantity,
                 Quantity = quantity,
                 ReferenceType = InventoryTransactionTypes.Manual,
                 CreatedBy = session.CurrentUser!.UserId,
@@ -295,6 +303,8 @@ public sealed class InventoryService : IInventoryService
                 ProductId = productId,
                 WarehouseId = destinationWarehouseId,
                 TransactionType = InventoryTransactionTypes.TransferIn,
+                ReferenceId = transferReference, BeforeQuantity = previousDestinationQuantity,
+                AfterQuantity = checked(previousDestinationQuantity + quantity), SignedDifference = quantity,
                 Quantity = quantity,
                 ReferenceType = InventoryTransactionTypes.Manual,
                 CreatedBy = session.CurrentUser!.UserId,

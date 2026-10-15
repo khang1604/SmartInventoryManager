@@ -30,6 +30,7 @@ public sealed class FrmCategoryDetail : Form
         AutoScaleMode = AutoScaleMode.Font;
         Font = new Font("Segoe UI", 10F);
         Text = "VioWare - Thông tin danh mục";
+        Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
         ClientSize = new Size(520, 620);
         MinimumSize = new Size(480, 500);
         StartPosition = FormStartPosition.CenterParent;

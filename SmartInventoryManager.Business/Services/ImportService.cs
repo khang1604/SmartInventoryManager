@@ -12,7 +12,6 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class ImportService : IImportService
 {
-    private const int MaxListResults = 500;
     private const int MaxReceiptNoteLength = 500;
     private const int MaxRejectReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
@@ -96,13 +95,24 @@ public sealed class ImportService : IImportService
     }
 
     public async Task<IReadOnlyList<ImportReceiptListItemDto>> GetListAsync(
-        UserSession session,
-        int? warehouseId = null,
-        string? status = null,
-        DateTime? from = null,
-        DateTime? to = null,
-        string? search = null,
-        CancellationToken cancellationToken = default)
+        UserSession session, int? warehouseId = null, string? status = null, DateTime? from = null,
+        DateTime? to = null, string? search = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, warehouseId, status, from, to, search, cancellationToken);
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResultDto<ImportReceiptListItemDto>> GetPageAsync(
+        UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(search);
+        var query = await QueryListAsync(session, search.WarehouseId, search.Status, search.From, search.To, search.Search, cancellationToken);
+        return await QueryPaging.ReadAsync(query, search.PageNumber, search.PageSize, cancellationToken);
+    }
+
+    private async Task<IQueryable<ImportReceiptListItemDto>> QueryListAsync(
+        UserSession session, int? warehouseId, string? status, DateTime? from, DateTime? to,
+        string? search, CancellationToken cancellationToken)
     {
         ValidateSession(session);
         if (!session.IsAuthenticated)
@@ -143,8 +153,8 @@ public sealed class ImportService : IImportService
             var normalizedSearch = search.Trim();
             query = query.Where(receipt => receipt.ReceiptCode.Contains(normalizedSearch));
         }
-        return await query
-            .OrderByDescending(receipt => receipt.ReceiptDate)
+        return query
+            .OrderByDescending(receipt => receipt.ReceiptDate).ThenByDescending(receipt => receipt.ImportReceiptId)
             .Select(receipt => new ImportReceiptListItemDto(
                 receipt.ImportReceiptId,
                 receipt.ReceiptCode,
@@ -153,9 +163,7 @@ public sealed class ImportService : IImportService
                 receipt.Creator.FullName,
                 receipt.ReceiptDate,
                 receipt.TotalAmount,
-                receipt.Status))
-            .Take(MaxListResults)
-            .ToListAsync(cancellationToken);
+                receipt.Status));
     }
 
     public async Task<ImportReceiptDetailsDto?> GetByIdAsync(
@@ -174,6 +182,12 @@ public sealed class ImportService : IImportService
             .Include(item => item.Details)
                 .ThenInclude(detail => detail.Product)
             .SingleOrDefaultAsync(item => item.ImportReceiptId == importReceiptId && accessibleWarehouseIds.Contains(item.WarehouseId), cancellationToken);
+        var actorIds = receipt is null ? Array.Empty<int>() : new[]
+        {
+            receipt.CompletedBy ?? 0, receipt.SubmittedBy ?? 0, receipt.ApprovedBy ?? 0, receipt.CancelledBy ?? 0
+        };
+        var actorNames = await _dbContext.Users.AsNoTracking().Where(user => actorIds.Contains(user.UserId))
+            .ToDictionaryAsync(user => user.UserId, user => user.FullName, cancellationToken);
         return receipt is null
             ? null
             : new ImportReceiptDetailsDto(
@@ -196,7 +210,17 @@ public sealed class ImportService : IImportService
                     detail.Product.Unit,
                     detail.Quantity,
                     detail.UnitPrice,
-                    detail.Quantity * detail.UnitPrice)).ToList());
+                    detail.Quantity * detail.UnitPrice)).ToList())
+            {
+                Audit = new ReceiptAuditDto(receipt.CompletedBy,
+                    actorNames.GetValueOrDefault(receipt.CompletedBy ?? 0),
+                    receipt.CompletedAt, receipt.CancelReason, receipt.RejectReason)
+                {
+                    SubmittedBy = receipt.SubmittedBy, SubmittedByName = actorNames.GetValueOrDefault(receipt.SubmittedBy ?? 0), SubmittedAt = receipt.SubmittedAt,
+                    ApprovedBy = receipt.ApprovedBy, ApprovedByName = actorNames.GetValueOrDefault(receipt.ApprovedBy ?? 0), ApprovedAt = receipt.ApprovedAt,
+                    CancelledBy = receipt.CancelledBy, CancelledByName = actorNames.GetValueOrDefault(receipt.CancelledBy ?? 0), CancelledAt = receipt.CancelledAt
+                }
+            };
     }
 
     public async Task SubmitAsync(
@@ -225,7 +249,7 @@ public sealed class ImportService : IImportService
         }
         await ValidateStoredReceiptAsync(receipt, cancellationToken);
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
-        receipt.Status = "PENDING_APPROVAL";
+        ReceiptStatusAudit.Change(_dbContext, session, receipt, "PENDING_APPROVAL");
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
@@ -250,6 +274,9 @@ public sealed class ImportService : IImportService
         if (receipt.Status != "DRAFT")
             throw new InvalidOperationException("Chỉ phiếu nhập nháp mới được xóa.");
 
+        if (await _dbContext.ReceiptRejections.AnyAsync(x => x.ImportReceiptId == importReceiptId, cancellationToken)
+            || await _dbContext.ReceiptStatusChanges.AnyAsync(x => x.ImportReceiptId == importReceiptId, cancellationToken))
+            throw new InvalidOperationException("Phiếu có lịch sử xử lý; hãy hủy để giữ audit, không được xóa.");
         _dbContext.ImportDetails.RemoveRange(receipt.Details);
         _dbContext.ImportReceipts.Remove(receipt);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -278,7 +305,7 @@ public sealed class ImportService : IImportService
         {
             throw new InvalidOperationException("Chỉ phiếu nhập đang chờ duyệt mới được duyệt.");
         }
-        receipt.Status = "APPROVED";
+        ReceiptStatusAudit.Change(_dbContext, session, receipt, "APPROVED");
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
@@ -317,8 +344,13 @@ public sealed class ImportService : IImportService
         {
             throw new InvalidOperationException("Chỉ phiếu nhập đang chờ duyệt mới được từ chối.");
         }
-        receipt.Status = "REJECTED";
-        receipt.Note = $"Lý do từ chối: {reason.Trim()}";
+        ReceiptStatusAudit.Change(_dbContext, session, receipt, "REJECTED", reason);
+        receipt.RejectReason = reason.Trim();
+        _dbContext.ReceiptRejections.Add(new ReceiptRejection
+        {
+            ImportReceiptId = importReceiptId, RejectedBy = session.CurrentUser!.UserId,
+            RejectedAt = DateTime.Now, Reason = receipt.RejectReason
+        });
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
@@ -345,7 +377,7 @@ public sealed class ImportService : IImportService
         {
             throw new InvalidOperationException("Chỉ phiếu nhập bị từ chối mới được gửi lại.");
         }
-        receipt.Status = "DRAFT";
+        ReceiptStatusAudit.Change(_dbContext, session, receipt, "DRAFT");
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
@@ -402,7 +434,7 @@ public sealed class ImportService : IImportService
                 detail.Quantity, true, importReceiptId, receipt.Note, cancellationToken));
 
         receipt.TotalAmount = receipt.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
-        receipt.Status = "COMPLETED";
+        ReceiptStatusAudit.Change(_dbContext, session, receipt, "COMPLETED");
         var alertService = new StockAlertService(_dbContext, _authorization, _publisher);
         foreach (var productId in receipt.Details.Select(detail => detail.ProductId).Distinct())
             await alertService.RefreshAsync(productId, receipt.WarehouseId, cancellationToken, persistChanges: false, publishEvent: false);
@@ -467,16 +499,20 @@ public sealed class ImportService : IImportService
             UnitPrice = detail.UnitPrice
         }).ToList();
         if (receipt.Status == "REJECTED")
-            receipt.Status = "DRAFT";
+            ReceiptStatusAudit.Change(_dbContext, session, receipt, "DRAFT");
         receipt.TotalAmount = request.Details.Sum(detail => detail.Quantity * detail.UnitPrice);
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task CancelDraftAsync(
+    public Task CancelDraftAsync(UserSession session, int importReceiptId, CancellationToken cancellationToken = default)
+        => CancelAsync(session, importReceiptId, string.Empty, cancellationToken);
+
+    public async Task CancelAsync(
         UserSession session,
         int importReceiptId,
+        string reason,
         CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
@@ -497,7 +533,10 @@ public sealed class ImportService : IImportService
         {
             throw new InvalidOperationException("Phiếu nhập không ở trạng thái được phép hủy.");
         }
-        receipt.Status = "CANCELLED";
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > 500)
+            throw new ArgumentException("Lý do hủy là bắt buộc và không quá 500 ký tự.", nameof(reason));
+        ReceiptStatusAudit.Change(_dbContext, session, receipt, "CANCELLED", reason);
+        receipt.CancelReason = reason.Trim();
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);

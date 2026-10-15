@@ -96,7 +96,7 @@ internal static class ConnectedPages
             async (warehouseId, search, _, _) =>
             {
                 var report = await services.Reports.GetInventoryAsync(services.Session, warehouseId, search: search, stockStatus: InventoryStatusFilter(page));
-                page?.SetSummary($"Tổng tồn theo bộ lọc: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
+                page?.SetSummary($"Tổng tồn: {report.TotalQuantity:N0} • Ước tính: {report.EstimatedInventoryValue:N2} đ • Cảnh báo mở: {report.OpenAlertCount:N0}");
                 return report.Rows;
             }, requiresWarehouse: true);
         page.Action("Xuất Excel", async () => await ExportInventoryAsync(page, services, false), "file-earmark-spreadsheet");
@@ -189,18 +189,27 @@ internal static class ConnectedPages
     public static Control History(UiServices services, int? productId = null) => new DataListPage<InventoryHistoryDto>(services,
         "Lịch sử tồn kho",
         [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("TransactionType", "Loại giao dịch"),
-            ("Quantity", "Số lượng"), ("ReferenceType", "Loại tham chiếu"), ("ReferenceId", "ID tham chiếu"),
+            ("MovementCode", "Mã biến động"), ("TransferCode", "Liên kết chuyển kho"), ("Quantity", "Số lượng"),
+            ("BeforeQuantity", "Tồn trước"), ("AfterQuantity", "Tồn sau"), ("SignedDifference", "Chênh lệch"), ("ReferenceType", "Loại tham chiếu"), ("ReferenceId", "ID tham chiếu"),
             ("CreatorName", "Người tạo"), ("CreatedAt", "Thời gian"), ("Note", "Ghi chú")],
         async (warehouseId, search, from, to) => (await services.Inventory.GetHistoryAsync(services.Session, warehouseId, productId, from, to))
             .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true, history: true);
 
     public static Control Alerts(UiServices services)
     {
-        var page = new DataListPage<StockAlertDto>(services, "Cảnh báo đang mở",
+        var state = LiveUi.Choice("cboAlertState", "Trạng thái xử lý");
+        state.Items.AddRange(["Đang mở", "Đã đóng"]);
+        state.SelectedIndex = 0;
+        var page = new DataListPage<StockAlertDto>(services, "Cảnh báo tồn kho",
             [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("AlertType", "Loại cảnh báo"),
-                ("CurrentQuantity", "Tồn hiện tại"), ("Threshold", "Ngưỡng"), ("CreatedAt", "Thời gian")],
-            async (warehouseId, search, _, _) => (await services.Alerts.GetOpenAsync(services.Session, warehouseId))
+                ("CurrentQuantity", "Tồn hiện tại"), ("Threshold", "Ngưỡng"), ("CreatedAt", "Thời gian"),
+                ("ResolvedAt", "Đóng lúc"), ("ResolvedByName", "Người đóng")],
+            async (warehouseId, search, _, _) => (await (state.SelectedIndex == 1
+                ? services.Alerts.GetResolvedAsync(services.Session, warehouseId)
+                : services.Alerts.GetOpenAsync(services.Session, warehouseId)))
                 .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true);
+        page.AddFilter("Trạng thái xử lý", state);
+        state.SelectedIndexChanged += async (_, _) => await page.RefreshAsync();
         page.SelectedAction("Đóng cảnh báo", async (row, warehouseId) =>
         {
             if (!await services.RunAsync(() => services.Authorization.CanResolveStockAlertAsync(services.Session, warehouseId)))
@@ -209,7 +218,8 @@ internal static class ConnectedPages
                 "Xác nhận xử lý", MessageBoxButtons.OKCancel, MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
             await services.RunAsync(() => services.Alerts.ResolveAsync(services.Session, row.AlertId));
-        }, permission: (_, warehouseId) => services.Authorization.CanResolveStockAlertAsync(services.Session, warehouseId));
+        }, permission: (row, warehouseId) => row.IsResolved ? Task.FromResult(false)
+            : services.Authorization.CanResolveStockAlertAsync(services.Session, warehouseId));
         return page;
     }
 

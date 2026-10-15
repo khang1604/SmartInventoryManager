@@ -17,6 +17,7 @@ public sealed record DashboardDto(
     public IReadOnlyList<DashboardDailyQuantityDto> DailyQuantities { get; init; } = [];
     public IReadOnlyList<DashboardLowestStockDto> LowestStock { get; init; } = [];
     public IReadOnlyList<DashboardStatusCountDto> StockDistribution { get; init; } = [];
+    public decimal EstimatedInventoryValue { get; init; }
 }
 
 public sealed record DashboardDailyQuantityDto(DateTime Date, long ImportQuantity, long ExportQuantity);

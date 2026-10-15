@@ -22,7 +22,7 @@ internal static class LiveUi
     public static Control Field(string caption, Control control)
     {
         var panel = ProductUi.Layout(1, 2);
-        panel.Size = new Size(Math.Max(160, control.Width), 70);
+        panel.Size = new Size(Math.Max(160, control.Width), Math.Max(70, control.Height + 34));
         panel.Dock = DockStyle.None;
         panel.Margin = new Padding(0, 0, 12, 0);
         panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
@@ -54,6 +54,49 @@ internal static class LiveUi
         AutoScroll = true,
         Margin = Padding.Empty
     };
+
+    public static void FitWrappedToolbar(FlowLayoutPanel toolbar, TableLayoutPanel root, int row)
+    {
+        toolbar.WrapContents = true;
+        toolbar.AutoScroll = false;
+        void Fit()
+        {
+            var width = Math.Max(160, toolbar.ClientSize.Width);
+            var used = 0;
+            var height = 0;
+            var lineHeight = 0;
+            foreach (Control child in toolbar.Controls)
+            {
+                var childWidth = child.Width + child.Margin.Horizontal;
+                if (used > 0 && used + childWidth > width)
+                {
+                    height += lineHeight; used = 0; lineHeight = 0;
+                }
+                used += childWidth;
+                lineHeight = Math.Max(lineHeight, child.Height + child.Margin.Vertical);
+            }
+            var required = height + lineHeight + 12;
+            if (root.RowStyles[row].Height != required) root.RowStyles[row].Height = required;
+        }
+        toolbar.SizeChanged += (_, _) => Fit();
+        toolbar.ControlAdded += (_, _) => Fit();
+        Fit();
+    }
+
+    public static void KeepTableVisible(ScrollableControl host, TableLayoutPanel root)
+    {
+        host.AutoScroll = true;
+        root.Dock = DockStyle.Top;
+        void Fit()
+        {
+            var height = root.Padding.Vertical + (int)root.RowStyles.Cast<RowStyle>()
+                .Where(row => row.SizeType == SizeType.Absolute).Sum(row => row.Height) + 160 * host.DeviceDpi / 96;
+            if (root.MinimumSize.Height != height) root.MinimumSize = new Size(0, height);
+            root.Height = Math.Max(host.ClientSize.Height, height);
+        }
+        root.Layout += (_, _) => Fit();
+        host.ClientSizeChanged += (_, _) => Fit();
+    }
 
     public static Control TableFrame(Control content)
     {
@@ -121,7 +164,7 @@ internal static class LiveUi
 
     public static DataGridView Grid(string name, params (string Property, string Caption)[] columns)
     {
-        var grid = new DataGridView
+        var grid = new ScrollableGrid
         {
             Name = name,
             AccessibleName = "Bảng dữ liệu",
@@ -135,7 +178,7 @@ internal static class LiveUi
             AllowUserToResizeRows = false,
             AllowUserToResizeColumns = false,
             AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
-            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             // [COLOR CONFIG]: nền bảng trắng và chữ tối theo theme VioWare.
@@ -189,7 +232,7 @@ internal static class LiveUi
         grid.DefaultCellStyle.SelectionBackColor = AppColors.Lavender;
         grid.DefaultCellStyle.SelectionForeColor = AppColors.SelectedText;
         grid.GridColor = AppColors.Border;
-        grid.ScrollBars = ScrollBars.Both;
+        grid.ScrollBars = ScrollBars.None;
         grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
         grid.DefaultCellStyle.FormatProvider = Culture;
         return grid;
@@ -234,6 +277,12 @@ internal static class LiveUi
         "SET_PRODUCT_ACTIVE" => "Đổi trạng thái sản phẩm",
         "ACTIVATE_ASSIGNMENT" => "Kích hoạt phân kho",
         "DEACTIVATE_ASSIGNMENT" => "Ngừng phân kho",
+        "USER_CREATED" => "Tạo tài khoản",
+        "USER_DEACTIVATED" => "Ngừng tài khoản",
+        "USER_UPDATED" => "Sửa tài khoản",
+        "PASSWORD_RESET" => "Đặt lại mật khẩu",
+        "ACCOUNT_UPDATED" => "Sửa hồ sơ cá nhân",
+        "PASSWORD_CHANGED" => "Đổi mật khẩu",
         _ => "Thao tác hệ thống"
     };
 
@@ -247,6 +296,10 @@ internal static class LiveUi
             ArgumentException argument when !string.IsNullOrWhiteSpace(argument.Message)
                 => argument.Message,
             KeyNotFoundException => "Dữ liệu không còn tồn tại. Hãy làm mới danh sách.",
+            InvalidOperationException when exception.Message is
+                "Tên đăng nhập hoặc email trùng với thông tin đăng nhập của tài khoản khác."
+                or "Hãy đổi hoặc gỡ người quản lý tại các kho trước khi đổi vai trò hoặc vô hiệu hóa tài khoản này."
+                or "Hệ thống phải còn ít nhất một ADMIN đang hoạt động." => exception.Message,
             InvalidOperationException when exception.Message.Contains("không đủ", StringComparison.OrdinalIgnoreCase)
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."

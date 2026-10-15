@@ -28,6 +28,7 @@ public partial class FrmProductDetail : Form
     private void BuildLayout()
     {
         Text = "VioWare - Thông tin sản phẩm";
+        Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
         Font = new Font("Segoe UI", 10F);
         ClientSize = new Size(600, 690);
         MinimumSize = new Size(520, 570);

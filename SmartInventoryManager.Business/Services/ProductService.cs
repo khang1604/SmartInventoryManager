@@ -7,7 +7,6 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class ProductService
 {
-    private const int MaxLookupResults = 200;
     private readonly InventoryDbContext _dbContext;
 
     public ProductService(InventoryDbContext dbContext)
@@ -33,7 +32,6 @@ public sealed class ProductService
         }
         return await query
             .OrderBy(product => product.ProductCode)
-            .Take(MaxLookupResults)
             .Select(product => new ProductLookupDto(
                 product.ProductId,
                 product.ProductCode,

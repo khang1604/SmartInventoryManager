@@ -22,6 +22,7 @@ internal sealed class ReceiptEditor : UserControl
     private readonly ComboBox _warehouse = LiveUi.Choice("cboWarehouse", "Kho");
     private readonly ComboBox _supplier = LiveUi.Choice("cboSupplier", "Nhà cung cấp");
     private readonly Label _message = ProductUi.Label("Đang tải biểu mẫu…");
+    private readonly TextBox _audit = new() { ReadOnly = true, Multiline = true, WordWrap = true, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, AccessibleName = "Audit phiếu" };
     private readonly Label _total = ProductUi.Label("Tổng tiền xem trước: 0 đ", 12, true);
     private readonly DataGridView _lines = LiveUi.Grid("dgvReceiptLines");
     private readonly FlowLayoutPanel _fields = LiveUi.Toolbar();
@@ -44,7 +45,7 @@ internal sealed class ReceiptEditor : UserControl
         owner.MinimumSize = new Size(800, 600);
         owner.StartPosition = FormStartPosition.CenterParent;
         Dock = DockStyle.Fill;
-        var root = ProductUi.Layout(1, 6);
+        var root = ProductUi.Layout(1, 7);
         root.Padding = new Padding(20, 14, 20, 14);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
@@ -52,17 +53,21 @@ internal sealed class ReceiptEditor : UserControl
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 140));
+        root.Controls.Add(_audit, 0, 6);
         root.Controls.Add(ProductUi.Label(import ? "Phiếu nhập kho" : "Phiếu xuất kho", 18, true), 0, 0);
         _fields.Controls.AddRange([LiveUi.Field("Mã phiếu (tự động)", _code), LiveUi.Field("Kho *", _warehouse)]);
         if (import) _fields.Controls.Add(LiveUi.Field("Nhà cung cấp *", _supplier));
         _fields.Controls.Add(LiveUi.Field("Ghi chú", _note));
         root.Controls.Add(_fields, 0, 1);
+        LiveUi.FitWrappedToolbar(_fields, root, 1);
         var toolbar = LiveUi.Toolbar();
         toolbar.Controls.AddRange([_add, _remove, _reload]);
         var hint = ProductUi.Label("Có thể lưu nháp chưa có dòng hàng • Số lượng > 0 • Đơn giá ≥ 0");
         hint.Dock = DockStyle.None; hint.Size = new Size(520, 44);
         toolbar.Controls.Add(hint);
         root.Controls.Add(toolbar, 0, 2);
+        LiveUi.FitWrappedToolbar(toolbar, root, 2);
         _lines.ReadOnly = false;
         _lines.Columns.Add(new DataGridViewComboBoxColumn
         {
@@ -140,6 +145,7 @@ internal sealed class ReceiptEditor : UserControl
         footer.Controls.Add(_message, 0, 0);
         footer.Controls.Add(_actions, 1, 0);
         root.Controls.Add(footer, 0, 5);
+        LiveUi.KeepTableVisible(this, root);
         Controls.Add(root);
         owner.FormClosing += (_, e) =>
         {
@@ -159,6 +165,12 @@ internal sealed class ReceiptEditor : UserControl
         _reload.Enabled = !busy && !_loaded;
         _reload.Visible = !_loaded;
         _add.Enabled = _remove.Enabled = _save.Enabled = !busy && _editable;
+    }
+
+    private void ShowAudit(ReceiptAuditDto audit)
+    {
+        static string Stamp(string? name, DateTime? at) => $"{name ?? "Chưa có dữ liệu"} • {at?.ToString("dd/MM/yyyy HH:mm:ss") ?? "—"}";
+        _audit.Text = $"Gửi duyệt gần nhất: {Stamp(audit.SubmittedByName, audit.SubmittedAt)}\r\nDuyệt gần nhất: {Stamp(audit.ApprovedByName, audit.ApprovedAt)}\r\nHoàn tất: {Stamp(audit.CompletedByName, audit.CompletedAt)}\r\nHủy: {Stamp(audit.CancelledByName, audit.CancelledAt)}\r\nLý do từ chối gần nhất: {audit.RejectReason ?? "—"}\r\nLý do hủy: {audit.CancelReason ?? "—"}";
     }
 
     private async Task LoadAsync()
@@ -182,6 +194,7 @@ internal sealed class ReceiptEditor : UserControl
                     var receipt = await _services.RunAsync(() => _services.Imports.GetByIdAsync(_services.Session, _id.Value))
                         ?? throw new KeyNotFoundException();
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
+                    ShowAudit(receipt.Audit);
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
                     supplierId = receipt.SupplierId; supplierName = receipt.SupplierName;
                     _status = receipt.Status; _createdBy=receipt.CreatedBy; details = receipt.Details;
@@ -191,6 +204,7 @@ internal sealed class ReceiptEditor : UserControl
                     var receipt = await _services.RunAsync(() => _services.Exports.GetByIdAsync(_services.Session, _id.Value))
                         ?? throw new KeyNotFoundException();
                     _code.Text = receipt.ReceiptCode; _note.Text = receipt.Note;
+                    ShowAudit(receipt.Audit);
                     warehouseId = receipt.WarehouseId; warehouseName = receipt.WarehouseName;
                     _status = receipt.Status; _createdBy=receipt.CreatedBy; details = receipt.Details;
                 }

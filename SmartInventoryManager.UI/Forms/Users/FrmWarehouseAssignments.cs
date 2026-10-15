@@ -9,6 +9,8 @@ public sealed class FrmWarehouseAssignments : Form
     public FrmWarehouseAssignments(UiServices services, UserListItemDto user)
     {
         Text = "Phân kho — " + user.Username;
+        Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
+        MinimumSize = new Size(620, 500);
         Size = new Size(820, 600); StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Font;
         var choice = LiveUi.Choice("cboAssignmentWarehouse", "Kho được phân công");

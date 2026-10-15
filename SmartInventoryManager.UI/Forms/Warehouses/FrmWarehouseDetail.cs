@@ -22,6 +22,7 @@ public sealed class FrmWarehouseDetail : Form
         Font = new Font("Segoe UI", 10F);
         string subject = location ? "vị trí" : "kho";
         Text = $"VioWare - Thông tin {subject}";
+        Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
         ClientSize = new Size(560, location ? 520 : 600);
         MinimumSize = new Size(500, 480);
         StartPosition = FormStartPosition.CenterParent;

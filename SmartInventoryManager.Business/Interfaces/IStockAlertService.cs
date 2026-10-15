@@ -7,6 +7,8 @@ public interface IStockAlertService
 {
     Task<IReadOnlyList<StockAlertDto>> GetOpenAsync(UserSession session, int warehouseId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<StockAlertDto>> GetResolvedAsync(UserSession session, int warehouseId, CancellationToken cancellationToken = default);
+
     Task RefreshAsync(
         int productId,
         int warehouseId,

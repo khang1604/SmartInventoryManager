@@ -15,6 +15,7 @@ internal sealed class FrmAccountSettings : Form
         title.Padding = new Padding(16, 0, 0, 0);
         var photo = ProductUi.Button("btnChangeAvatar", "Đổi ảnh");
         photo.Dock = DockStyle.Right; photo.Width = 120; photo.Enabled = false;
+        photo.Visible = false;
         photo.AccessibleDescription = "Chức năng ảnh đại diện chưa được hỗ trợ";
         profile.Controls.Add(title); profile.Controls.Add(photo); profile.Controls.Add(avatar); body.Controls.Add(profile);
         var profileErrors = new AccountFieldErrors();

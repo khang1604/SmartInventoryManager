@@ -9,7 +9,6 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class SupplierService
 {
-    private const int MaxLookupResults = 200;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
@@ -37,7 +36,6 @@ public sealed class SupplierService
         }
         return await query
             .OrderBy(supplier => supplier.SupplierCode)
-            .Take(MaxLookupResults)
             .Select(supplier => new LookupItemDto(supplier.SupplierId, supplier.SupplierCode, supplier.SupplierName))
             .ToListAsync(cancellationToken);
     }

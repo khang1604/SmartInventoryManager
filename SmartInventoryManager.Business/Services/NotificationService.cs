@@ -16,13 +16,19 @@ public sealed class NotificationService
         _authorization = new AuthorizationService(_dbContext);
     }
 
-    public async Task<IReadOnlyList<NotificationDto>> GetAsync(
-        UserSession session,
-        string? search = null,
-        bool? isRead = null,
-        DateTime? from = null,
-        DateTime? to = null,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<NotificationDto>> GetAsync(UserSession session, string? search = null, bool? isRead = null, DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, search, isRead, from, to, cancellationToken);
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResultDto<NotificationDto>> GetPageAsync(UserSession session, int pageNumber = 1, int pageSize = 50, string? search = null, bool? isRead = null, DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, search, isRead, from, to, cancellationToken);
+        return await QueryPaging.ReadAsync(query, pageNumber, pageSize, cancellationToken);
+    }
+
+    private async Task<IQueryable<NotificationDto>> QueryListAsync(UserSession session, string? search, bool? isRead, DateTime? from, DateTime? to, CancellationToken cancellationToken)
     {
         var userId = RequireUserId(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
@@ -39,10 +45,10 @@ public sealed class NotificationService
         if (isRead.HasValue) query = query.Where(item => item.IsRead == isRead.Value);
         if (from.HasValue) query = query.Where(item => item.CreatedAt >= from.Value.Date);
         if (to.HasValue) query = query.Where(item => item.CreatedAt < to.Value.Date.AddDays(1));
-        return await query.OrderByDescending(item => item.CreatedAt).Take(500)
+        return query.OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.NotificationId)
             .Select(item => new NotificationDto(item.NotificationId, item.Title, item.Message,
                 item.NotificationType, item.IsRead, item.CreatedAt))
-            .ToListAsync(cancellationToken);
+            ;
     }
 
     public async Task MarkAsReadAsync(UserSession session, long notificationId, CancellationToken cancellationToken = default)

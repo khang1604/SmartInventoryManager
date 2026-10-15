@@ -20,12 +20,19 @@ public sealed class UserService
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
-    public async Task<IReadOnlyList<UserListItemDto>> GetListAsync(
-        UserSession session,
-        string? search = null,
-        string? roleName = null,
-        bool? isActive = null,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<UserListItemDto>> GetListAsync(UserSession session, string? search = null, string? roleName = null, bool? isActive = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, search, roleName, isActive, cancellationToken);
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResultDto<UserListItemDto>> GetPageAsync(UserSession session, int pageNumber = 1, int pageSize = 50, string? search = null, string? roleName = null, bool? isActive = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, search, roleName, isActive, cancellationToken);
+        return await QueryPaging.ReadAsync(query, pageNumber, pageSize, cancellationToken);
+    }
+
+    private async Task<IQueryable<UserListItemDto>> QueryListAsync(UserSession session, string? search, string? roleName, bool? isActive, CancellationToken cancellationToken)
     {
         EnsureAdmin(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
@@ -43,11 +50,9 @@ public sealed class UserService
         if (isActive.HasValue)
             query = query.Where(user => user.IsActive == isActive.Value);
 
-        return await query.OrderBy(user => user.Username)
+        return query.OrderBy(user => user.Username)
             .Select(user => new UserListItemDto(user.UserId, user.Username, user.FullName, user.Email,
-                user.Role.RoleName, user.IsActive, user.CreatedAt))
-            .Take(500)
-            .ToListAsync(cancellationToken);
+                user.Role.RoleName, user.IsActive, user.CreatedAt));
     }
 
     public async Task<int> CreateAsync(
@@ -55,6 +60,8 @@ public sealed class UserService
         CreateUserRequest request,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         EnsureAdmin(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
@@ -62,10 +69,7 @@ public sealed class UserService
 
         var username = request.Username.Trim();
         var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
-        if (await _dbContext.Users.AnyAsync(user => user.Username == username, cancellationToken))
-            throw new InvalidOperationException("Tên đăng nhập đã tồn tại.");
-        if (email is not null && await _dbContext.Users.AnyAsync(user => user.Email == email, cancellationToken))
-            throw new InvalidOperationException("Email đã được sử dụng.");
+        await UserIdentifiers.EnsureAvailableAsync(_dbContext, username, email, 0, cancellationToken);
 
         var roleName = NormalizeRole(request.RoleName);
         var role = await _dbContext.Roles.SingleOrDefaultAsync(item => item.RoleName == roleName, cancellationToken)
@@ -81,7 +85,9 @@ public sealed class UserService
             CreatedAt = DateTime.Now
         };
         _dbContext.Users.Add(user);
+        RecordUserAction(session, "USER_CREATED", null);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return user.UserId;
     }
 
@@ -90,6 +96,8 @@ public sealed class UserService
         int userId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         EnsureAdmin(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         if (userId <= 0)
@@ -102,12 +110,16 @@ public sealed class UserService
         var user = await _dbContext.Users
             .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
+        await _dbContext.Entry(user).ReloadAsync(cancellationToken);
 
         if (!user.IsActive)
             throw new InvalidOperationException("Tài khoản đã được vô hiệu hóa.");
 
+        await EnsureRoleChangeAllowedAsync(user, string.Empty, false, cancellationToken);
         user.IsActive = false;
+        RecordUserAction(session, "USER_DEACTIVATED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task UpdateUserAsync(
@@ -116,6 +128,8 @@ public sealed class UserService
         UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         EnsureAdmin(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
@@ -134,19 +148,21 @@ public sealed class UserService
             throw new InvalidOperationException("Bạn không thể tự vô hiệu hóa tài khoản đang đăng nhập.");
         var user = await _dbContext.Users.SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
-        if (email is not null && await _dbContext.Users.AnyAsync(
-                item => item.UserId != userId && item.Email == email, cancellationToken))
-            throw new InvalidOperationException("Email đã được sử dụng.");
+        await _dbContext.Entry(user).ReloadAsync(cancellationToken);
+        await UserIdentifiers.EnsureAvailableAsync(_dbContext, user.Username, email, userId, cancellationToken);
 
         var role = await _dbContext.Roles.SingleOrDefaultAsync(
                 item => item.RoleName == roleName, cancellationToken)
             ?? throw new InvalidOperationException("Vai trò không tồn tại trong hệ thống.");
 
+        await EnsureRoleChangeAllowedAsync(user, roleName, request.IsActive, cancellationToken);
         user.FullName = request.FullName.Trim();
         user.Email = email;
         user.RoleId = role.RoleId;
         user.IsActive = request.IsActive;
+        RecordUserAction(session, "USER_UPDATED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task ResetPasswordAsync(
@@ -168,11 +184,14 @@ public sealed class UserService
         var user = await _dbContext.Users.SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Không tìm thấy tài khoản.");
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        RecordUserAction(session, "PASSWORD_RESET", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAccountAsync(UserSession session, UpdateAccountRequest request, CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         var userId = RequireCurrentUser(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         ArgumentNullException.ThrowIfNull(request);
@@ -181,12 +200,14 @@ public sealed class UserService
         var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
         if (email is not null && !MailAddress.TryCreate(email, out _))
             throw new ArgumentException("Email không đúng định dạng.", nameof(request));
-        if (email is not null && await _dbContext.Users.AnyAsync(item => item.UserId != userId && item.Email == email, cancellationToken))
-            throw new InvalidOperationException("Email đã được sử dụng.");
         var user = await _dbContext.Users.SingleAsync(item => item.UserId == userId, cancellationToken);
+        await _dbContext.Entry(user).ReloadAsync(cancellationToken);
+        await UserIdentifiers.EnsureAvailableAsync(_dbContext, user.Username, email, userId, cancellationToken);
         user.FullName = request.FullName.Trim();
         user.Email = email;
+        RecordUserAction(session, "ACCOUNT_UPDATED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task ChangePasswordAsync(UserSession session, ChangePasswordRequest request, CancellationToken cancellationToken = default)
@@ -202,9 +223,33 @@ public sealed class UserService
         if (!_passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
             throw new UnauthorizedAccessException("Mật khẩu hiện tại không đúng.");
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        RecordUserAction(session, "PASSWORD_CHANGED", userId);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task EnsureRoleChangeAllowedAsync(User user, string nextRole, bool nextActive, CancellationToken ct)
+    {
+        if ((!nextActive || nextRole != RoleNames.WarehouseManager)
+            && await _dbContext.Warehouses.AsNoTracking().AnyAsync(warehouse => warehouse.ManagerId == user.UserId, ct))
+            throw new InvalidOperationException("Hãy đổi hoặc gỡ người quản lý tại các kho trước khi đổi vai trò hoặc vô hiệu hóa tài khoản này.");
+        var wasAdmin = user.IsActive && await _dbContext.Roles.AnyAsync(role => role.RoleId == user.RoleId && role.RoleName == RoleNames.Admin, ct);
+        if (wasAdmin && (!nextActive || nextRole != RoleNames.Admin)
+            && !await _dbContext.Users.AsNoTracking().AnyAsync(other => other.UserId != user.UserId && other.IsActive && other.Role.RoleName == RoleNames.Admin, ct))
+            throw new InvalidOperationException("Hệ thống phải còn ít nhất một ADMIN đang hoạt động.");
+    }
+
+    private void RecordUserAction(UserSession session, string action, int? targetUserId)
+    {
+        _dbContext.SystemLogs.Add(new SystemLog
+        {
+            UserId = RequireCurrentUser(session),
+            Action = action,
+            EntityName = "User",
+            EntityId = targetUserId,
+            Description = "User account operation; credentials are never recorded.",
+            CreatedAt = DateTime.Now
+        });
+    }
     private void EnsureAdmin(UserSession session)
     {
         if (!_authorization.CanManageUser(session))

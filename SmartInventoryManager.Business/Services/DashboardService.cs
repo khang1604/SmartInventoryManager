@@ -89,7 +89,8 @@ public sealed class DashboardService
                             ? _dbContext.ExportReceipts.Where(receipt => receipt.ExportReceiptId == item.ReferenceId).Select(receipt => receipt.ReceiptCode).FirstOrDefault() : null
                 }).ToListAsync(cancellationToken))
         {
-            DailyQuantities = filledDays, LowestStock = lowest, StockDistribution = distribution
+            DailyQuantities = filledDays, LowestStock = lowest, StockDistribution = distribution,
+            EstimatedInventoryValue = await inventory.Select(item => item.Quantity * item.Product.PurchasePrice).SumAsync(cancellationToken)
         };
     }
 }

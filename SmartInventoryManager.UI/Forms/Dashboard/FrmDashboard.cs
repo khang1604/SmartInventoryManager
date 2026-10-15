@@ -62,7 +62,7 @@ public partial class FrmDashboard : Form
         root.Controls.Add(filters, 0, 0);
         var cards = ProductUi.Layout(5, 1);
         cards.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        var captions = new[] { "Dòng tồn kho", "Số lượng tồn", "Giá trị tồn (đ)", "Cảnh báo mở", "Hết hàng" };
+        var captions = new[] { "Dòng tồn kho", "Số lượng tồn", "Giá trị ước tính (đ)", "Cảnh báo mở", "Hết hàng" };
         for (var i = 0; i < captions.Length; i++)
         {
             cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
@@ -129,7 +129,7 @@ public partial class FrmDashboard : Form
             var data = await _services.RunAsync(() => _services.Dashboard.GetAsync(_services.Session, warehouseId, _period.From, _period.To));
             if (IsDisposed) return;
             _cards[0].MetricValue = data.InventoryLineCount.ToString("N0"); _cards[1].MetricValue = data.TotalQuantity.ToString("N0");
-            _cards[2].MetricValue = "—"; _cards[2].MetricNote = "Chưa thống nhất định giá";
+            _cards[2].MetricValue = data.EstimatedInventoryValue.ToString("N0", LiveUi.Culture); _cards[2].MetricNote = "Ước tính: tồn × giá nhập hiện tại";
             foreach (var index in new[] { 0, 1, 3, 4 }) _cards[index].MetricNote = "Tồn hiện tại trong kho đã chọn"; _cards[3].MetricValue = data.OpenAlertCount.ToString("N0"); _cards[4].MetricValue = data.OutOfStockCount.ToString("N0");
             _chart.ChartTitle = "Nhập / xuất theo ngày • số lượng";
             _chart.ShowComparison(data.DailyQuantities.Select(row => row.Date.ToString("dd/MM")).ToArray(),
@@ -143,7 +143,7 @@ public partial class FrmDashboard : Form
             }
             _alerts.ShowAlerts(alerts.OrderByDescending(row => row.Alert.CreatedAt).Take(10).ToList());
             _activity.DataSource = data.RecentTransactions.ToList();
-            _note.Text = $"Đã cập nhật {DateTime.Now:HH:mm} • Phiếu hoàn tất trong khoảng ngày đã chọn • Tồn là số liệu hiện tại; giá trị tồn chưa có quy định định giá";
+            _note.Text = $"Đã cập nhật {DateTime.Now:HH:mm} • Tồn hiện tại; giá trị ước tính = tồn × giá nhập hiện tại, không phải giá vốn kế toán";
         }
         catch (Exception ex) { if (!IsDisposed) { foreach (var card in _cards) { card.MetricValue = "—"; card.MetricNote = "Không tải được số liệu"; } _activity.DataSource = null; _alerts.ShowAlerts([]); _chart.ShowSeries([], []); _lowest.ShowHorizontal([], []); _distribution.ShowHorizontal([], []); _note.Text = LiveUi.LoadError(ex); } }
         finally { _loading = false; if (!IsDisposed) _refresh.Enabled = _warehouse.Enabled = _period.Enabled = true; }

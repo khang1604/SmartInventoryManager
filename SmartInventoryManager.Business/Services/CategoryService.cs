@@ -36,7 +36,7 @@ public sealed class CategoryService
             var value = search.Trim();
             query = query.Where(item => item.CategoryName.Contains(value));
         }
-        return await query.OrderBy(item => item.CategoryName).Take(200)
+        return await query.OrderBy(item => item.CategoryName)
             .Select(item => new LookupItemDto(item.CategoryId, item.CategoryName, item.CategoryName))
             .ToListAsync(cancellationToken);
     }

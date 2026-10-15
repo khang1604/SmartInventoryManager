@@ -8,8 +8,37 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ReportExportService
 {
+    public static void ExportAnalyticsExcel(string path, AnalyticsDto report, decimal aThreshold = .80m, decimal bThreshold = .95m)
+    {
+        using var book = new XLWorkbook();
+        var stock = book.Worksheets.Add("Tồn và đề xuất");
+        stock.Cell(1, 1).Value = $"Ước tính theo giá nhập hiện tại • ngày {report.AsOf:dd/MM/yyyy}";
+        stock.Cell(2, 1).Value = "Tổng giá trị ước tính (đ)"; stock.Cell(2, 2).Value = report.EstimatedInventoryValue;
+        var headers = new[] { "Mã", "Sản phẩm", "Kho", "Tồn", "Giá nhập hiện tại (đ)", "Giá trị ước tính (đ)", "SL đề xuất nhập", "Luân chuyển", "Theo dõi từ", "Xuất gần nhất" };
+        for (var i = 0; i < headers.Length; i++) stock.Cell(4, i + 1).Value = headers[i];
+        for (var i = 0; i < report.Stock.Count; i++)
+        {
+            var x = report.Stock[i]; var cells = new object?[] { x.ProductCode, x.ProductName, x.WarehouseName, x.Quantity, x.PurchasePrice, x.EstimatedValue, x.SuggestedQuantity, AnalyticsPage.AnalyticsStatus(x.MovementStatus), x.FirstMovementAt, x.LastExportAt };
+            for (var j = 0; j < cells.Length; j++) stock.Cell(i + 5, j + 1).Value = XLCellValue.FromObject(cells[j]);
+        }
+        stock.Columns(9, 10).Style.DateFormat.Format = "dd/MM/yyyy HH:mm"; stock.Row(4).Style.Font.Bold = true;
+        var abc = book.Worksheets.Add("ABC giá trị xuất"); abc.Cell(1, 1).Value = $"Phiếu xuất hoàn tất {report.AbcFrom:dd/MM/yyyy}–{report.AsOf:dd/MM/yyyy}";
+        abc.Cell(2, 1).Value = "Ngưỡng A/B"; abc.Cell(2, 2).Value = aThreshold; abc.Cell(2, 3).Value = bThreshold;
+        abc.Range(2, 2, 2, 3).Style.NumberFormat.Format = "0.00%";
+        var labels = new[] { "Mã", "Sản phẩm", "Kho", "Giá trị xuất (đ)", "Tỷ trọng", "Tích lũy", "Nhóm" };
+        for (var i = 0; i < labels.Length; i++) abc.Cell(3, i + 1).Value = labels[i];
+        for (var i = 0; i < report.Abc.Count; i++)
+        {
+            var x = report.Abc[i]; var cells = new object?[] { x.ProductCode, x.ProductName, x.WarehouseName, x.ExportValue, x.ValueShare, x.CumulativeShare, AnalyticsPage.AnalyticsStatus(x.Classification) };
+            for (var j = 0; j < cells.Length; j++) abc.Cell(i + 4, j + 1).Value = XLCellValue.FromObject(cells[j]);
+        }
+        abc.Columns(5, 6).Style.NumberFormat.Format = "0.00%"; abc.Row(3).Style.Font.Bold = true;
+        foreach (var sheet in book.Worksheets) { sheet.Columns().AdjustToContents(); foreach (var column in sheet.ColumnsUsed()) column.Width = Math.Min(55, column.Width); }
+        book.SaveAs(path);
+    }
+
     public static void ExportReceiptPdf(string path, string title, string code, DateTime date, string status,
-        string warehouse, string creator, string? supplier, string? note, IReadOnlyList<ReceiptDetailViewDto> details, decimal total)
+        string warehouse, string creator, string? supplier, string? note, IReadOnlyList<ReceiptDetailViewDto> details, decimal total, ReceiptAuditDto? audit = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
         Document.Create(document => document.Page(page =>
@@ -25,6 +54,15 @@ internal static class ReportExportService
                 column.Item().Text($"Trạng thái: {LiveUi.StatusText(status)}");
                 column.Item().Text($"Kho: {warehouse}");
                 column.Item().Text($"Người tạo: {creator}");
+                if (audit is not null)
+                {
+                    column.Item().Text($"Gửi duyệt gần nhất: {audit.SubmittedByName ?? "Chưa có dữ liệu"} • {audit.SubmittedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
+                    column.Item().Text($"Duyệt gần nhất: {audit.ApprovedByName ?? "Chưa có dữ liệu"} • {audit.ApprovedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
+                    column.Item().Text($"Hủy: {audit.CancelledByName ?? "Chưa có dữ liệu"} • {audit.CancelledAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
+                    column.Item().Text($"Hoàn tất: {audit.CompletedByName ?? "Chưa có dữ liệu"} • {audit.CompletedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
+                    if (!string.IsNullOrWhiteSpace(audit.CancelReason)) column.Item().Text($"Lý do hủy: {audit.CancelReason}");
+                    if (!string.IsNullOrWhiteSpace(audit.RejectReason)) column.Item().Text($"Lý do từ chối gần nhất: {audit.RejectReason}");
+                }
                 if (!string.IsNullOrWhiteSpace(supplier)) column.Item().Text($"Nhà cung cấp: {supplier}");
                 column.Item().Table(table =>
                 {
@@ -59,14 +97,16 @@ internal static class ReportExportService
         sheet.Cell(2, 2).Value = report.TotalQuantity;
         sheet.Cell(3, 1).Value = "Cảnh báo đang mở";
         sheet.Cell(3, 2).Value = report.OpenAlertCount;
-        var headers = new[] { "Mã sản phẩm", "Tên sản phẩm", "Kho", "Đơn vị", "Số lượng", "Điểm đặt hàng lại", "Tồn tối đa", "Trạng thái", "Cập nhật" };
+        sheet.Cell(4, 1).Value = "Giá trị ước tính theo giá nhập hiện tại (đ)";
+        sheet.Cell(4, 2).Value = report.EstimatedInventoryValue;
+        var headers = new[] { "Mã sản phẩm", "Tên sản phẩm", "Kho", "Đơn vị", "Số lượng", "Điểm đặt hàng lại", "Tồn tối đa", "Trạng thái", "Cập nhật", "Giá nhập hiện tại (đ)", "Giá trị ước tính (đ)" };
         for (var index = 0; index < headers.Length; index++)
             sheet.Cell(5, index + 1).Value = headers[index];
         for (var rowIndex = 0; rowIndex < report.Rows.Count; rowIndex++)
         {
             var row = report.Rows[rowIndex];
             var values = new object?[] { row.ProductCode, row.ProductName, row.WarehouseName, row.Unit,
-                row.Quantity, row.ReorderPoint, row.MaximumStock, LiveUi.StatusText(row.StockStatus), row.UpdatedAt };
+                row.Quantity, row.ReorderPoint, row.MaximumStock, LiveUi.StatusText(row.StockStatus), row.UpdatedAt, row.PurchasePrice, row.EstimatedValue };
             for (var columnIndex = 0; columnIndex < values.Length; columnIndex++)
                 sheet.Cell(rowIndex + 6, columnIndex + 1).Value = XLCellValue.FromObject(values[columnIndex]);
         }
@@ -109,7 +149,7 @@ internal static class ReportExportService
                     table.Cell().Padding(4).Text(row.UpdatedAt.ToString("dd/MM/yyyy HH:mm"));
                 }
             });
-            page.Footer().AlignRight().Text($"Tổng số lượng khớp bộ lọc: {report.TotalQuantity:N0} • Cảnh báo mở: {report.OpenAlertCount:N0}");
+            page.Footer().AlignRight().Text($"Tổng SL: {report.TotalQuantity:N0} • Ước tính theo giá nhập hiện tại: {report.EstimatedInventoryValue:N2} đ • Cảnh báo mở: {report.OpenAlertCount:N0}");
         })).GeneratePdf(filePath);
     }
 

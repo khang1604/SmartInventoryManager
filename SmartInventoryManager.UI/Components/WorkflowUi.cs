@@ -103,7 +103,7 @@ internal static class WorkflowUi
 
     public static DataGridView Grid(string name, string[] columns)
     {
-        var grid = new DataGridView
+        var grid = new ScrollableGrid
         {
             Name = name, Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false,
             AllowUserToAddRows = false, AllowUserToDeleteRows = false, AllowUserToOrderColumns = false,
@@ -193,10 +193,22 @@ internal static class WorkflowUi
 
     public static void StyleForm(Form form)
     {
+        form.Shown += (_, _) => FitToWorkingArea(form);
+        ScrollbarAppearance.Apply(form);
         UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);
         // [COLOR CONFIG]: nền và chữ của các màn hình nghiệp vụ.
         form.BackColor = AppColors.Workspace;
         form.ForeColor = AppColors.Text;
+    }
+
+    internal static void FitToWorkingArea(Form form)
+    {
+        if (!form.TopLevel || form.WindowState != FormWindowState.Normal) return;
+        var area = Screen.FromControl(form.Owner ?? form).WorkingArea;
+        var available = new Size(Math.Max(1, area.Width - 24), Math.Max(1, area.Height - 24));
+        form.MinimumSize = new Size(Math.Min(form.MinimumSize.Width, available.Width), Math.Min(form.MinimumSize.Height, available.Height));
+        form.Size = new Size(Math.Min(form.Width, available.Width), Math.Min(form.Height, available.Height));
+        form.Location = new Point(Math.Clamp(form.Left, area.Left, area.Right - form.Width), Math.Clamp(form.Top, area.Top, area.Bottom - form.Height));
     }
 }
