@@ -10,6 +10,8 @@ public class NotificationPanel : Panel
         page=new DataListPage<NotificationDto>(services,"Thông báo của tôi",
             [("Title","Tiêu đề"),("NotificationType","Loại thông báo"),("CreatedAt","Thời gian"),("IsRead","Trạng thái đọc")],
             (_,search,from,to)=>services.Notifications.GetAsync(services.Session,search,page?.SelectedType switch {1=>false,2=>true,_=>(bool?)null},from,to),history:true);
+        page.UsePagination((_, search, from, to, number, size) => services.Notifications.GetPageAsync(services.Session, number, size,
+            search, page.SelectedType switch { 1 => false, 2 => true, _ => (bool?)null }, from, to));
         page.SelectedAction("Xem nội dung",(row,_)=> { UiDetails.Show(page,row.Title,[("Nội dung",row.Message),("Thời gian",row.CreatedAt.ToString("dd/MM/yyyy HH:mm")),("Trạng thái",row.IsRead ? "Đã đọc":"Chưa đọc")]); return Task.CompletedTask; },"eye");
         page.SelectedAction("Đánh dấu đã đọc",(row,_)=>services.RunAsync(()=>services.Notifications.MarkAsReadAsync(services.Session,row.NotificationId)));
         page.Action("Đọc tất cả",async()=> { await services.RunAsync(()=>services.Notifications.MarkAllAsReadAsync(services.Session)); await page.RefreshAsync(); });
@@ -25,7 +27,7 @@ public class NotificationPanel : Panel
         refresh.Tick += async (_, _) =>
         {
             if (!Visible || services.HasPendingOperations) return;
-            if (tabs.SelectedTab == notifications) await page.RefreshAsync();
+            if (tabs.SelectedTab == notifications) await page.RefreshCurrentPageAsync();
             else await stockAlerts.RefreshAsync();
         };
         VisibleChanged += (_, _) => refresh.Enabled = Visible;

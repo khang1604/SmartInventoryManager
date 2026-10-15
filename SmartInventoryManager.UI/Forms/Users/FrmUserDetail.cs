@@ -7,6 +7,7 @@ namespace SmartInventoryManager.Forms.Users;
 
 public sealed class FrmUserDetail : Form
 {
+    internal bool RequiresSignIn { get; private set; }
     public FrmUserDetail() : this(null) { }
 
     public FrmUserDetail(UiServices? services, UserListItemDto? user = null, bool resetPassword = false)
@@ -115,7 +116,10 @@ public sealed class FrmUserDetail : Form
                     else
                         await services.RunAsync(() => services.Users.UpdateUserAsync(services.Session, user.UserId,
                             new UpdateUserRequest(fullName.Text, email.Text, roleName, active.Checked)));
-                    MessageBox.Show(this, user is null ? "Đã tạo tài khoản thành công." : resetPassword ? "Đã đặt lại mật khẩu." : "Đã cập nhật tài khoản.", "Thành công",
+                    RequiresSignIn = user is not null && !resetPassword && user.UserId == services.Session.CurrentUser?.UserId
+                        && roleName != services.Session.CurrentUser.RoleName;
+                    MessageBox.Show(this, RequiresSignIn ? "Đã đổi vai trò của bạn. Vui lòng đăng nhập lại để áp dụng quyền mới."
+                        : user is null ? "Đã tạo tài khoản thành công." : resetPassword ? "Đã đặt lại mật khẩu." : "Đã cập nhật tài khoản.", "Thành công",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     DialogResult = DialogResult.OK;
                     Close();

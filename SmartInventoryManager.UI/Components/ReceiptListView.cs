@@ -22,18 +22,28 @@ internal sealed class ReceiptListView : UserControl
     private bool _initialized;
     private bool _hiddenAfterLoad;
     private int _actionsVersion;
+    private int _page = 1;
+    private (int?, string?, DateTime?, DateTime?, string, int)? _lastFilter;
+    private readonly AntdUI.Button _previous = ProductUi.Button("btnPreviousPage", "Trang trước", "chevron-left");
+    private readonly AntdUI.Button _next = ProductUi.Button("btnNextPage", "Trang sau", "chevron-right");
 
     public ReceiptListView(UiServices services, bool import)
     {
         _services = services;
         _import = import;
         Dock = DockStyle.Fill;
-        var root = ProductUi.Layout(1, 4);
+        var root = ProductUi.Layout(1, 5);
         root.Padding = new Padding(20, 12, 20, 16);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        var pager = LiveUi.Toolbar();
+        _previous.Enabled = _next.Enabled = false;
+        pager.Controls.AddRange([_previous, _next]);
+        _previous.Click += async (_, _) => { if (_busy || _page <= 1) return; _page--; await LoadAsync(); };
+        _next.Click += async (_, _) => { if (_busy || !_next.Enabled) return; _page++; await LoadAsync(); };
         _status.Items.AddRange(["Tất cả trạng thái", "Nháp", "Chờ duyệt", "Đã duyệt", "Bị từ chối", "Hoàn tất", "Đã hủy"]);
         _status.SelectedIndex = 0;
         _filters.Controls.AddRange([LiveUi.Field("Mã phiếu", _search), LiveUi.Field("Kho", _warehouse),
@@ -93,6 +103,7 @@ internal sealed class ReceiptListView : UserControl
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
+        root.Controls.Add(pager, 0, 4);
         Controls.Add(root);
         _search.KeyDown += async (_, e) =>
         {
@@ -138,6 +149,7 @@ internal sealed class ReceiptListView : UserControl
     {
         _busy = value;
         _actions.Enabled = _filters.Enabled = _grid.Enabled = !value;
+        _previous.Parent!.Enabled = !value;
     }
 
     private async Task LoadAsync()
@@ -165,22 +177,28 @@ internal sealed class ReceiptListView : UserControl
             var from = _from.Checked ? _from.Value.Date : (DateTime?)null;
             var to = _to.Checked ? _to.Value.Date : (DateTime?)null;
             var search = _search.Text.Trim();
+            var size = Math.Clamp(UiPreferences.Current.PageSize, 1, 100);
+            var filter = (warehouseId, status, from, to, search, size);
+            if (_lastFilter != filter) { _page = 1; _lastFilter = filter; }
+            var request = new ReceiptSearchDto { WarehouseId = warehouseId, Status = status, From = from, To = to, Search = search, PageNumber = _page, PageSize = size };
+            int total;
             if (_import)
             {
-                var rows = await _services.RunAsync(() => _services.Imports.GetListAsync(_services.Session, warehouseId, status, from, to, search));
+                var result = await _services.RunAsync(() => _services.Imports.GetPageAsync(_services.Session, request));
                 if (IsDisposed) return;
-                _grid.DataSource = rows.ToList();
+                _grid.DataSource = result.Items.ToList(); _page = result.PageNumber; total = result.TotalCount;
             }
             else
             {
-                var rows = await _services.RunAsync(() => _services.Exports.GetListAsync(_services.Session, warehouseId, status, from, to, search));
+                var result = await _services.RunAsync(() => _services.Exports.GetPageAsync(_services.Session, request));
                 if (IsDisposed) return;
-                _grid.DataSource = rows.ToList();
+                _grid.DataSource = result.Items.ToList(); _page = result.PageNumber; total = result.TotalCount;
             }
+            _previous.Enabled = _page > 1; _next.Enabled = (long)_page * size < total;
             var filtered = warehouseId.HasValue || status is not null || from.HasValue || to.HasValue || search.Length > 0;
             _message.Text = _grid.Rows.Count == 0
                 ? (filtered ? "Không có phiếu phù hợp bộ lọc. Thử bỏ bộ lọc." : "Chưa có phiếu. Chọn Tạo phiếu để bắt đầu.")
-                : $"{_grid.Rows.Count:N0} phiếu • Chọn một dòng để xem hoặc thao tác.";
+                : $"Trang {_page:N0}/{Math.Max(1, (total + (long)size - 1) / size):N0} • Tổng {total:N0} phiếu • {_grid.Rows.Count:N0} phiếu trên trang.";
         }
         catch (Exception ex) { if (!IsDisposed) { _grid.DataSource = null; _message.Text = LiveUi.LoadError(ex); } }
         finally { if (!IsDisposed) Busy(false); }

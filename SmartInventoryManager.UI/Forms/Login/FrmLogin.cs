@@ -30,6 +30,17 @@ namespace SmartInventoryManager.UI.Forms.Login
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             InitializeComponent();
             SetupUI();
+            var remembered = RememberedUsername.Load();
+            chkRemember.Text = "Nhớ tên đăng nhập";
+            chkRemember.Width = 200;
+            chkRemember.AccessibleDescription = "Chỉ lưu tên đăng nhập trên máy, không lưu mật khẩu hoặc tự đăng nhập.";
+            chkRemember.Checked = remembered is not null;
+            if (remembered is not null) txtUsername.Text = remembered;
+            chkRemember.CheckedChanged += (_, _) =>
+            {
+                if (!chkRemember.Checked && !RememberedUsername.TrySave(null))
+                    label2.Text = "Không cập nhật được tên đăng nhập đã nhớ trên máy.";
+            };
         }
 
         public AuthenticatedUserDto? AuthenticatedUser { get; private set; }
@@ -187,8 +198,15 @@ namespace SmartInventoryManager.UI.Forms.Login
                     return;
                 }
 
+                if (!RememberedUsername.TrySave(chkRemember.Checked ? AuthenticatedUser.Username : null))
+                    MessageBox.Show(this, "Đăng nhập thành công nhưng không lưu được tùy chọn nhớ tên đăng nhập trên máy.",
+                        "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
                 Close();
+            }
+            catch (InvalidOperationException exception) when (exception.Message == "Thông tin đăng nhập bị trùng giữa các tài khoản. Vui lòng liên hệ ADMIN để kiểm tra.")
+            {
+                label2.Text = exception.Message;
             }
             catch (Exception exception)
             {

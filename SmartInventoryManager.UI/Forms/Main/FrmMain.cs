@@ -11,6 +11,11 @@ public partial class FrmMain : Form
     private readonly UserSession? _session;
     private readonly UiServices? _services;
     public bool LogoutRequested { get; private set; }
+    internal void RequestSignInAgain()
+    {
+        LogoutRequested = true;
+        Close();
+    }
     private readonly Dictionary<string, MainNavigationButton> _navigation = new();
     private readonly Dictionary<string, Control> _pages = new();
     private TableLayoutPanel _root = null!;
@@ -453,7 +458,8 @@ public partial class FrmMain : Form
         "Thông báo" when _services is not null => new NotificationPanel(_services),
         "Nhật ký" when _services is not null => new DataListPage<SmartInventoryManager.Business.Services.SystemLogDto>(_services,
             "Nhật ký • tối đa 500 bản ghi gần nhất", [("CreatedAt", "Thời điểm"), ("ActorName", "Người thực hiện"), ("Action", "Thao tác"), ("EntityName", "Đối tượng"), ("Description", "Nội dung")],
-            (_, search, _, _) => _services.Logs.GetAsync(_services.Session, search)),
+            (_, search, _, _) => _services.Logs.GetAsync(_services.Session, search))
+            .UsePagination((_, search, _, _, number, size) => _services.Logs.GetPageAsync(_services.Session, number, size, search)),
         "Thông báo" => new NotificationPanel(),
         _ => throw new ArgumentOutOfRangeException(nameof(title))
     };

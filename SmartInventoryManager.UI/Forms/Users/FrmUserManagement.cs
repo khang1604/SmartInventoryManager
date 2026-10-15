@@ -16,6 +16,9 @@ public partial class FrmUserManagement : Form
             var page=new DataListPage<UserListItemDto>(services,"Người dùng",[("Username","Tên đăng nhập"),("FullName","Họ tên"),("Email","Email"),("RoleName","Vai trò"),("IsActive","Trạng thái"),("CreatedAt","Ngày tạo")],
                 (_,search,_,_)=>services.Users.GetListAsync(services.Session,search,role.SelectedIndex switch {1=>"ADMIN",2=>"WAREHOUSE_MANAGER",3=>"STAFF",_=>null},status.SelectedIndex switch {1=>true,2=>false,_=>(bool?)null}));
             page.AddFilter("Vai trò",role); page.AddFilter("Trạng thái",status); page.AddDetailsColumn();
+            page.UsePagination((_, search, _, _, number, size) => services.Users.GetPageAsync(services.Session, number, size, search,
+                role.SelectedIndex switch { 1 => "ADMIN", 2 => "WAREHOUSE_MANAGER", 3 => "STAFF", _ => null },
+                status.SelectedIndex switch { 1 => true, 2 => false, _ => (bool?)null }));
             page.Action("Thêm người dùng",async()=> { using var detail=new FrmUserDetail(services); if(detail.ShowDialog(this)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
             if (services.Authorization.CanManageUser(services.Session))
             {
@@ -29,6 +32,8 @@ public partial class FrmUserManagement : Form
                 {
                     using var detail = new FrmUserDetail(services, user);
                     detail.ShowDialog(this);
+                    if (detail.RequiresSignIn)
+                        Application.OpenForms.OfType<SmartInventoryManager.UI.Forms.Main.FrmMain>().FirstOrDefault()?.RequestSignInAgain();
                     await Task.CompletedTask;
                 }, "pencil");
                 page.SelectedAction("Đặt lại mật khẩu", async (user, _) =>

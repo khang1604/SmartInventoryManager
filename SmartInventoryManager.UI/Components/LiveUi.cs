@@ -281,6 +281,10 @@ internal static class LiveUi
             ArgumentException argument when !string.IsNullOrWhiteSpace(argument.Message)
                 => argument.Message,
             KeyNotFoundException => "Dữ liệu không còn tồn tại. Hãy làm mới danh sách.",
+            InvalidOperationException when exception.Message is
+                "Tên đăng nhập hoặc email trùng với thông tin đăng nhập của tài khoản khác."
+                or "Hãy đổi hoặc gỡ người quản lý tại các kho trước khi đổi vai trò hoặc vô hiệu hóa tài khoản này."
+                or "Hệ thống phải còn ít nhất một ADMIN đang hoạt động." => exception.Message,
             InvalidOperationException when exception.Message.Contains("không đủ", StringComparison.OrdinalIgnoreCase)
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."

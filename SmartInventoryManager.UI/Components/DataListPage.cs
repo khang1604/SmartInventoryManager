@@ -17,6 +17,12 @@ internal sealed class DataListPage<T> : UserControl where T : class
     private readonly FlowLayoutPanel _filters = LiveUi.Toolbar();
     private readonly FlowLayoutPanel _actions = LiveUi.Toolbar();
     private readonly string _scope;
+    private Func<int, string, DateTime?, DateTime?, int, int, Task<PagedResultDto<T>>>? _pageQuery;
+    private readonly TableLayoutPanel _root;
+    private readonly FlowLayoutPanel _pager = LiveUi.Toolbar();
+    private readonly AntdUI.Button _previous = ProductUi.Button("btnPreviousPage", "Trang trước", "chevron-left");
+    private readonly AntdUI.Button _next = ProductUi.Button("btnNextPage", "Trang sau", "chevron-right");
+    private int _page = 1;
     private bool _busy;
     private bool _actionRunning;
     private string _summary = "";
@@ -33,12 +39,18 @@ internal sealed class DataListPage<T> : UserControl where T : class
     {
         _services = services; _query = query; _scope = scope; _requiresWarehouse = requiresWarehouse; _history = history;
         Dock = DockStyle.Fill;
-        var root = ProductUi.Layout(1, 4);
+        var root = _root = ProductUi.Layout(1, 5);
         root.Padding = new Padding(20, 12, 20, 16);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
+        _pager.Visible = false;
+        _previous.Enabled = _next.Enabled = false;
+        _pager.Controls.AddRange([_previous, _next]);
+        _previous.Click += async (_, _) => { if (_busy || _actionRunning || _page <= 1) return; _page--; await LoadPageAsync(false); };
+        _next.Click += async (_, _) => { if (_busy || _actionRunning || !_next.Enabled) return; _page++; await LoadPageAsync(false); };
         _filters.Controls.Add(LiveUi.Field("Tìm mã hoặc tên", _search));
         if (requiresWarehouse) _filters.Controls.Add(LiveUi.Field("Kho đang xem *", _warehouse));
         if (history)
@@ -95,6 +107,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         root.Controls.Add(_actions, 0, 1);
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
+        root.Controls.Add(_pager, 0, 4);
         Controls.Add(root);
         Load += async (_, _) => await RefreshAsync();
         VisibleChanged += async (_, _) =>
@@ -181,14 +194,27 @@ internal sealed class DataListPage<T> : UserControl where T : class
         }
     }
 
-    public async Task RefreshAsync()
+    public DataListPage<T> UsePagination(Func<int, string, DateTime?, DateTime?, int, int, Task<PagedResultDto<T>>> query)
+    {
+        _pageQuery = query;
+        _root.RowStyles[4].Height = 54;
+        _pager.Visible = true;
+        return this;
+    }
+
+    public Task RefreshAsync() => LoadPageAsync(true);
+    public Task RefreshCurrentPageAsync() => LoadPageAsync(false);
+
+    private async Task LoadPageAsync(bool resetPage)
     {
         if (_busy) return;
+        if (resetPage) _page = 1;
         _initialized = true;
         if (_history && _from.Checked && _to.Checked && _from.Value.Date > _to.Value.Date)
         { _message.Text = "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc."; return; }
         _busy = true;
         _filters.Enabled = _actions.Enabled = _grid.Enabled = false;
+        _pager.Enabled = false;
         _message.Text = "Đang tải dữ liệu…";
         try
         {
@@ -206,7 +232,17 @@ internal sealed class DataListPage<T> : UserControl where T : class
             { _grid.DataSource = null; _message.Text = "Chưa có kho đang hoạt động để xem dữ liệu."; return; }
             var from = _history && _from.Checked ? _from.Value.Date : (DateTime?)null;
             var to = _history && _to.Checked ? _to.Value.Date : (DateTime?)null;
-            var rows = await _services.RunAsync(() => _query(warehouseId, _search.Text.Trim(), from, to));
+            IReadOnlyList<T> rows;
+            int? totalCount = null;
+            var size = Math.Clamp(UiPreferences.Current.PageSize, 1, 100);
+            if (_pageQuery is null) rows = await _services.RunAsync(() => _query(warehouseId, _search.Text.Trim(), from, to));
+            else
+            {
+                var result = await _services.RunAsync(() => _pageQuery(warehouseId, _search.Text.Trim(), from, to, _page, size));
+                rows = result.Items; _page = result.PageNumber; totalCount = result.TotalCount;
+                _previous.Enabled = _page > 1;
+                _next.Enabled = (long)_page * size < result.TotalCount;
+            }
             if (IsDisposed) return;
             if (_history && _type.SelectedIndex > 0)
             {
@@ -231,12 +267,13 @@ internal sealed class DataListPage<T> : UserControl where T : class
             _message.Text = $"{_scope}{warehouse} • " + (rows.Count == 0
                 ? (filtered ? "Không có kết quả phù hợp; thử bỏ bộ lọc." : "Chưa có dữ liệu.")
                 : $"{rows.Count:N0} dòng") + (string.IsNullOrEmpty(_summary) ? "" : " • " + _summary);
+            if (totalCount.HasValue) _message.Text += $" • Trang {_page:N0}/{Math.Max(1, (long)(totalCount.Value + (long)size - 1) / size):N0} • Tổng {totalCount.Value:N0} dòng";
         }
         catch (Exception ex) { if (!IsDisposed) { _grid.DataSource = null; _message.Text = LiveUi.LoadError(ex); } }
         finally
         {
             _busy = false;
-            if (!IsDisposed) _filters.Enabled = _actions.Enabled = _grid.Enabled = true;
+            if (!IsDisposed) _filters.Enabled = _actions.Enabled = _grid.Enabled = _pager.Enabled = true;
         }
         if (!IsDisposed) await UpdateSelectedActionsAsync();
     }

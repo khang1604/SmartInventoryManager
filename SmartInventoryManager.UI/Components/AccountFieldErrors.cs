@@ -49,6 +49,9 @@ internal sealed class AccountFieldErrors
         return exception.Message switch
         {
             "Tên đăng nhập đã tồn tại." or "Email đã được sử dụng." or "Mật khẩu hiện tại không đúng."
+                or "Tên đăng nhập hoặc email trùng với thông tin đăng nhập của tài khoản khác."
+                or "Hãy đổi hoặc gỡ người quản lý tại các kho trước khi đổi vai trò hoặc vô hiệu hóa tài khoản này."
+                or "Hệ thống phải còn ít nhất một ADMIN đang hoạt động."
                 or "Vai trò không tồn tại trong hệ thống." => exception.Message,
             _ => "Không lưu được. Vui lòng kiểm tra kết quả trước khi thử lại."
         };
