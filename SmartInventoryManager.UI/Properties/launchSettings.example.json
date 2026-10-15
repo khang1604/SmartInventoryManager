@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SmartInventoryManager.UI": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "SMART_INVENTORY_CONNECTION_STRING": "Server=localhost;Database=SmartInventoryManagerDB;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+      }
+    }
+  }
+}

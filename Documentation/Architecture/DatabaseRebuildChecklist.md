@@ -81,6 +81,10 @@ Lưu ý: kết quả18bảng/152unit/4SQL ở trên là snapshot14/10; không d�
 
 ## Nghiệm thu Release cuối — 15/10/2026
 
+- [x] Triển khai mới15/10: localhost\SQLEXPRESS Express17.0.1000.7 / SmartInventoryManagerProductionDB,6migrations/19bảng/model khônglệch; bootstrap tươngtác xácnhận3role/1ADMINactive. TESTdefaultinstancegiữnguyên.
+- [x] TCP Express cổng tĩnh14330 đã xác nhận sau restart; SQLlogin `vioware_app` được map vào `VioWareRuntime`, kiểm tra quyền bằng impersonation đạt. Người dùng báo kết nối SQL Authentication và đăng nhập VioWare tại máy chủ thành công.
+- [ ] Production networking/readiness: còn policy/firewall VPN giới hạn, chứng chỉ, backup/restore và nghiệm thu SQL từ máy khác. Không coi kết nối local là nghiệm thu production đầy đủ.
+
 - [x] Toàn bộ suite 174/174 PASS: 169 unit + 5 SQL, 0 fail/0 skip; `.temp/FinalAcceptance/all-final.trx` là bằng chứng local, không commit.
 - [x] Đối chiếu lại đủ19 bảng/cột/PK/FK/delete behavior/index/filter/CHECK trusted; 6 migrations không pending và model không lệch.
 - [x] SQL fixture: reset mật khẩu + AuthService, thu hồi assignment giữ inactive row, chặn đổi role/deactivate manager của kho inactive; lịch sử nhập21 chuyển trạng thái phân trang20+1,6 lần từ chối, audit latest actor/time; hủy phiếu xuất không poststock.
@@ -88,3 +92,10 @@ Lưu ý: kết quả18bảng/152unit/4SQL ở trên là snapshot14/10; không d�
 - [x] Fixture FINAL_ đã dọn đúng dữ liệu sở hữu, probe cuối trả danh sách rỗng; không drop/reset DB hoặc dọn demo/fixture cũ ngoài scope.
 - [x] Native Release ADMIN: form phiếu chỉ xem, lịch sử cũ trống, báo cáo và SaveFileDialog xuất Excel thành công; tổng6/ước tính72 khớp file. Harness xuất3PDF +3Excel; PDF60dòng/5trang có audit và dòng cuối, đã xem7trang render.
 - [ ] Các ca còn lại: ADMIN cuối cùng/bootstrap trắng SQL hiện hành, đầy đủ thao tác ghi qua UI của3role, DPI/Designer/HighContrast/máy in, máy sạch và production. Không dùng174PASS để đánh dấu các ca này.
+
+## Bản máy khách v1.0.1 — 15/10/2026
+
+- [x] Form cấu hình/test chỉ đọc, lưu DPAPI CurrentUser; máy khách không migrate/seed/bootstrap. Có thể cài trước, được cấp quyền server sau.
+- [x] Build 7 project 0 lỗi/0 cảnh báo; 179/179 test đạt gồm169 unit nghiệp vụ,5 SQL TEST và5 cấu hình/DPAPI. Không chạy suite mutation trên ProductionDB.
+- [x] Publish self-contained win-x64 và compile InnoSetup; tùy chọn cài MSI Tailscale chính thức, không chứa mật khẩu/authkey.
+- [ ] Cài mới/upgrade/uninstall, MSI/UAC và kết nối từ máy khách khác sau khi quản trị viên cấp quyền.

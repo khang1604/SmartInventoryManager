@@ -1,5 +1,41 @@
 # Báo cáo tổng hợp SmartInventoryManager
 
+## Bản bàn giao máy khách v1.0.1 — 15/10/2026
+
+Phần này là trạng thái hiện hành, ưu tiên hơn các snapshot triển khai bên dưới. Giữ đầy đủ source, migrations, tests, bootstrap và SQL legacy cho việc chấm đồ án; `.temp/` và `artifacts/` không commit.
+
+| Hạng mục | Kết quả và giới hạn |
+|---|---|
+| Cài trước, kết nối sau | Form cấu hình riêng và shortcut `--configure`; người nhận có thể đóng và chờ quản trị viên cấp quyền. Máy khách không chạy migrations hoặc tạo ADMIN |
+| Bảo vệ cấu hình | DPAPI CurrentUser, mật khẩu được che; chỉ lưu sau kiểm tra thành công, sửa thông tin phải kiểm tra lại. Ưu tiên environment → DPAPI → XML legacy; profile hỏng quay lại cấu hình |
+| Kiểm tra kết nối | Probe chỉ đọc ba bảng thiết yếu; có timeout, báo lỗi không lộ connection/password. Không thay thế kiểm thử đầy đủ quyền ghi hoặc schema |
+| Kiểm tra source cuối | Build 7 project, 0 lỗi/0 cảnh báo. Hai suite đạt **179/179: 169 unit nghiệp vụ + 5 SQL TEST + 5 cấu hình/DPAPI**, không fail/skip |
+| UI cấu hình | Harness xác minh lưu/test/edit, lỗi offline, profile hỏng và bố cục 820×760/640×540 có cuộn tới trạng thái. Native kiểm tra form từ payload publish, validate thiếu thông tin và đóng để cấu hình sau; chưa nhập SQL password thật qua form mới |
+| Bộ cài | Inno Setup 6.7.3 compile v1.0.1 self-contained win-x64 thành công; .NET 10.0.12 đóng kèm, MSI Tailscale chính thức tùy chọn. Không nhúng credentials, SQL Server hoặc bootstrap vào máy khách |
+| Server hiện tại | Express `localhost\SQLEXPRESS`, ProductionDB có 6 migrations/19 bảng và 3 role/1 ADMIN. TCP 14330 xác nhận; người dùng báo đã đăng nhập SQL Authentication và VioWare tại máy chủ. Không coi đây là kiểm thử độc lập mọi thao tác ghi production |
+| Quyền SQL | `vioware_app` qua `VioWareRuntime`; đọc 19 bảng, quyền ghi theo service, audit/log/movement chỉ thêm, không quyền schema/sysadmin/db_owner. Mật khẩu do quản trị viên cung cấp riêng |
+| Báo cáo | Bản Word 19 trang đã bổ sung đóng gói, server, chuyển máy chủ công ty và lời thuyết trình; đã render và xem toàn bộ trang |
+
+Chưa nghiệm thu: cài mới/upgrade/uninstall trên máy sạch, MSI Tailscale/UAC, SQL từ máy khác qua VPN, policy/firewall/chứng chỉ, backup/restore production, Windows DPI thật/máy in và các giới hạn UI/SQL ADMIN cuối cùng ghi dưới đây. Chưa công bố production sẵn sàng sử dụng thực tế.
+
+Source bàn giao trên `Backend`; kênh phân phối bộ cài là [Release v1.0.1](https://github.com/khang1604/SmartInventoryManager/releases/tag/v1.0.1). Trạng thái publish/archive tra trên GitHub. Giữ quy trình PR vào `develop`, không tự merge khi chưa có người khác duyệt; sau archive phải unarchive trước khi review/merge.
+
+Sau merge develop mới nhất (không thay application source), build lại đạt 0 lỗi/0 cảnh báo; chạy lại 169 unit nghiệp vụ + 5 cấu hình/DPAPI đều đạt, không fail/skip. Lượt VSTest trong sandbox bị abort vì không kết nối testhost; kết quả xác nhận là lượt chạy lại ngoài sandbox, evidence riêng tại `.temp/ClientRelease/PostMergeVerified`. Không tính lượt abort là pass.
+
+### Các snapshot triển khai trước bản v1.0.1
+
+Cập nhật runtimeSQLlogin15/10: vioware_app do người dùng tựtạo, đã map DBproductionExpress vào roleVioWareRuntime bằng script [ConfigureRuntimePermissions.sql](../Deployment/ConfigureRuntimePermissions.sql). Quyền theo19bảng/service, Rolesreadonly,4bảnghistory/log/movement appendonly, draftreceipt/details cóDELETE và sequence cóUPDATE. EXECUTEASLOGIN kiểmtra đọc19bảng/3roles, khôngsysadmin/db_owner/CREATETABLE/ghimigration/rewritehistory. Không đọc mật khẩu/hash, không chạyfixtureghi production; chưa kiểmtra passwordSQLAuth hoặc UIghi bằngloginmới. TCP14330local đã xácnhận sau userrestart. Tailscale ảnhmáychủConnected100.86.177.49, kết nốiSQLmáykhác/firewall/TLS cònpending. ThôngtinTCPdisabled/chưacóSQLloginbêndưới là snapshotcũ.
+
+Triển khai Express15/10 sau khi người dùng cài xong: xácnhận `localhost\SQLEXPRESS` Express64-bit17.0.1000.7; tạo mới `SmartInventoryManagerProductionDB`,6migrations apply thànhcông,19bảng, has-pending-model-changes khônglệch. Người dùng tựnhập bootstrap tươngtác; kiểmtra chỉđọc xácnhận3role/1ADMINactive, Setup--check nhận ADMINđãcó/khôngghiđè. TESTdefaultinstancegiữnguyên. SQLExpressTCPdisabled, chưacàiVPN/chưađổifirewall/chưacấpSQLloginapp/chưanghiệmthuUIhoặcmáykhác. Đây là cậpnhật mới hơn kếhoạch “chưa tạoDB” bên dưới; chưa coi hệthống production đã sẵnsàng.
+
+Cập nhật self-contained15/10: app/bootstrap publish `-r win-x64 --self-contained true`, không trim/single-file; đường dẫn hiện hành là `artifacts/publish/app-win-x64` và `setup-win-x64`. Runtimeconfig có includedFrameworks.NETCore/WindowsDesktop10.0.12, đủ coreclr/hostfxr/hostpolicy/WinForms/SNI/QuestPDF native. Setup self-contained `--check` đọc TEST thành công; hosttrace dùng coreclr trong payload. Inno6.7.3 compile đạt, file phát hành duy nhất `artifacts/installer/VioWare-Setup-1.0.0-win-x64-self-contained.exe` (55,678,521bytes); đã xóa đúng installer framework-dependent cũ theo yêu cầu. Chưa cài máy sạch. Không đổi dữ liệu TEST.
+
+Kế hoạch DB mới: người dùng chọn DB riêng SmartInventoryManagerProductionDB và truy cập khác mạng qua VPN. Serverlocalhost hiện là SQL2025StandardDeveloper17.0.1000.7, chỉ dùng dev/test/demo; sau khi biết edition, người dùng yêu cầu hướng dẫn chuyển. Đề xuất cài Express2025 instanceSQLEXPRESS song song, giữ defaultinstanceTEST. DBproduction chưa tạo, migrations chưa apply lên production; scriptidempotent đã sinh để review trong.temp. Chờ Express cài xong và xác nhận target mới trước migration. Hướng dẫn tại [Express/VPN](../Deployment/ExpressAndVpnSetup.md).
+
+Cập nhật đường dẫn đóng gói 15/10/2026: source script nằm tại `Installer/VioWare.iss`; payload publish chuyển sang `artifacts/publish/app` và `artifacts/publish/setup`, output bộ cài tại `artifacts/installer`. `artifacts/` được Git ignore. `.temp/FinalAcceptance` chỉ giữ evidence QA lịch sử; không còn là nguồn đóng gói. Xem [hướng dẫn hiện hành](../Deployment/PackagingChecklist.md). Cài đặt máy sạch vẫn chưa nghiệm thu.
+
+Đã publish lại app/bootstrap và compile `Installer/VioWare.iss` thành công bằng Inno Setup6.7.3; output `artifacts/installer/VioWare-Setup-1.0.0.exe`. Không chạy installer trong lượt chỉnh đường dẫn này.
+
 ## Nghiệm thu Release cuối trước đóng gói — 15/10/2026
 
 Phần này cập nhật kết quả cuối cùng của đợt kiểm tra, ưu tiên hơn các ghi chú “chưa chạy lại” trong snapshot bên dưới. Môi trường duy nhất được duyệt là SQL TEST `localhost/SmartInventoryManagerDB`; production chưa được cung cấp. Người dùng từ chối tạo DB tạm cho đợt này, yêu cầu ghi rõ ca chưa kiểm tra. Không thay tài khoản/demo hoặc drop/reset DB.

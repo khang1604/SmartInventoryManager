@@ -6,6 +6,8 @@ using SmartInventoryManager.UI.Forms.Login;
 using SmartInventoryManager.UI.Forms.Main;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.UI.Components;
+using SmartInventoryManager.UI.Forms.Settings;
+using SmartInventoryManager.Data.Queries;
 
 namespace SmartInventoryManager.UI
 {
@@ -15,30 +17,46 @@ namespace SmartInventoryManager.UI
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
 
-            var connectionString = Environment.GetEnvironmentVariable(
-                "SMART_INVENTORY_CONNECTION_STRING");
-
-            if (string.IsNullOrWhiteSpace(connectionString))
+            var store = new ConnectionSettingsStore();
+            if (args.Contains("--configure", StringComparer.OrdinalIgnoreCase))
             {
-                connectionString = LoadConnectionStringFromAppConfig();
-            }
-
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                MessageBox.Show(
-                    "Chưa cấu hình chuỗi kết nối cơ sở dữ liệu. Vui lòng liên hệ quản trị viên.",
-                    "Không thể khởi động",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                using var settings = new FrmConnectionSettings(store, DatabaseConnectionProbe.CheckAsync);
+                settings.ShowDialog();
                 return;
             }
+            while (true)
+            {
+                var connectionString = ResolveConnectionString(store);
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    using var settings = new FrmConnectionSettings(store, DatabaseConnectionProbe.CheckAsync);
+                    if (settings.ShowDialog() != DialogResult.OK) return;
+                    connectionString = settings.ConnectionString!;
+                }
+                if (!RunApplication(connectionString)) return;
+                using var configure = new FrmConnectionSettings(store, DatabaseConnectionProbe.CheckAsync);
+                configure.ShowDialog();
+            }
+        }
 
+        private static string? ResolveConnectionString(ConnectionSettingsStore store)
+        {
+            var connectionString = Environment.GetEnvironmentVariable(
+                "SMART_INVENTORY_CONNECTION_STRING");
+            if (!string.IsNullOrWhiteSpace(connectionString)) return connectionString;
+            connectionString = store.Load(out var unreadable);
+            // An unreadable local profile must return to setup, not silently switch databases.
+            return unreadable ? null : connectionString ?? LoadConnectionStringFromAppConfig();
+        }
+
+        private static bool RunApplication(string connectionString)
+        {
             var options = new DbContextOptionsBuilder<InventoryDbContext>()
                 .UseSqlServer(connectionString)
                 .Options;
@@ -68,9 +86,11 @@ namespace SmartInventoryManager.UI
             while (true)
             {
                 using var loginForm = new FrmLogin(authService);
-                if (loginForm.ShowDialog() != DialogResult.OK || loginForm.AuthenticatedUser is null)
+                var loginResult = loginForm.ShowDialog();
+                if (loginForm.ConnectionSettingsRequested) return true;
+                if (loginResult != DialogResult.OK || loginForm.AuthenticatedUser is null)
                 {
-                    return;
+                    return false;
                 }
 
                 session.SignIn(loginForm.AuthenticatedUser);
@@ -89,7 +109,7 @@ namespace SmartInventoryManager.UI
                 dbContext.ChangeTracker.Clear();
                 if (!mainForm.LogoutRequested)
                 {
-                    return;
+                    return false;
                 }
             }
         }
