@@ -21,6 +21,12 @@ namespace SmartInventoryManager.Data.Entities
         public string? Note { get; set; }
         public int? CompletedBy { get; set; }
         public DateTime? CompletedAt { get; set; }
+        public int? SubmittedBy { get; set; }
+        public DateTime? SubmittedAt { get; set; }
+        public int? ApprovedBy { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+        public int? CancelledBy { get; set; }
+        public DateTime? CancelledAt { get; set; }
         public string? CancelReason { get; set; }
         public string? RejectReason { get; set; }
 

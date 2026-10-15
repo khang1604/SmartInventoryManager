@@ -49,6 +49,7 @@ namespace SmartInventoryManager.Data.Context
 
         public DbSet<UserWarehouse> UserWarehouses => Set<UserWarehouse>();
         public DbSet<ReceiptRejection> ReceiptRejections => Set<ReceiptRejection>();
+        public DbSet<ReceiptStatusChange> ReceiptStatusChanges => Set<ReceiptStatusChange>();
 
 
 
@@ -57,6 +58,29 @@ namespace SmartInventoryManager.Data.Context
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.HasSequence<int>("TransferReferenceSequence").StartsAt(1).IncrementsBy(1);
+            modelBuilder.Entity<ImportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.SubmittedBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ImportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.ApprovedBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ImportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.CancelledBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ExportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.SubmittedBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ExportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.ApprovedBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ExportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.CancelledBy).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ReceiptStatusChange>(entity =>
+            {
+                entity.ToTable("ReceiptStatusChanges", table =>
+                {
+                    table.HasCheckConstraint("CK_ReceiptStatusChanges_Receipt", "([ImportReceiptId] IS NOT NULL AND [ExportReceiptId] IS NULL) OR ([ImportReceiptId] IS NULL AND [ExportReceiptId] IS NOT NULL)");
+                    table.HasCheckConstraint("CK_ReceiptStatusChanges_States", "[FromStatus] IN ('DRAFT','PENDING_APPROVAL','APPROVED','REJECTED','COMPLETED','CANCELLED') AND [ToStatus] IN ('DRAFT','PENDING_APPROVAL','APPROVED','REJECTED','COMPLETED','CANCELLED') AND [FromStatus] <> [ToStatus]");
+                });
+                entity.HasKey(x => x.ReceiptStatusChangeId);
+                entity.Property(x => x.FromStatus).IsRequired().HasMaxLength(30).IsUnicode(false);
+                entity.Property(x => x.ToStatus).IsRequired().HasMaxLength(30).IsUnicode(false);
+                entity.Property(x => x.Reason).HasMaxLength(500);
+                entity.HasOne<ImportReceipt>().WithMany().HasForeignKey(x => x.ImportReceiptId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<ExportReceipt>().WithMany().HasForeignKey(x => x.ExportReceiptId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.ChangedBy).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(x => new { x.ImportReceiptId, x.ChangedAt, x.ReceiptStatusChangeId });
+                entity.HasIndex(x => new { x.ExportReceiptId, x.ChangedAt, x.ReceiptStatusChangeId });
+            });
             modelBuilder.Entity<ImportReceipt>().Property(x => x.CancelReason).HasMaxLength(500);
             modelBuilder.Entity<ImportReceipt>().Property(x => x.RejectReason).HasMaxLength(500);
             modelBuilder.Entity<ImportReceipt>().HasOne<User>().WithMany().HasForeignKey(x => x.CompletedBy).OnDelete(DeleteBehavior.Restrict);
