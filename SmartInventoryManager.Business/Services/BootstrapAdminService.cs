@@ -27,8 +27,7 @@ public sealed class BootstrapAdminService(InventoryDbContext db)
         if (await HasActiveAdminAsync(ct)) return false;
         var name = request.Username.Trim();
         var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
-        if (await db.Users.AnyAsync(user => user.Username == name || (email != null && user.Email == email), ct))
-            throw new InvalidOperationException("Tên đăng nhập/email đã tồn tại; không ghi đè tài khoản.");
+        await UserIdentifiers.EnsureAvailableAsync(db, name, email, 0, ct);
         var names = new[] { RoleNames.Admin, RoleNames.WarehouseManager, RoleNames.Staff };
         var roles = await db.Roles.ToListAsync(ct);
         if (roles.Any(role => !names.Contains(role.RoleName))) throw new InvalidOperationException("Có role ngoài hợp đồng; cần kiểm tra trước bootstrap.");

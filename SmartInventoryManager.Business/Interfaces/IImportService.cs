@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Business.Interfaces;
 
 public interface IImportService
 {
+    Task<PagedResultDto<ImportReceiptListItemDto>> GetPageAsync(UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default);
     Task<int> CreateDraftAsync(UserSession session, ImportReceiptDto request, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ImportReceiptListItemDto>> GetListAsync(

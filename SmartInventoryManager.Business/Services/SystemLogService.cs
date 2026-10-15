@@ -1,3 +1,4 @@
+using SmartInventoryManager.Business.DTOs;
 using Microsoft.EntityFrameworkCore;
 using SmartInventoryManager.Business.Authorization;
 using SmartInventoryManager.Data.Context;
@@ -10,6 +11,18 @@ public sealed class SystemLogService(InventoryDbContext db, AuthorizationService
 {
     public async Task<IReadOnlyList<SystemLogDto>> GetAsync(UserSession session, string? search = null, CancellationToken ct = default)
     {
+        var query = await QueryListAsync(session, search, ct);
+        return await query.ToListAsync(ct);
+    }
+
+    public async Task<PagedResultDto<SystemLogDto>> GetPageAsync(UserSession session, int pageNumber = 1, int pageSize = 50, string? search = null, CancellationToken ct = default)
+    {
+        var query = await QueryListAsync(session, search, ct);
+        return await QueryPaging.ReadAsync(query, pageNumber, pageSize, ct);
+    }
+
+    private async Task<IQueryable<SystemLogDto>> QueryListAsync(UserSession session, string? search, CancellationToken ct)
+    {
         if (!authorization.IsAdmin(session)) throw new UnauthorizedAccessException("Chỉ quản trị viên được xem nhật ký hệ thống.");
         await authorization.EnsureActiveActorAsync(session, ct);
         var query = db.SystemLogs.AsNoTracking();
@@ -18,7 +31,8 @@ public sealed class SystemLogService(InventoryDbContext db, AuthorizationService
             var value = search.Trim();
             query = query.Where(item => item.Action.Contains(value) || (item.Description != null && item.Description.Contains(value)));
         }
-        return await query.OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.LogId).Take(500)
-            .Select(item => new SystemLogDto(item.LogId, item.User == null ? null : item.User.FullName, item.Action, item.EntityName, item.Description, item.CreatedAt)).ToListAsync(ct);
+        return query.OrderByDescending(item => item.CreatedAt).ThenByDescending(item => item.LogId)
+            .Select(item => new SystemLogDto(item.LogId, item.User == null ? null : item.User.FullName, item.Action, item.EntityName, item.Description, item.CreatedAt));
     }
+
 }

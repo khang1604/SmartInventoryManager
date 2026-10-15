@@ -8,7 +8,6 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class WarehouseService
 {
-    private const int MaxLookupResults = 200;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
@@ -29,7 +28,6 @@ public sealed class WarehouseService
             .AsNoTracking()
             .Where(warehouse => warehouse.IsActive && warehouseIds.Contains(warehouse.WarehouseId))
             .OrderBy(warehouse => warehouse.WarehouseCode)
-            .Take(MaxLookupResults)
             .Select(warehouse => new LookupItemDto(warehouse.WarehouseId, warehouse.WarehouseCode, warehouse.WarehouseName))
             .ToListAsync(cancellationToken);
     }
@@ -60,17 +58,23 @@ public sealed class WarehouseService
 
     public async Task<int> CreateAsync(UserSession session, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         EnsureCanManage(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
         Validate(request);
         var code = request.WarehouseCode.Trim();
         if (await _dbContext.Warehouses.AnyAsync(item => item.WarehouseCode == code, cancellationToken)) throw new InvalidOperationException("Mã kho đã tồn tại.");
         var entity = new Warehouse { WarehouseCode = code, WarehouseName = request.WarehouseName.Trim(), Location = request.Location?.Trim(), ManagerId = request.ManagerId, IsActive = request.IsActive, CreatedAt = DateTime.Now };
-        await ValidateManagerAsync(entity.ManagerId, cancellationToken); _dbContext.Warehouses.Add(entity); await _dbContext.SaveChangesAsync(cancellationToken); return entity.WarehouseId;
+        await ValidateManagerAsync(entity.ManagerId, cancellationToken); _dbContext.Warehouses.Add(entity); await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        return entity.WarehouseId;
     }
 
     public async Task UpdateAsync(UserSession session, int warehouseId, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         ValidateId(warehouseId, nameof(warehouseId));
         EnsureCanManage(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
@@ -79,14 +83,21 @@ public sealed class WarehouseService
         var code = request.WarehouseCode.Trim();
         if (await _dbContext.Warehouses.AnyAsync(item => item.WarehouseId != warehouseId && item.WarehouseCode == code, cancellationToken)) throw new InvalidOperationException("Mã kho đã tồn tại.");
         await ValidateManagerAsync(request.ManagerId, cancellationToken); entity.WarehouseCode = code; entity.WarehouseName = request.WarehouseName.Trim(); entity.Location = request.Location?.Trim(); entity.ManagerId = request.ManagerId; entity.IsActive = request.IsActive; await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task SetActiveAsync(UserSession session, int warehouseId, bool isActive, CancellationToken cancellationToken = default)
     {
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
         ValidateId(warehouseId, nameof(warehouseId));
         EnsureCanManage(session);
         await _authorization.EnsureActiveActorAsync(session, cancellationToken);
-        var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho."); entity.IsActive = isActive; await _dbContext.SaveChangesAsync(cancellationToken);
+        var entity = await _dbContext.Warehouses.SingleOrDefaultAsync(item => item.WarehouseId == warehouseId, cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy kho.");
+        await _dbContext.Entry(entity).ReloadAsync(cancellationToken);
+        if (isActive) await ValidateManagerAsync(entity.ManagerId, cancellationToken);
+        entity.IsActive = isActive; await _dbContext.SaveChangesAsync(cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
     private static void ValidateId(int id, string parameterName)

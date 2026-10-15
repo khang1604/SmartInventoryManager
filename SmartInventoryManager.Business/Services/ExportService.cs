@@ -12,7 +12,6 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class ExportService : IExportService
 {
-    private const int MaxListResults = 500;
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
     private readonly InventoryService _inventory;
@@ -79,13 +78,24 @@ public sealed class ExportService : IExportService
     }
 
     public async Task<IReadOnlyList<ExportReceiptListItemDto>> GetListAsync(
-        UserSession session,
-        int? warehouseId = null,
-        string? status = null,
-        DateTime? from = null,
-        DateTime? to = null,
-        string? search = null,
-        CancellationToken cancellationToken = default)
+        UserSession session, int? warehouseId = null, string? status = null, DateTime? from = null,
+        DateTime? to = null, string? search = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, warehouseId, status, from, to, search, cancellationToken);
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResultDto<ExportReceiptListItemDto>> GetPageAsync(
+        UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(search);
+        var query = await QueryListAsync(session, search.WarehouseId, search.Status, search.From, search.To, search.Search, cancellationToken);
+        return await QueryPaging.ReadAsync(query, search.PageNumber, search.PageSize, cancellationToken);
+    }
+
+    private async Task<IQueryable<ExportReceiptListItemDto>> QueryListAsync(
+        UserSession session, int? warehouseId, string? status, DateTime? from, DateTime? to,
+        string? search, CancellationToken cancellationToken)
     {
         ValidateSession(session);
         var accessibleWarehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
@@ -122,8 +132,8 @@ public sealed class ExportService : IExportService
             var normalizedSearch = search.Trim();
             query = query.Where(receipt => receipt.ReceiptCode.Contains(normalizedSearch));
         }
-        return await query
-            .OrderByDescending(receipt => receipt.ReceiptDate)
+        return query
+            .OrderByDescending(receipt => receipt.ReceiptDate).ThenByDescending(receipt => receipt.ExportReceiptId)
             .Select(receipt => new ExportReceiptListItemDto(
                 receipt.ExportReceiptId,
                 receipt.ReceiptCode,
@@ -131,9 +141,7 @@ public sealed class ExportService : IExportService
                 receipt.Creator.FullName,
                 receipt.ReceiptDate,
                 receipt.TotalAmount,
-                receipt.Status))
-            .Take(MaxListResults)
-            .ToListAsync(cancellationToken);
+                receipt.Status));
     }
 
     public async Task<ExportReceiptDetailsDto?> GetByIdAsync(

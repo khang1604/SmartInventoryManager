@@ -12,7 +12,6 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class ImportService : IImportService
 {
-    private const int MaxListResults = 500;
     private const int MaxReceiptNoteLength = 500;
     private const int MaxRejectReasonLength = 500;
     private readonly InventoryDbContext _dbContext;
@@ -96,13 +95,24 @@ public sealed class ImportService : IImportService
     }
 
     public async Task<IReadOnlyList<ImportReceiptListItemDto>> GetListAsync(
-        UserSession session,
-        int? warehouseId = null,
-        string? status = null,
-        DateTime? from = null,
-        DateTime? to = null,
-        string? search = null,
-        CancellationToken cancellationToken = default)
+        UserSession session, int? warehouseId = null, string? status = null, DateTime? from = null,
+        DateTime? to = null, string? search = null, CancellationToken cancellationToken = default)
+    {
+        var query = await QueryListAsync(session, warehouseId, status, from, to, search, cancellationToken);
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResultDto<ImportReceiptListItemDto>> GetPageAsync(
+        UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(search);
+        var query = await QueryListAsync(session, search.WarehouseId, search.Status, search.From, search.To, search.Search, cancellationToken);
+        return await QueryPaging.ReadAsync(query, search.PageNumber, search.PageSize, cancellationToken);
+    }
+
+    private async Task<IQueryable<ImportReceiptListItemDto>> QueryListAsync(
+        UserSession session, int? warehouseId, string? status, DateTime? from, DateTime? to,
+        string? search, CancellationToken cancellationToken)
     {
         ValidateSession(session);
         if (!session.IsAuthenticated)
@@ -143,8 +153,8 @@ public sealed class ImportService : IImportService
             var normalizedSearch = search.Trim();
             query = query.Where(receipt => receipt.ReceiptCode.Contains(normalizedSearch));
         }
-        return await query
-            .OrderByDescending(receipt => receipt.ReceiptDate)
+        return query
+            .OrderByDescending(receipt => receipt.ReceiptDate).ThenByDescending(receipt => receipt.ImportReceiptId)
             .Select(receipt => new ImportReceiptListItemDto(
                 receipt.ImportReceiptId,
                 receipt.ReceiptCode,
@@ -153,9 +163,7 @@ public sealed class ImportService : IImportService
                 receipt.Creator.FullName,
                 receipt.ReceiptDate,
                 receipt.TotalAmount,
-                receipt.Status))
-            .Take(MaxListResults)
-            .ToListAsync(cancellationToken);
+                receipt.Status));
     }
 
     public async Task<ImportReceiptDetailsDto?> GetByIdAsync(
