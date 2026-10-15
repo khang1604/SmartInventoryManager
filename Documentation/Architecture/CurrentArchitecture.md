@@ -93,3 +93,7 @@ Reject lưu RejectReason hiện hành và thêm ReceiptRejection trong cùng tra
 ## Bổ sung lifecycle audit — 15/10/2026
 
 ReceiptStatusChanges lưu mọi chuyển trạng thái thực tế với from/to/actor/time/reason, đúng một phiếu nhập hoặc xuất, FK Restrict. Bao gồm chuyển REJECTED→DRAFT qua UpdateDraft hoặc Resubmit; không tạo snapshot chi tiết hay tự purge. Latest SubmittedBy/At, ApprovedBy/At, CancelledBy/At và CompletedBy/At được cập nhật cùng transaction với history. Ngày/người tạo nháp dùng trường hiện có; legacy chưa biết vẫnNULL, không backfill bằng suy đoán. Draft chưa từng xử lý có thể xóa theo quyền; có rejection/status history thì không hard-delete. UI/PDF hiển thị latest audit; lịch sử xử lý20/trang cùng warehouse authorization. Giữ best-effort, không Outbox; WAC để giai đoạn2.
+
+## Account invariants và phân trang — bổ sung15/10/2026
+
+UserIdentifiers dùng chung create/update/bootstrap, case-insensitivecrossnamespace; legacyambiguitylogin không chọn mộtaccount. UserService và WarehouseService bảo vệ lastactiveADMIN/assignedmanager bằng Serializable transaction cùng kiểm tra và lưu; không tựgỡmanager. UI yêu cầu re-login sau selfroledemotion. QueryPaging áp dụng authorizedfilter/count, stableorder vàSkip/Take; UI paging không cắt500, lookups không bỏ hàng200. RememberedUsername chỉ là localusername JSON, không authsession/password/token; avataraction ẩn. InMemory/readSQL chứng minh các ca ghi trong ProjectStatus, không thay SQLconcurrency/nativeUIacceptance.

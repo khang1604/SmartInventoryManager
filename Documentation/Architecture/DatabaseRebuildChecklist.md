@@ -68,3 +68,12 @@ Dấu[x] chỉ xác nhận phạm vi đã kiểm tra; không có nghĩa hoàn th
 Lưu ý: kết quả18bảng/152unit/4SQL ở trên là snapshot14/10; không dùng để chứng minh migration lifecycle mới hoặc các bài SQL/UI chưa chạy lại. Xem ProjectStatus.md cho trạng thái mới.
 
 - [x] 15/10: latestactor/time + ReceiptStatusChanges apply thành công,6migrations khôngpending;157unit PASS. SQLmutation/UIacceptance của lifecycle mới chưa chạy lại.
+
+
+## Kiểm tra bổ sung sau rà soát15/10
+
+- [x] Không thay model/schema trong đợt account/paging;19entity/6migrations khôngpending.
+- [x] Identifiercrossnamespace, assignedmanager và lastactiveADMIN guard cùngtransaction;169unitPASS, querypaging/identifierSQL chỉđọc đạt.
+- [x] TEST hiện0identifiercollision/0invalidmanager/1activeADMIN; không tự sửa dữliệu.
+- [ ] Nghiệm thu SQLconcurrency: hai thao tác đổiADMIN, đổirolemanger đấu với gánkho, hai thao tác chiếmidentifier; rollback/log đúng. Kết quảSQLstock14/10 không thay thế các ca này.
+- [ ] NativeUI regression mới: paging/filter/total, selfroledemotion/relogin, rememberusername/optout, ẩnavatar và lifecycle/PDF.

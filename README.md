@@ -55,7 +55,7 @@ Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Di
 | Audit/analytics/UI | CompletedBy/At, CancelReason/RejectReason, lịch sử từ chối phân trang20, movement before/after/difference, shared transfer sequence; giá trị ước tính/ABC/luân chuyển/đề xuất nhập; ẩn scrollbar và sửa màu Chi tiết |
 | Giai đoạn sau | Bình quân gia quyền, tồn đầu kỳ/chi phí chuyển và điều chỉnh, retention/archive, production; Designer/DPI/máy in thật chưa nghiệm thu đầy đủ |
 
-Kết quả15/10: **157 unit tests PASS**, build **0 lỗi/0 cảnh báo**; schema **19 bảng**,6migrations khôngpending. Bốn SQL tests, bootstrapSQLtrắng, export và nativeUI đã đạt ở đợt14/10; **chưa chạy lại SQLmutation/UI/PDF của lifecycle mới**. Chi tiết và backlog tại [báo cáo duy nhất](Documentation/Architecture/ProjectStatus.md).
+Kết quả15/10: **169 unit tests PASS**, build **0 lỗi/0 cảnh báo**; schema **19 bảng**,6migrations khôngpending. SQL chỉ đọc mới xác nhận paging và dữ liệuTEST không có trùngidentifier/managerkhônghợplệ. Bốn SQL mutation tests và nativeUI14/10 là lịch sử; chưa nghiệm thu SQLconcurrency/account hoặc nativeUI/PDF mới. Chi tiết tại [báo cáo duy nhất](Documentation/Architecture/ProjectStatus.md).
 
 ## 3. Phân công và phối hợp
 
@@ -494,3 +494,5 @@ Mọi thay đổi về công nghệ, nghiệp vụ và phân công dùng chung c
 ### Bổ sung nghiệp vụ 15/10/2026
 
 Người dùng chốt audit đầy đủ chuyển trạng thái: latest người/thời gian gửi duyệt, duyệt, hủy; ReceiptStatusChanges lưu mỗi chuyển trạng thái với actor/time/from/to/reason, không snapshot detail hoặc đoán dữ liệu cũ. Giữ lịch sử từ chối hiện có và không hard-delete phiếu đã có history. UI/PDF hiển thị latest audit; history xử lý20/trang. Best-effort và giá trị tồn ước tính giữ nguyên; WAC giai đoạn2. Kết quả kiểm tra của đợt14/10 không tự áp dụng cho code mới. Xem [báo cáo lifecycle](Documentation/Architecture/ProjectStatus.md).
+
+Bổ sung sau rà soát15/10: bảo vệ namespaceusername/email, ADMINcuốicùng và managerđangphânkho; serverpaging phiếu/user/log/notification và lookup khôngcắt200. Ghi nhớ chỉ lưuusername, không password/token/autologin; ẩn nútđổiavatar; kiểm kêtheophiên cùngWAC đểgiaiđoạn2.

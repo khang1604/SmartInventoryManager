@@ -2,6 +2,31 @@
 
 Cập nhật 15/10/2026. Đây là báo cáo tiến độ/nghiệm thu hiện hành duy nhất, hợp nhất báo cáo UI13/10, các bản tổng hợp và hai báo cáo hoàn thiện14/10. Quy tắc/contract/quyết định nghiệp vụ và checklist DB là tài liệu chuyên biệt, không phải các báo cáo tiến độ cạnh tranh. Dữ liệu lịch sử chưa được kiểm tra lại không tự trở thành kết quả hiện tại.
 
+## 0. Kết quả sau rà soát và sửa các điểm còn sót — 15/10/2026
+
+Phần này là cập nhật mới nhất, ưu tiên hơn các snapshot và kết quả kiểm tra trước trong file. Người dùng đã trả lời đầy đủ6lựa chọn; không còn câu hỏi chưa trả lời trong nhóm tài khoản/giao diện vừa rà.
+
+| Phát hiện / lựa chọn đã chốt | Đã sửa / giới hạn |
+|---|---|
+| Username trùng email người khác làm login trả nhiều account | Cấm trùng chéo không phân biệt hoa/thường ở create/updateprofile/updateuser/bootstrap. Login legacy ambiguity báo liên hệADMIN, không tự chọn account hoặc sửa dữ liệu |
+| Manager đổi role/ngừng hoạt động còn được kho tham chiếu | Chặn đến khi ADMIN đổi/gỡ ManagerId, kể cả kho inactive; gán/kích hoạt kho phải kiểm tra manageractive/role trong transaction |
+| ADMIN duy nhất tự đổi role làm mất quyền quản trị | Bảo vệ còn ít nhất1ADMIN active; khi có ADMIN khác được tự đổi role và UI yêu cầu đăng nhập lại. Vẫn không tự vô hiệu hóa account đang đăng nhập |
+| Tranh chấp account/manager | Các kiểm tra account và gánmanager dùng SQLSerializable cùng Save/log. Chưa nghiệm thu mutation/concurrencySQL của các guard này; không lấy unit làm bằng chứng raceSQL |
+| Lookup200 và list500 cắt mất dữ liệu | Lookup trả đủ dữ liệu được phép; phiếu/user/notification/log có serverpaging1–100dòng, filter/count trướcSkipTake, order ổn định, prev/next và tổng số. APIlist cũ giữ tương thích, không cắt500; exportfullfilter giữ nguyên |
+| Ghi nhớ trước đây chỉ có checkbox | Chỉ nhớ canonicalusername sau loginthànhcông; không password/token/autologin. Bỏ chọn clear giá trị; filelỗi không chặn login |
+| Nút đổi ảnh bị disable | Ẩn nút, giữ avatar mặc định theo lựa chọn người dùng |
+| Kiểm kê theo phiên | Người dùng xác nhận giai đoạn2; adjustment hiện có không được gọi là module phiên kiểm kê |
+
+Business/tests commit **06fc858**, UI commit **adca0b7**. Không cần migration mới cho các sửa này; schema19entity/6migrations khôngpending. Không push và không dọn dữ liệuDB.
+
+Bằng chứng cuối đợt:
+
+- Solutionbuild0warning/0error, **169unitPASS/0fail/0skip**. Thêm12ca hồi quy cho crossnamespace, legacyambiguity/bootstrap, lastADMIN, managerassigned, paging501/filter/scope và lookup201.
+- SQL chỉ đọc trên TEST: user/import/export/log mỗi loại10dòng qua4trang(size3), notification1dòng; không thiếu/trùngID. QueryUPPER/Contains chuẩn hóa identifier dịch/chạy được. Không tạofixture hoặc ghiDB.
+- Dữ liệu TEST hiện có: **0identifiercollision,0manager không hợp lệ,1ADMINactive**. Không tự sửa account/data. Production chưa được cung cấp.
+- ComponentQA: usernameJSON chỉ cóUsername, save/load/optout/corruptfilefallback đạt, fixture chỉ trong.temp. Không ghi vào profile thật khi chạy probe này.
+- NativeUI của paging/relogin/remember/ẩnavatar mới và SQLmutation/concurrencyaccount vẫn chưa nghiệm thu. Bốn SQLtests14/10 là bằng chứng lịch sử, không tính đã chạy lại cho code mới.
+
 ## 1. Phạm vi và trạng thái
 
 - Chủ dự án cho phép hoàn thiện cả ba tầng, commit riêng từng tầng; SQL legacy giữ nguyên. Branch Backend, chưa push đợt này.
@@ -21,7 +46,9 @@ Cập nhật 15/10/2026. Đây là báo cáo tiến độ/nghiệm thu hiện h�
 | Business15/10 | Ghi mọi chuyển trạng thái thực tế cùng transaction, bảo vệ history, latest actor/time, paged authorizedhistory | 7031268 |
 | UI | Dashboard/report/analytics, PDFphiếu, user/assignment/switchwarehouse, movementmetadata, scrollbar ẩn/Chi tiết giữ màu, categoryfilter/closedalerts | d904a20,86ee516 |
 | UI15/10 | Latest audit trên form/PDF và Lịch sử xử lý20/trang; giữ đường xem lịch sử từ chối | 686ca99 |
-| Setup | Bootstrap3role/firstactiveADMIN/PBKDF2 riêng, không auto-seed khi mởapp/không ghi đèADMIN active | 381ba7a,8941447 |
+| Business bổ sung15/10 | Crossnamespaceidentifier, manager/lastADMIN guards, serverpaging và lookup đầy đủ | 06fc858 |
+| UI bổ sung15/10 | Paging/total, re-login khi tự đổi role, nhớusername và ẩnavatar action | adca0b7 |
+| Setup | Bootstrap3role/firstactiveADMIN/PBKDF2 riêng, không auto-seed khi mởapp/không ghi đèADMIN active; dùng chung identifierguard mới | 381ba7a,8941447,06fc858 |
 
 ## 3. Các quyết định nghiệp vụ đã chốt
 
@@ -48,7 +75,7 @@ Cập nhật 15/10/2026. Đây là báo cáo tiến độ/nghiệm thu hiện h�
 | Kiểm tra | Bằng chứng mới nhất | Giới hạn |
 |---|---|---|
 | Buildsolution15/10 | PASS,0warning/0error | Không thay nativeUI/Designer |
-| Unit15/10 | 157PASS,0fail/0skip; thêm5ca kiểm tra chain9transitions, latestactors/cancel, paging/scope/historydelete | EFInMemory không chứng minh SQL concurrency |
+| Unit15/10 | 169PASS,0fail/0skip; gồm5ca lifecycle và12ca account/paging mới | EFInMemory không chứng minh SQL concurrency |
 | Migration15/10 | 20261015004156_AddReceiptLifecycleAudit apply TEST thành công;6migrations, khôngpending/modeldiff | Chưa production |
 | Schema15/10 | PASS19bảng: columns/type/length/precision/nullability,PK/FKmapping/deletebehavior,index/filter/unique,trustedCHECK và modelconsistency | Harness chuẩn hóa SQLServerIN→OR để so sánh; không sửa constraint để che lỗi |
 | SQL14/10 | 4PASS/0fail/0skip: duplicatecompletion,transferconcurrent,competingexports,completecancelrace,logfailrollback,1205,DashboardADO.NET | Chưa chạy lại suite mutation sau lifecycle15/10; testsource đã cập nhật history assertions/fixtureFKorder |
@@ -63,15 +90,15 @@ SQL/UI fixture của14/10 và DBbootstrap tạm đã dọn trước khi người
 
 | Thứ tự | Công việc | Trạng thái/phụ trách |
 |---|---|---|
-| 1 | SQLmutation/nghiệm thu nativeUI/PDF mới cho lifecycle15/10, repeatedrequest/rollback/historypaging/authorization | Để vòng testcuối, không đánh dấuPASS từ kết quả14/10; Khang+Khiêm |
+| 1 | SQLmutation/concurrency cho lifecycle/accountguards; nativeUI/PDF mới, paging/relogin/remember/ẩnavatar, repeatedrequest/rollback/scope | Để vòng testcuối, không đánh dấuPASS từ kết quả14/10; Khang+Khiêm |
 | 2 | Designer,DPI100/125/150/200%,HighContrast,keyboard/modalfocus,screenwidth,SaveFileDialog/máyin thật | Chưa nghiệm thu đầy đủ; Khiêm/người dùng |
 | 3 | Dataset lớn,exportperformance và snapshotconsistency khi đa-query gặp thay đổi đồng thời | Cần dữ liệu/tải mục tiêu; team |
 | 4 | Peerreviewcode/schema/migration, pushBackend và mergedevelop | Teamreview; chưapush đợt này |
 | 5 | Productiontarget,migrationowner,backup/restore,approvedseed/assignments | Admin/BảoAnh; chưa có môi trường |
-| Giai đoạn2 | WAC: tồnđầukỳ,transfercost,adjustmentvaluation | Chưa chốt chi tiết; không triển khai |
+| Giai đoạn2 | WAC: tồnđầukỳ,transfercost,adjustmentvaluation; kiểm kê theo phiên | Người dùng xác nhận để giai đoạn2; cần chốt chi tiết trước triển khai |
 | Khi phát sinh nhu cầu | Retention/archive và guaranteed eventdelivery; views/SP/trigger | Chưa policy/không bắt buộc tự thêm. Giữ history/best-effort theo quyết định hiện có |
 
-Những gap từng nêu ở auditUI13/10 như rememberlogin/avatar/selfrecovery hay kiểm kê theo phiên độc lập không tự trở thành phạm vi đã triển khai hoặc đã bị loại bỏ. Cần xác nhận scope trước nếu team muốn thêm; không xem stockadjustment là phiên kiểm kê đầy đủ. Bốn lỗiUI13/10 về SubmitDetails/statuslabel/managername/locationwarehouse đã được xử lý ở các đợt trước; không dùng báo cáo cũ để kết luận vẫn lỗi trên HEAD hiện tại.
+Remember chỉ lưuusername đã được triển khai; avataraction được ẩn theo quyết định, giữ ảnh mặc định. Quên mật khẩu tiếp tục liên hệADMIN để reset. Kiểm kê theo phiên độc lập được chốt sang giai đoạn2, không đánh đồng với adjustment. Bốn lỗiUI13/10 về SubmitDetails/statuslabel/managername/locationwarehouse đã được xử lý ở các đợt trước; không dùng báo cáo cũ để kết luận vẫn lỗi trên HEAD hiện tại.
 
 ## 6. Tài liệu và file tạm
 
