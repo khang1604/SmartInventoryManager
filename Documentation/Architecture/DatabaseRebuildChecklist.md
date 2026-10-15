@@ -1,4 +1,4 @@
-# Database Rebuild Checklist — hiện hành 14/10/2026
+# Database Rebuild Checklist — cập nhật 15/10/2026
 
 EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost/SmartInventoryManagerDB; production riêng chưa được cung cấp. Checklist này cập nhật theo code và kiểm tra SQL thật, thay trạng thái pending trước quyết định TeamChot. SQL legacy được giữ, không chạy chồng lên migration. Chi tiết tại [báo cáo hiện hành](ProjectStatus.md) và [kiến trúc](CurrentArchitecture.md).
 
@@ -75,5 +75,16 @@ Lưu ý: kết quả18bảng/152unit/4SQL ở trên là snapshot14/10; không d�
 - [x] Không thay model/schema trong đợt account/paging;19entity/6migrations khôngpending.
 - [x] Identifiercrossnamespace, assignedmanager và lastactiveADMIN guard cùngtransaction;169unitPASS, querypaging/identifierSQL chỉđọc đạt.
 - [x] TEST hiện0identifiercollision/0invalidmanager/1activeADMIN; không tự sửa dữliệu.
-- [ ] Nghiệm thu SQLconcurrency: hai thao tác đổiADMIN, đổirolemanger đấu với gánkho, hai thao tác chiếmidentifier; rollback/log đúng. Kết quảSQLstock14/10 không thay thế các ca này.
+- [x] 15/10 Release: SQL tranh chấp username/email (3 lượt), đổi role manager đồng thời gán kho; không tạo identifier trùng hoặc manager sai. Bên thua có thể nhận validation hoặc SQL1205 rollback; không coi đây là bằng chứng account CRUD tự retry.
+- [ ] SQL hai thao tác đổi ADMIN cuối cùng: chưa chạy; người dùng chỉ cho dùng TEST hiện có, không đổi ADMIN demo và không tạo DB cô lập.
 - [ ] NativeUI regression mới: paging/filter/total, selfroledemotion/relogin, rememberusername/optout, ẩnavatar và lifecycle/PDF.
+
+## Nghiệm thu Release cuối — 15/10/2026
+
+- [x] Toàn bộ suite 174/174 PASS: 169 unit + 5 SQL, 0 fail/0 skip; `.temp/FinalAcceptance/all-final.trx` là bằng chứng local, không commit.
+- [x] Đối chiếu lại đủ19 bảng/cột/PK/FK/delete behavior/index/filter/CHECK trusted; 6 migrations không pending và model không lệch.
+- [x] SQL fixture: reset mật khẩu + AuthService, thu hồi assignment giữ inactive row, chặn đổi role/deactivate manager của kho inactive; lịch sử nhập21 chuyển trạng thái phân trang20+1,6 lần từ chối, audit latest actor/time; hủy phiếu xuất không poststock.
+- [x] Setup publish `--check` xác nhận ADMIN active và không ghi đè. Không nghiệm thu lại bootstrap SQL trắng trong đợt này; kết quả14/10 ở trên chỉ là lịch sử.
+- [x] Fixture FINAL_ đã dọn đúng dữ liệu sở hữu, probe cuối trả danh sách rỗng; không drop/reset DB hoặc dọn demo/fixture cũ ngoài scope.
+- [x] Native Release ADMIN: form phiếu chỉ xem, lịch sử cũ trống, báo cáo và SaveFileDialog xuất Excel thành công; tổng6/ước tính72 khớp file. Harness xuất3PDF +3Excel; PDF60dòng/5trang có audit và dòng cuối, đã xem7trang render.
+- [ ] Các ca còn lại: ADMIN cuối cùng/bootstrap trắng SQL hiện hành, đầy đủ thao tác ghi qua UI của3role, DPI/Designer/HighContrast/máy in, máy sạch và production. Không dùng174PASS để đánh dấu các ca này.
