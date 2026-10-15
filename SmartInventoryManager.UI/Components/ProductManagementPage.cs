@@ -23,6 +23,7 @@ internal sealed class ProductManagementPage : UserControl
         Dock = DockStyle.Fill;
 
         var root = ProductUi.Layout(1, 5);
+        LiveUi.KeepTableVisible(this, root);
         root.Padding = new Padding(20, 12, 20, 16);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
@@ -66,6 +67,7 @@ internal sealed class ProductManagementPage : UserControl
         paging.Controls.Add(_next); paging.Controls.Add(_previous);
         root.Controls.Add(paging, 0, 4);
         root.Controls.Add(actions, 0, 1);
+        LiveUi.FitWrappedToolbar(actions, root, 1);
 
         _grid = LiveUi.Grid("dgvProducts", [
             ("ProductCode", "Mã sản phẩm"), ("ProductName", "Tên sản phẩm"),

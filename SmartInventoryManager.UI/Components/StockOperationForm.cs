@@ -27,9 +27,14 @@ internal sealed class StockOperationForm : Form
         _errors = new ErrorProvider(this) { BlinkStyle = ErrorBlinkStyle.NeverBlink };
         WorkflowUi.StyleForm(this);
         Text = "VioWare - " + (transfer ? "Chuyển kho" : "Điều chỉnh tồn");
-        ClientSize = new Size(900, 430); MinimumSize = new Size(760, 420);
+        ClientSize = new Size(900, 500); MinimumSize = new Size(760, 500);
         StartPosition = FormStartPosition.CenterParent;
         var root = ProductUi.Layout(1, 4);
+        AutoScroll = true;
+        root.MinimumSize = new Size(0, 500 * DeviceDpi / 96);
+        root.Dock = DockStyle.Top;
+        root.Height = root.MinimumSize.Height;
+        ClientSizeChanged += (_, _) => root.Height = Math.Max(ClientSize.Height, root.MinimumSize.Height);
         root.Padding = new Padding(20);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -44,6 +49,8 @@ internal sealed class StockOperationForm : Form
         _fields.Controls.Add(LiveUi.Field(transfer ? "Số lượng chuyển *" : "Chênh lệch (+ tăng, − giảm) *", _quantity));
         _fields.Controls.Add(LiveUi.Field("Lý do *", _reason));
         root.Controls.Add(_fields, 0, 1);
+        _fields.WrapContents = true;
+        _fields.AutoScroll = false;
         root.Controls.Add(_message, 0, 2);
         var actions = LiveUi.Toolbar();
         var close = ProductUi.Button("btnClose", "Đóng");

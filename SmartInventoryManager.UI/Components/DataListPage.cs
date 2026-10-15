@@ -96,11 +96,12 @@ internal sealed class DataListPage<T> : UserControl where T : class
         void FitActions()
         {
             var rows = 1; var used = 0; var rowHeight = 44; var width = Math.Max(160, _actions.ClientSize.Width);
-            foreach (Control child in _actions.Controls) { var size = child.Width + child.Margin.Horizontal; if (used > 0 && used + size > width) { rows++; used = 0; } used += size; rowHeight = Math.Max(rowHeight, child.Height + child.Margin.Vertical); }
+            foreach (Control child in _actions.Controls.Cast<Control>().Where(child => child.Visible)) { var size = child.Width + child.Margin.Horizontal; if (used > 0 && used + size > width) { rows++; used = 0; } used += size; rowHeight = Math.Max(rowHeight, child.Height + child.Margin.Vertical); }
             var height = rows * rowHeight + 10; if (root.RowStyles[1].Height != height) root.RowStyles[1].Height = height;
         }
         _actions.SizeChanged += (_, _) => FitActions();
         _actions.ControlAdded += (_, _) => FitActions();
+        _actions.Layout += (_, _) => FitActions();
         _search.KeyDown += async (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; await RefreshAsync(); } };
         root.Controls.Add(_filters, 0, 0);
         LiveUi.FitWrappedToolbar(_filters, root, 0);
@@ -108,6 +109,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         root.Controls.Add(_message, 0, 2);
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
         root.Controls.Add(_pager, 0, 4);
+        LiveUi.KeepTableVisible(this, root);
         Controls.Add(root);
         Load += async (_, _) => await RefreshAsync();
         VisibleChanged += async (_, _) =>

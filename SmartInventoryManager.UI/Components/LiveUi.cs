@@ -22,7 +22,7 @@ internal static class LiveUi
     public static Control Field(string caption, Control control)
     {
         var panel = ProductUi.Layout(1, 2);
-        panel.Size = new Size(Math.Max(160, control.Width), 70);
+        panel.Size = new Size(Math.Max(160, control.Width), Math.Max(70, control.Height + 34));
         panel.Dock = DockStyle.None;
         panel.Margin = new Padding(0, 0, 12, 0);
         panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
@@ -81,6 +81,21 @@ internal static class LiveUi
         toolbar.SizeChanged += (_, _) => Fit();
         toolbar.ControlAdded += (_, _) => Fit();
         Fit();
+    }
+
+    public static void KeepTableVisible(ScrollableControl host, TableLayoutPanel root)
+    {
+        host.AutoScroll = true;
+        root.Dock = DockStyle.Top;
+        void Fit()
+        {
+            var height = root.Padding.Vertical + (int)root.RowStyles.Cast<RowStyle>()
+                .Where(row => row.SizeType == SizeType.Absolute).Sum(row => row.Height) + 160 * host.DeviceDpi / 96;
+            if (root.MinimumSize.Height != height) root.MinimumSize = new Size(0, height);
+            root.Height = Math.Max(host.ClientSize.Height, height);
+        }
+        root.Layout += (_, _) => Fit();
+        host.ClientSizeChanged += (_, _) => Fit();
     }
 
     public static Control TableFrame(Control content)
@@ -163,7 +178,7 @@ internal static class LiveUi
             AllowUserToResizeRows = false,
             AllowUserToResizeColumns = false,
             AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
-            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             // [COLOR CONFIG]: nền bảng trắng và chữ tối theo theme VioWare.

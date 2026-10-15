@@ -33,6 +33,7 @@ internal sealed class ReceiptListView : UserControl
         _import = import;
         Dock = DockStyle.Fill;
         var root = ProductUi.Layout(1, 5);
+        LiveUi.KeepTableVisible(this, root);
         root.Padding = new Padding(20, 12, 20, 16);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));

@@ -47,35 +47,44 @@ namespace SmartInventoryManager.UI.Forms.Login
 
         private void ArrangeLoginLayout(PictureBox logo)
         {
+            int Scale(int value) => (int)Math.Round(value * DeviceDpi / 96F);
             int center = pnlLeft.ClientSize.Width / 2;
             int textWidth = Math.Max(label5.PreferredSize.Width,
                 TextRenderer.MeasureText(label1.Text, label1.Font).Width + 8);
-            int brandLeft = center - (logo.Width + 6 + textWidth) / 2;
-            logo.Location = new Point(brandLeft, 38);
-            int textLeft = brandLeft + logo.Width + 6;
-            label5.Location = new Point(textLeft, 34);
-            label1.SetBounds(textLeft, 108, textWidth, 34);
-            const int fieldWidth = 458;
+            int brandLeft = center - (logo.Width + Scale(6) + textWidth) / 2;
+            logo.Location = new Point(brandLeft, Scale(38));
+            int textLeft = brandLeft + logo.Width + Scale(6);
+            label5.Location = new Point(textLeft, Scale(34));
+            label1.SetBounds(textLeft, Scale(108), textWidth, Scale(34));
+            int fieldWidth = Math.Min(Scale(458), Math.Max(1, pnlLeft.ClientSize.Width - Scale(48)));
             int fieldLeft = center - fieldWidth / 2;
-            lblTitle.SetBounds(fieldLeft, 190, fieldWidth, 48);
+            lblTitle.SetBounds(fieldLeft, Scale(190), fieldWidth, Scale(48));
             lblTitle.TextAlign = ContentAlignment.MiddleCenter;
-            label3.SetBounds(fieldLeft + 12, 244, 110, 20);
-            label4.SetBounds(fieldLeft + 12, 320, 110, 20);
+            label3.SetBounds(fieldLeft + Scale(12), Scale(244), Scale(110), Scale(20));
+            label4.SetBounds(fieldLeft + Scale(12), Scale(320), Scale(110), Scale(20));
             label3.TextAlign = label4.TextAlign = ContentAlignment.MiddleLeft;
-            txtUsername.SetBounds(fieldLeft, 268, fieldWidth, 44);
-            txtPassword.SetBounds(fieldLeft, 344, fieldWidth, 44);
-            btnShowPassword.Location = new Point(fieldLeft + fieldWidth - 44, 355);
-            chkRemember.Location = new Point(fieldLeft + 12, 402);
-            lnkForgotPassword.SetBounds(fieldLeft + fieldWidth - 135, 402, 123, 20);
-            btnLogin.SetBounds(fieldLeft, 438, fieldWidth, 46);
-            label2.SetBounds(fieldLeft, 494, fieldWidth, 64);
-            label7.Location = new Point(pnlLeft.ClientSize.Width - label7.Width - 12,
-                pnlLeft.ClientSize.Height - label7.Height - 8);
+            txtUsername.SetBounds(fieldLeft, Scale(268), fieldWidth, Scale(44));
+            txtPassword.SetBounds(fieldLeft, Scale(344), fieldWidth, Scale(44));
+            btnShowPassword.Location = new Point(fieldLeft + fieldWidth - Scale(44), Scale(355));
+            chkRemember.Location = new Point(fieldLeft + Scale(12), Scale(402));
+            lnkForgotPassword.SetBounds(fieldLeft + fieldWidth - Scale(135), Scale(402), Scale(123), Scale(20));
+            btnLogin.SetBounds(fieldLeft, Scale(438), fieldWidth, Scale(46));
+            label2.SetBounds(fieldLeft, Scale(494), fieldWidth, Scale(64));
+            label7.Location = new Point(pnlLeft.ClientSize.Width - label7.Width - Scale(12),
+                Math.Max(pnlLeft.ClientSize.Height, Scale(600)) - label7.Height - Scale(8));
         }
 
         private void SetupUI()
         {
             UiBrand.ApplyIcon(this);
+            ScrollbarAppearance.Apply(this);
+            pnlLeft.Dock = DockStyle.Fill;
+            pnlLeft.AutoScroll = true;
+            Shown += (_, _) =>
+            {
+                pnlLeft.AutoScrollMinSize = new Size(0, 600 * DeviceDpi / 96);
+                WorkflowUi.FitToWorkingArea(this);
+            };
             var projectLogo = UiBrand.CreateLogo();
             // Logo đặt cạnh tên app, cùng chiều cao vùng chữ VioWare.
             projectLogo.Location = new Point(244, 34);

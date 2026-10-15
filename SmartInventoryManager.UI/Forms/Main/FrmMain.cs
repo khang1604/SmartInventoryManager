@@ -70,6 +70,7 @@ public partial class FrmMain : Form
     private void BuildLayout()
     {
         ScrollbarAppearance.Apply(this);
+        Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
         FormClosed += (_, _) =>
         {
             foreach (var page in _pages.Values) page.Dispose();
@@ -147,7 +148,7 @@ public partial class FrmMain : Form
         logo.TabStop = false;
         logo.AccessibleName = "Logo VioWare";
         brand.Controls.Add(logo, 0, 0);
-        _brandText = TextLabel($"{UiBrand.ApplicationName}\nQuản lý kho", 14.5F, true);
+        _brandText = TextLabel($"{UiBrand.ApplicationName}\nQuản lý kho", 13F, true);
         _brandText.AccessibleDescription = UiBrand.ProjectName;
         brand.Controls.Add(_brandText, 1, 0);
         sidebar.Controls.Add(brand, 0, 0);
@@ -457,7 +458,7 @@ public partial class FrmMain : Form
         "Người dùng" when _services is not null => PrepareForm(new SmartInventoryManager.Forms.Users.FrmUserManagement(_services), title),
         "Thông báo" when _services is not null => new NotificationPanel(_services),
         "Nhật ký" when _services is not null => new DataListPage<SmartInventoryManager.Business.Services.SystemLogDto>(_services,
-            "Nhật ký • tối đa 500 bản ghi gần nhất", [("CreatedAt", "Thời điểm"), ("ActorName", "Người thực hiện"), ("Action", "Thao tác"), ("EntityName", "Đối tượng"), ("Description", "Nội dung")],
+            "Nhật ký hệ thống", [("CreatedAt", "Thời điểm"), ("ActorName", "Người thực hiện"), ("Action", "Thao tác"), ("EntityName", "Đối tượng"), ("Description", "Nội dung")],
             (_, search, _, _) => _services.Logs.GetAsync(_services.Session, search))
             .UsePagination((_, search, _, _, number, size) => _services.Logs.GetPageAsync(_services.Session, number, size, search)),
         "Thông báo" => new NotificationPanel(),

@@ -60,12 +60,14 @@ internal sealed class ReceiptEditor : UserControl
         if (import) _fields.Controls.Add(LiveUi.Field("Nhà cung cấp *", _supplier));
         _fields.Controls.Add(LiveUi.Field("Ghi chú", _note));
         root.Controls.Add(_fields, 0, 1);
+        LiveUi.FitWrappedToolbar(_fields, root, 1);
         var toolbar = LiveUi.Toolbar();
         toolbar.Controls.AddRange([_add, _remove, _reload]);
         var hint = ProductUi.Label("Có thể lưu nháp chưa có dòng hàng • Số lượng > 0 • Đơn giá ≥ 0");
         hint.Dock = DockStyle.None; hint.Size = new Size(520, 44);
         toolbar.Controls.Add(hint);
         root.Controls.Add(toolbar, 0, 2);
+        LiveUi.FitWrappedToolbar(toolbar, root, 2);
         _lines.ReadOnly = false;
         _lines.Columns.Add(new DataGridViewComboBoxColumn
         {
@@ -143,6 +145,7 @@ internal sealed class ReceiptEditor : UserControl
         footer.Controls.Add(_message, 0, 0);
         footer.Controls.Add(_actions, 1, 0);
         root.Controls.Add(footer, 0, 5);
+        LiveUi.KeepTableVisible(this, root);
         Controls.Add(root);
         owner.FormClosing += (_, e) =>
         {

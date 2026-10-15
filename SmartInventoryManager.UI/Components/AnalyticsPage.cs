@@ -21,6 +21,7 @@ internal sealed class AnalyticsPage : Form
     {
         _services = services; WorkflowUi.StyleForm(this);
         var root = ProductUi.Layout(1, 3); root.Padding = new Padding(12);
+        LiveUi.KeepTableVisible(this, root);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); root.RowStyles.Add(new RowStyle(SizeType.Absolute, 74)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var filters = LiveUi.Toolbar(); filters.WrapContents = true;
         filters.Controls.AddRange([LiveUi.Field("Kho", _warehouse), LiveUi.Field("A đến (%)", _a), LiveUi.Field("B đến (%)", _b)]);
