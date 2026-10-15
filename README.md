@@ -55,7 +55,7 @@ Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Di
 | Audit/analytics/UI | CompletedBy/At, CancelReason/RejectReason, lịch sử từ chối phân trang20, movement before/after/difference, shared transfer sequence; giá trị ước tính/ABC/luân chuyển/đề xuất nhập; ẩn scrollbar và sửa màu Chi tiết |
 | Giai đoạn sau | Bình quân gia quyền, tồn đầu kỳ/chi phí chuyển và điều chỉnh, retention/archive, production; Designer/DPI/máy in thật chưa nghiệm thu đầy đủ |
 
-Kết quả15/10: **169 unit tests PASS**, build **0 lỗi/0 cảnh báo**; schema **19 bảng**,6migrations khôngpending. SQL chỉ đọc mới xác nhận paging và dữ liệuTEST không có trùngidentifier/managerkhônghợplệ. Bốn SQL mutation tests và nativeUI14/10 là lịch sử; chưa nghiệm thu SQLconcurrency/account hoặc nativeUI/PDF mới. Chi tiết tại [báo cáo duy nhất](Documentation/Architecture/ProjectStatus.md).
+Kết quả nghiệm thu Release 15/10: **174/174 tests PASS** (169 unit + 5 SQL, không skip), build **0 lỗi/0 cảnh báo**; schema **19 bảng**, 6 migrations không pending. SQL bổ sung kiểm tra tài khoản/phân kho, tranh chấp username/email và manager, lịch sử phiếu 20+1 dòng. Native ADMIN kiểm tra form phiếu/lịch sử, báo cáo và xuất Excel; PDF/Excel được kiểm tra bằng harness. SQL ADMIN cuối cùng/bootstrap DB trắng, DPI Windows thật và máy in còn chưa nghiệm thu lại. Chi tiết tại [báo cáo duy nhất](Documentation/Architecture/ProjectStatus.md); chuẩn bị bộ cài tại [hướng dẫn đóng gói](Documentation/Deployment/PackagingChecklist.md).
 
 ## 3. Phân công và phối hợp
 
@@ -163,7 +163,7 @@ Nếu báo thiếu SDK hoặc package không tương thích, kiểm tra cấu h�
 5. DB mới chưa có role/admin: chạy `dotnet run --project SmartInventoryManager.Setup -- --check` để kiểm tra chỉ đọc; bỏ `--check` để bootstrap tương tác. Công cụ yêu cầu xác nhận tên DB, nhập mật khẩu được che, tạo đúng ADMIN/WAREHOUSE_MANAGER/STAFF và ADMIN đầu tiên bằng PBKDF2. Nếu đã có ADMIN active thì không ghi đè; không seed tài khoản khi mở UI.
 6. Dữ liệu demo là thao tác riêng được duyệt. SQL seed cũ có thể ghi đè tài khoản; đọc kỹ trước khi chạy. Không dùng thông tin tài khoản demo trong production.
 
-Môi trường đã nghiệm thu là **TEST `localhost/SmartInventoryManagerDB`**; server production riêng chưa được cung cấp. DB TEST có ba migration: InitialCreate, RequirePositiveReorderPoint, AddUserWarehouseActiveState; probe đã xác nhận không có pending migrations/model changes. Không tự áp dụng kết luận này cho DB trên máy khác.
+Môi trường đã nghiệm thu là **TEST `localhost/SmartInventoryManagerDB`**; server production riêng chưa được cung cấp. DB TEST có 6 migrations đến `20261015004156_AddReceiptLifecycleAudit`; probe ngày15/10 đã xác nhận 19 bảng khớp model và không có pending migrations/model changes. Không tự áp dụng kết luận này cho DB trên máy khác.
 
 Ví dụ connection string local, thay database/instance bằng tên thật đã thống nhất:
 

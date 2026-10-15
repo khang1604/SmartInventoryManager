@@ -1,5 +1,34 @@
 # Báo cáo tổng hợp SmartInventoryManager
 
+## Nghiệm thu Release cuối trước đóng gói — 15/10/2026
+
+Phần này cập nhật kết quả cuối cùng của đợt kiểm tra, ưu tiên hơn các ghi chú “chưa chạy lại” trong snapshot bên dưới. Môi trường duy nhất được duyệt là SQL TEST `localhost/SmartInventoryManagerDB`; production chưa được cung cấp. Người dùng từ chối tạo DB tạm cho đợt này, yêu cầu ghi rõ ca chưa kiểm tra. Không thay tài khoản/demo hoặc drop/reset DB.
+
+| Hạng mục | Kết quả thực tế |
+|---|---|
+| Đồng bộ source | Backend tại3f7d91d/6c82a94; fetch thấy develop merge6b517f4 chứa cùng code, diff HEAD với origin/develop rỗng trước thay đổi test/docs đợt này |
+| Release solution | Build6project,0warning/0error; không nâng dependency/framework |
+| Test cuối | **174/174 PASS:169unit+5SQL,0fail/0skip**,21giây; `.temp/FinalAcceptance/all-final.trx` |
+| SQL stock/concurrency | Chạy lại4test có sẵn: duplicateComplete, thiếu tồn, transfer đồng thời, cạnh tranh xuất, Complete/Cancel, deadlock1205 bounded retry và rollback khi ghi log lỗi; Dashboard ADO.NET khớp nguồn movement |
+| SQL mới | Reset mật khẩu rồi login AuthService, mật khẩu cũ thất bại; thu hồi phân kho giữ1inactive assignment; chặn demote/deactivate manager đang quản lý kho inactive;3 lượt chiếm username/email chéo chỉ1account thắng; demote manager đấu với gán kho không để manager sai |
+| SQL lifecycle | Nhập6lần từ chối/sửa/gửi lại rồi Complete:21statuschanges, paging20+1không trùng,6rejections, latestactor/time và nearestRejectReason đúng. Draft cóhistory không xóa được. Xuất đã duyệt rồi Cancel lưu actor/time/reason, không poststock; tồn5 và1movement nhập |
+| Schema | Probe chỉ đọc sau test:19bảng khớp cột/type/nullability/PK/FK/delete behavior/index/filter/trustedCHECK;6migrations khôngpending, model khônglệch |
+| Bootstrap | Published Setup `--check` trên TEST nhận ADMINactive, không tạo/ghi đè. Không chạy createADMIN trên SQLtrắng đợt này |
+| Export harness | Release DLL xuất3PDF (tồn, nhập/xuất, phiếu) và3Excel (tồn, nhập/xuất, analytics). Excel số liệu và metadata ABC khớp fixture. PDFphiếu60dòng/5trang có audit submitted/approved/cancelled/completed/reasons vàP060; xem đủ7trang render của3PDF, không thấy cắt nội dung |
+| Native Release ADMIN | 1322×812,96DPI: Dashboard/nhập kho, form phiếu chỉ xem/audit legacyNULL, lịch sử trống có giải thích, đóngform; báo cáo tồn và xuấtExcel qua SaveFileDialog thành công, file1dòng/tổng6/ước tính72 khớpUI; Analytics giátrị2370 vàABCkhôngcóphiếuxuấthoàntất có nhãn rõ; sidebar wheel tớiUsers/Logs, Users10dòng vàChi tiết giữ màu dòng chọn |
+| Publish | UI vàSetup framework-dependent Release thành công; giữ cảcâyDLL/runtimes/resources. Hướng dẫn tại [PackagingChecklist.md](../Deployment/PackagingChecklist.md); chưa tạo/cài InnoSetup |
+
+Không phát hiện lỗi sản phẩm mới cần đổi code trong phạm vi trên. Bổ sung `SqlFinalAcceptanceFixture` và1SQLtest regression; không thay schema/nghiệp vụ/UI. Hai lần chạy fixture đầu lỗi ở mã test (cleanup dùng ReceiptCode trong khi service tự cấp mã; kiểm tra DeleteDraft nhầm trạng tháiCOMPLETED) đã sửa; kết quả174PASS là lần chạy bộ cuối sau sửa. Một fixture của lần cleanup lỗi được xác minh theo token/IDkho sở hữu và dọn đúngscope, probe cuối `Final test fixtures remaining: []`. Không dọn fixture lịch sử ngoàiscope hoặc reset identity/sequence; khoảng trốngID do test là hợp lệ.
+
+Lưu ý độ phủ và kết luận:
+
+- Chưa chạy SQLADMIN cuối cùng/hai lần demoteADMIN cạnh tranh hoặc actualbootstrap DBtrắng trên schemahiệnhành: không động ADMINdemo, không tự tạoDBcôlập. Unitguard đạt không thay thế caSQLnày; bootstraptrắng14/10 bên dưới chỉ là bằng chứng lịch sử.
+- Raceaccount/manager kiểm tra invariant dữliệu; bên thua có thể gặp validation hoặcSQL1205rollback. Không tuyên bố accountCRUD tựretry hoặc đảm bảo cảhai thao tác thànhcông.
+- Native chỉADMIN và luồngxem/xuất, chưa nghiệm thu mọi thao tácghi của3role, tựđổirole/relogin, pagingUIhistory21dòng hay fullfilter datasetlớn quaUI. Phântrang21dòng được xác minhSQLservice; PDF60dòng làfixtureharness, không phải đã in giấy.
+- Chưa nghiệm thu WindowsDPI125/150/200% thật/multimonitor, HighContrast, VSDesigner đầyđủ, máyin, máy sạch, installer upgrade/uninstall hoặc production. Các testlayout/simulatedScale trước đó vẫn cógiới hạn như ghi bên dưới.
+- Export harness build cóNU1900 do vulnerabilityservice khôngtruycập được; không lấy đó làm auditdependency đạt. Release solution/publish đạt0warning/0error theo lệnh đã chạy.
+- Evidence/exports/publish/backups chỉtrong `.temp/FinalAcceptance`, khôngcommit; `.agent` và launchSettings cósecret khôngstage. DữliệuSQLdemo đượcgiữnguyên. BáocáoWord cũ là tài liệu thuyếttrình, sốliệunghiệmthuhiệnhành lấy tạiđây.
+
 ## Cập nhật rà soát UI và UX ngày 15/10/2026
 
 Phạm vi được người dùng duyệt: giữ giao diện team đã chốt, chỉ chỉnh thông số bố cục và các lỗi hiển thị cơ bản. Không thay Business, Data, schema hoặc công thức; không ghi SQL trong lượt kiểm tra. ProjectReport.docx và launchSettings.json đang có thay đổi từ trước được giữ nguyên ngoài phạm vi chỉnh UI.

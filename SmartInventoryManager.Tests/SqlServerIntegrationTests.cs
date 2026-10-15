@@ -12,6 +12,16 @@ namespace SmartInventoryManager.Tests;
 [TestCategory("SQLServer")]
 public sealed class SqlServerIntegrationTests
 {
+    [TestMethod]
+    [Timeout(120000)]
+    public async Task FinalAcceptance_AccountsAssignmentsIdentifierRacesAndLifecycleHistory()
+    {
+        var options = Options();
+        await using var db = new InventoryDbContext(options);
+        await AdminAsync(db);
+        await SqlFinalAcceptanceFixture.RunAsync(options);
+    }
+
     private static DbContextOptions<InventoryDbContext> Options()
     {
         var connection = Environment.GetEnvironmentVariable("SMART_INVENTORY_SQL_TEST_CONNECTION_STRING");
