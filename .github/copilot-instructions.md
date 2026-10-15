@@ -2,7 +2,7 @@
 
 ## General Guidelines
 - This file contains shared project-wide instructions. `.agent/RULE.md` is a local machine and team-member-specific instruction file; it may contain additional personal delivery rules and does not need to be identical to this file. Keep this file limited to rules that apply across the project. RULE.vi.md, when present, is a Vietnamese reference for reading and editing, not an additional instruction source. These project instructions do not override platform policies or agent permissions.
-- Last synchronized: 2026-10-14. Use the current `.agent/SystemContract.md` when available, explicit subsequent user/team decisions, README.md, and Documentation/Architecture/CompletionByLayer_2026-10-14.md. `.agent` is local-only; never assume another clone includes it. Unresolved contract requirements are not proof of implemented functionality.
+- Last synchronized: 2026-10-15. Use the current `.agent/SystemContract.md` when available, explicit subsequent user/team decisions, README.md, and Documentation/Architecture/ProjectStatus.md. `.agent` is local-only; never assume another clone includes it. Unresolved contract requirements are not proof of implemented functionality.
 
 ## Project Scope & Technology
 - Build a multi-warehouse desktop application with C#, Windows Forms, Visual Studio, SQL Server, Entity Framework, ADO.NET, and LINQ.
@@ -354,3 +354,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 - Hide horizontal/vertical scrollbar chrome while preserving content access, wheel/keyboard scrolling and paging. Details cells must preserve selected-row colors with legible text/icons. Wrapped filters must remain reachable.
 - Weighted-average accounting valuation, approved opening balances/transfer/adjustment costs, retention/archive policy and production deployment remain open. Do not invent these rules or treat limited native UI checks as full Designer/DPI/physical-print acceptance.
 - Update checklist boxes only with evidence and label TEST versus production. Build/unit/SQL tests, native UI acceptance, Designer/DPI and export/printing checks are distinct; list unverified coverage instead of declaring the entire project complete.
+
+- Confirmed 2026-10-15: receipt lifecycle audit additionally stores latest SubmittedBy/At, ApprovedBy/At, CancelledBy/At and append-only ReceiptStatusChanges for every actual transition, including REJECTED→DRAFT through edit/resubmit, in the workflow transaction. Initial draft creation uses existing creator/date; do not invent old transitions or backfill unknown actors/times. Preserve rejection history; prohibit hard deletion when either history exists. Paging20, no detail snapshots/purge. Keep best-effort notifications and phase-one estimated value; WAC remains phase2. User requested business implementation first and comprehensive testing last; no further data cleanup.
+
+- Temporary scripts, QA harnesses, generated review files and backups belong in repository-root .temp/, never scattered under .agent. Do not commit .temp or local credentials. The sole current progress/acceptance report is Documentation/Architecture/ProjectStatus.md; architectural references, contracts and the DB checklist remain separate purpose-specific documents.

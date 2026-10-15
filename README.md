@@ -4,7 +4,7 @@
 
 > Tài liệu này mô tả cách tham gia và phát triển dự án. Danh sách chức năng là phạm vi dự kiến, không phải xác nhận tất cả đã hoàn thiện. File hoặc màn hình khung chưa có nghiệp vụ được xem là chưa triển khai.
 
-**Cập nhật: 14/10/2026.** Quy tắc dùng chung tại [.github/copilot-instructions.md](.github/copilot-instructions.md); tiến độ và giới hạn nghiệm thu tại [báo cáo hoàn thiện ba tầng](Documentation/Architecture/TeamDecisionCompletion_2026-10-14.md), trạng thái schema tại [Database Rebuild Checklist](Documentation/Architecture/DatabaseRebuildChecklist.md). `.agent/SystemContract.md` là bản contract hiện hành trên máy làm việc; `.agent/` không được chia sẻ qua Git. Các quyết định người dùng đã chốt sau contract được ghi trong quy tắc dùng chung và báo cáo; không suy rằng mọi yêu cầu contract đã có code.
+**Cập nhật: 15/10/2026.** Quy tắc dùng chung tại [.github/copilot-instructions.md](.github/copilot-instructions.md); tiến độ và giới hạn nghiệm thu tại [báo cáo hoàn thiện ba tầng](Documentation/Architecture/ProjectStatus.md), trạng thái schema tại [Database Rebuild Checklist](Documentation/Architecture/DatabaseRebuildChecklist.md). `.agent/SystemContract.md` là bản contract hiện hành trên máy làm việc; `.agent/` không được chia sẻ qua Git. Các quyết định người dùng đã chốt sau contract được ghi trong quy tắc dùng chung và báo cáo; không suy rằng mọi yêu cầu contract đã có code.
 
 ## 1. Công nghệ sử dụng
 
@@ -55,7 +55,7 @@ Phiên bản thật được xác định bởi `.csproj`, `global.json` và `Di
 | Audit/analytics/UI | CompletedBy/At, CancelReason/RejectReason, lịch sử từ chối phân trang20, movement before/after/difference, shared transfer sequence; giá trị ước tính/ABC/luân chuyển/đề xuất nhập; ẩn scrollbar và sửa màu Chi tiết |
 | Giai đoạn sau | Bình quân gia quyền, tồn đầu kỳ/chi phí chuyển và điều chỉnh, retention/archive, production; Designer/DPI/máy in thật chưa nghiệm thu đầy đủ |
 
-Kết quả kiểm thử: **152 unit tests và 4 SQL tests PASS**; build solution **0 lỗi, 0 cảnh báo**. Đối chiếu schema thật **18 bảng** đạt; bootstrap SQL trắng và export QA đạt. Dependency audit Data không báo package vulnerable sau pin Pkcs9.0.21. Native UI đã kiểm tra các luồng ghi trong [báo cáo hiện hành](Documentation/Architecture/TeamDecisionCompletion_2026-10-14.md); đây chưa phải chứng nhận toàn bộ DPI/Designer/máy in/production.
+Kết quả15/10: **157 unit tests PASS**, build **0 lỗi/0 cảnh báo**; schema **19 bảng**,6migrations khôngpending. Bốn SQL tests, bootstrapSQLtrắng, export và nativeUI đã đạt ở đợt14/10; **chưa chạy lại SQLmutation/UI/PDF của lifecycle mới**. Chi tiết và backlog tại [báo cáo duy nhất](Documentation/Architecture/ProjectStatus.md).
 
 ## 3. Phân công và phối hợp
 
@@ -490,3 +490,7 @@ Nếu trước đây đã bỏ qua file Copilot trong `.git/info/exclude`, bỏ 
 - [Tùy chỉnh Copilot Chat trong Visual Studio](https://learn.microsoft.com/en-us/visualstudio/ide/copilot-chat-context?view=visualstudio)
 
 Mọi thay đổi về công nghệ, nghiệp vụ và phân công dùng chung cần được cập nhật trong tài liệu/quy tắc qua PR, tránh để mỗi thành viên áp dụng một phiên bản khác nhau.
+
+### Bổ sung nghiệp vụ 15/10/2026
+
+Người dùng chốt audit đầy đủ chuyển trạng thái: latest người/thời gian gửi duyệt, duyệt, hủy; ReceiptStatusChanges lưu mỗi chuyển trạng thái với actor/time/from/to/reason, không snapshot detail hoặc đoán dữ liệu cũ. Giữ lịch sử từ chối hiện có và không hard-delete phiếu đã có history. UI/PDF hiển thị latest audit; history xử lý20/trang. Best-effort và giá trị tồn ước tính giữ nguyên; WAC giai đoạn2. Kết quả kiểm tra của đợt14/10 không tự áp dụng cho code mới. Xem [báo cáo lifecycle](Documentation/Architecture/ProjectStatus.md).

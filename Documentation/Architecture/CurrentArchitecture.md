@@ -1,6 +1,6 @@
 # Kiến trúc hiện hành — 14/10/2026
 
-Mô tả code sau các quyết định TeamChot, không thay thế kết quả nghiệm thu. Schema quản lý bằng EF Core Migrations; SQL legacy giữ để tham khảo. Dự án có 18 entity sau khi bổ sung ReceiptRejection, giữ nguyên ba file Configurations.
+Mô tả code sau các quyết định TeamChot, không thay thế kết quả nghiệm thu. Schema quản lý bằng EF Core Migrations; SQL legacy giữ để tham khảo. Dự án có 19 entity sau khi bổ sung ReceiptRejection và ReceiptStatusChange, giữ nguyên ba file Configurations.
 
 ## Ranh giới các tầng
 
@@ -89,3 +89,7 @@ Reject lưu RejectReason hiện hành và thêm ReceiptRejection trong cùng tra
 - Giá trị tồn ước tính dùng Quantity×PurchasePrice hiện tại, ghi rõ không phải giá vốn kế toán. Bình quân gia quyền giai đoạn sau chưa triển khai.
 - ABC theo detail xuất COMPLETED, 12tháng đến hết hôm nay; A/B threshold cấu hình; dòng vượt ngưỡng vẫn nằm trong nhóm đang tích lũy. Luân chuyển xét 90ngày gồm hôm nay, first movement là mốc theo dõi. Đề xuất nhập chỉ gợi ý theo MaximumStock−Quantity khi Quantity<=ReorderPoint.
 - SQL integration tests là opt-in trên target TEST được phê duyệt; native UI tests và export QA là bước riêng, không suy từ unit tests rằng giao diện đã hoàn thiện.
+
+## Bổ sung lifecycle audit — 15/10/2026
+
+ReceiptStatusChanges lưu mọi chuyển trạng thái thực tế với from/to/actor/time/reason, đúng một phiếu nhập hoặc xuất, FK Restrict. Bao gồm chuyển REJECTED→DRAFT qua UpdateDraft hoặc Resubmit; không tạo snapshot chi tiết hay tự purge. Latest SubmittedBy/At, ApprovedBy/At, CancelledBy/At và CompletedBy/At được cập nhật cùng transaction với history. Ngày/người tạo nháp dùng trường hiện có; legacy chưa biết vẫnNULL, không backfill bằng suy đoán. Draft chưa từng xử lý có thể xóa theo quyền; có rejection/status history thì không hard-delete. UI/PDF hiển thị latest audit; lịch sử xử lý20/trang cùng warehouse authorization. Giữ best-effort, không Outbox; WAC để giai đoạn2.

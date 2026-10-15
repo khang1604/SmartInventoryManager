@@ -1,11 +1,11 @@
 # Database Rebuild Checklist — hiện hành 14/10/2026
 
-EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost/SmartInventoryManagerDB; production riêng chưa được cung cấp. Checklist này cập nhật theo code và kiểm tra SQL thật, thay trạng thái pending trước quyết định TeamChot. SQL legacy được giữ, không chạy chồng lên migration. Chi tiết tại [báo cáo hiện hành](TeamDecisionCompletion_2026-10-14.md) và [kiến trúc](CurrentArchitecture.md).
+EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost/SmartInventoryManagerDB; production riêng chưa được cung cấp. Checklist này cập nhật theo code và kiểm tra SQL thật, thay trạng thái pending trước quyết định TeamChot. SQL legacy được giữ, không chạy chồng lên migration. Chi tiết tại [báo cáo hiện hành](ProjectStatus.md) và [kiến trúc](CurrentArchitecture.md).
 
 ## 1. Model và baseline
 
 - [x] Baseline InitialCreate tạo17bảng; không sửa migration đã apply.
-- [x] Model hiện hành18entity/bảng nghiệp vụ sau khi thêm ReceiptRejection bằng migration mới.
+- [x] Model hiện hành19entity/bảng nghiệp vụ sau khi thêm ReceiptRejection và ReceiptStatusChange bằng migration mới.
 - [x] Giữ đúng3configuration: ProductConfiguration, InventoryConfiguration, ImportConfiguration.
 - [x] UserWarehouse composite PK(UserId,WarehouseId), Restrict FKs, IsActive; STAFF active/currentwarehouse/assignment active là căn cứ quyền.
 - [x] Inventory unique ProductId/WarehouseId, quantity>=0; product0<ReorderPoint<MaximumStock.
@@ -35,7 +35,7 @@ EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost
 - [x] Transfer ReferenceId chung SQL sequence;2TransactionId và2type riêng; atomic, uniqueness mỗi phía; khôngMAX+1.
 - [x] SQL kiểm tra duplicatecompletion, thiếu tồn, chuyển kho đồng thời, xuất cạnh tranh, Complete/Cancelrace, deadlock1205 và rollback khi ghi log lỗi:4tests PASS.
 - [x] Business stock/log cùngtransaction, publisher/notification saucommit best-effort, không replaystock khi gửi lỗi.
-- [ ] Audit submit/approve/cancel actor-time riêng ngoài các trường đã chốt: cần team chốt thêm nếu vẫn thuộc phạm vi nghiệm thu; không tự thêm schema.
+- [x] Người dùng chốt15/10: latest SubmittedBy/At, ApprovedBy/At, CancelledBy/At và full transition history, không snapshot details; model/service/UI/PDF đã nối. 20261015004156_AddReceiptLifecycleAudit đã apply TEST; schema19bảng/model consistency đã đối chiếu15/10.
 - [ ] Retention/archive và bảo đảm replay delivery sau commit nếu cần: chưa có policy/Outbox được duyệt.
 
 ## 4. Bootstrap, seed và fixture
@@ -64,3 +64,7 @@ EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost
 - [ ] Designer/DPI/HighContrast, các kích thước màn hình khác, SaveFileDialog/máy in thật và datasetlớn; native checks hiện tại không thay đầy đủ các bước này.
 
 Dấu[x] chỉ xác nhận phạm vi đã kiểm tra; không có nghĩa hoàn thiện toàn bộ contract hoặc triển khai production. Không rollback audit bằngDown khi chưa backup/đánh giá mất dữ liệu history.
+
+Lưu ý: kết quả18bảng/152unit/4SQL ở trên là snapshot14/10; không dùng để chứng minh migration lifecycle mới hoặc các bài SQL/UI chưa chạy lại. Xem ProjectStatus.md cho trạng thái mới.
+
+- [x] 15/10: latestactor/time + ReceiptStatusChanges apply thành công,6migrations khôngpending;157unit PASS. SQLmutation/UIacceptance của lifecycle mới chưa chạy lại.
