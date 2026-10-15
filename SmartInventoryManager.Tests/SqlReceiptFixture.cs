@@ -48,6 +48,8 @@ internal static class SqlReceiptFixture
                 var receipt = await verify.ImportReceipts.SingleAsync(x => x.ImportReceiptId == importId);
                 Assert(receipt.CompletedBy == session.CurrentUser!.UserId && receipt.CompletedAt.HasValue, "completion audit committed");
                 Assert(await verify.ReceiptRejections.CountAsync(x => x.ImportReceiptId == importId) == 2 && receipt.RejectReason == "Second SQL review", "all SQL rejection history retained across resubmit");
+                Assert(receipt.SubmittedBy == session.CurrentUser.UserId && receipt.SubmittedAt.HasValue && receipt.ApprovedBy == session.CurrentUser.UserId && receipt.ApprovedAt.HasValue, "latest submit/approve actors persisted");
+                Assert(await verify.ReceiptStatusChanges.CountAsync(x => x.ImportReceiptId == importId) == 9, "all SQL transitions including both resubmits retained");
             }
             int exportId;
             await using (var create = new InventoryDbContext(options))
@@ -94,6 +96,7 @@ internal static class SqlReceiptFixture
                 (item.EntityName == "ExportReceipt" && exportIds.Contains(item.EntityId ?? 0)) || (product.ProductId > 0 && item.EntityName == "Product" && item.EntityId == product.ProductId)).ExecuteDeleteAsync();
             await setup.Notifications.Where(item => item.Message.Contains(token)).ExecuteDeleteAsync();
             await setup.ReceiptRejections.Where(item => importIds.Contains(item.ImportReceiptId ?? 0) || exportIds.Contains(item.ExportReceiptId ?? 0)).ExecuteDeleteAsync();
+            await setup.ReceiptStatusChanges.Where(item => importIds.Contains(item.ImportReceiptId ?? 0) || exportIds.Contains(item.ExportReceiptId ?? 0)).ExecuteDeleteAsync();
             await setup.ImportDetails.Where(item => item.ImportReceipt.WarehouseId == warehouse.WarehouseId).ExecuteDeleteAsync();
             await setup.ExportDetails.Where(item => item.ExportReceipt.WarehouseId == warehouse.WarehouseId).ExecuteDeleteAsync();
             await setup.InventoryTransactions.Where(item => item.WarehouseId == warehouse.WarehouseId).ExecuteDeleteAsync();

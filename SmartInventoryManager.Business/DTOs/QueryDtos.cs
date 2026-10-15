@@ -83,7 +83,20 @@ public sealed record InventoryHistoryDto(
     public string? TransferCode => (TransactionType is "TRANSFER_OUT" or "TRANSFER_IN") && ReferenceId.HasValue ? $"TRF-{ReferenceId.Value:D6}" : null;
 }
 
-public sealed record ReceiptAuditDto(int? CompletedBy, string? CompletedByName, DateTime? CompletedAt, string? CancelReason, string? RejectReason);
+public sealed record ReceiptAuditDto(int? CompletedBy, string? CompletedByName, DateTime? CompletedAt, string? CancelReason, string? RejectReason)
+{
+    public int? SubmittedBy { get; init; }
+    public string? SubmittedByName { get; init; }
+    public DateTime? SubmittedAt { get; init; }
+    public int? ApprovedBy { get; init; }
+    public string? ApprovedByName { get; init; }
+    public DateTime? ApprovedAt { get; init; }
+    public int? CancelledBy { get; init; }
+    public string? CancelledByName { get; init; }
+    public DateTime? CancelledAt { get; init; }
+}
+public sealed record ReceiptStatusChangeDto(long Id, string FromStatus, string ToStatus, string ActorName, DateTime ChangedAt, string? Reason);
+public sealed record ReceiptStatusChangePageDto(int Total, int Page, int PageSize, IReadOnlyList<ReceiptStatusChangeDto> Rows);
 public sealed record ReceiptRejectionDto(long Id, string ActorName, DateTime RejectedAt, string Reason);
 public sealed record ReceiptRejectionPageDto(int Total, int Page, int PageSize, IReadOnlyList<ReceiptRejectionDto> Rows);
 

@@ -31,6 +31,85 @@ public sealed class TeamDecisionTests
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
+    public async Task LifecycleAudit_KeepsEveryTransitionAndLatestActors(bool import)
+    {
+        await using var db = Context(); var auth = new AuthorizationService(db); var session = Admin();
+        var imports = new ImportService(db, auth); var exports = new ExportService(db, auth);
+        var request = new ImportReceiptDto { WarehouseId = 1, SupplierId = 1, Note = "Original", Details = [new(1, 1, 2)] };
+        var exportRequest = new ExportReceiptDto { WarehouseId = 1, Note = "Original", Details = [new(1, 1, 2)] };
+        db.Inventories.Add(new Inventory { ProductId = 1, WarehouseId = 1, Quantity = 10, UpdatedAt = DateTime.Now }); await db.SaveChangesAsync();
+        var id = import ? await imports.CreateDraftAsync(session, request) : await exports.CreateDraftAsync(session, exportRequest);
+        Assert.AreEqual(0, await db.ReceiptStatusChanges.CountAsync());
+        if (import)
+        {
+            await imports.SubmitAsync(session, id); await imports.RejectAsync(session, id, "First review");
+            await imports.UpdateDraftAsync(session, id, request); await imports.SubmitAsync(session, id);
+            await imports.RejectAsync(session, id, "Second review"); await imports.ResubmitAsync(session, id);
+            await imports.SubmitAsync(session, id); await imports.ApproveAsync(session, id); await imports.CompleteAsync(session, id);
+        }
+        else
+        {
+            await exports.SubmitAsync(session, id); await exports.RejectAsync(session, id, "First review");
+            await exports.UpdateDraftAsync(session, id, exportRequest); await exports.SubmitAsync(session, id);
+            await exports.RejectAsync(session, id, "Second review"); await exports.ResubmitAsync(session, id);
+            await exports.SubmitAsync(session, id); await exports.ApproveAsync(session, id); await exports.CompleteAsync(session, id);
+        }
+        var history = await db.ReceiptStatusChanges.OrderBy(x => x.ReceiptStatusChangeId).ToListAsync();
+        Assert.AreEqual(9, history.Count);
+        CollectionAssert.AreEqual(new[] { "PENDING_APPROVAL", "REJECTED", "DRAFT", "PENDING_APPROVAL", "REJECTED", "DRAFT", "PENDING_APPROVAL", "APPROVED", "COMPLETED" }, history.Select(x => x.ToStatus).ToArray());
+        Assert.IsTrue(history.All(x => x.ChangedBy == 1 && x.FromStatus != x.ToStatus && (import ? x.ExportReceiptId is null : x.ImportReceiptId is null)));
+        for (var i = 1; i < history.Count; i++) Assert.AreEqual(history[i - 1].ToStatus, history[i].FromStatus);
+        var audit = import ? (await imports.GetByIdAsync(session, id))!.Audit : (await exports.GetByIdAsync(session, id))!.Audit;
+        Assert.AreEqual(1, audit.SubmittedBy); Assert.AreEqual("Test Admin", audit.SubmittedByName); Assert.AreEqual(history[6].ChangedAt, audit.SubmittedAt);
+        Assert.AreEqual(1, audit.ApprovedBy); Assert.AreEqual(history[7].ChangedAt, audit.ApprovedAt);
+        Assert.AreEqual(1, audit.CompletedBy); Assert.AreEqual(history[8].ChangedAt, audit.CompletedAt);
+        Assert.AreEqual("Second review", audit.RejectReason); Assert.IsNull(audit.CancelledAt);
+        if (import) await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => imports.CompleteAsync(session, id));
+        else await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => exports.CompleteAsync(session, id));
+        Assert.AreEqual(9, await db.ReceiptStatusChanges.CountAsync());
+    }
+
+    [DataTestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task LifecycleAudit_CancelRecordsActorReasonAndDoesNotPostStock(bool import)
+    {
+        await using var db = Context(); var auth = new AuthorizationService(db); var session = Admin();
+        if (import) db.ImportReceipts.Add(new ImportReceipt { ImportReceiptId = 1, ReceiptCode = "I", WarehouseId = 1, SupplierId = 1, CreatedBy = 1, Status = "DRAFT" });
+        else db.ExportReceipts.Add(new ExportReceipt { ExportReceiptId = 1, ReceiptCode = "E", WarehouseId = 1, CreatedBy = 1, Status = "DRAFT" });
+        await db.SaveChangesAsync();
+        var before = import ? (await new ImportService(db, auth).GetByIdAsync(session, 1))!.Audit : (await new ExportService(db, auth).GetByIdAsync(session, 1))!.Audit;
+        Assert.IsNull(before.SubmittedBy); Assert.IsNull(before.ApprovedAt); Assert.IsNull(before.CancelledAt);
+        if (import) await new ImportService(db, auth).CancelAsync(session, 1, "  Not needed  ");
+        else await new ExportService(db, auth).CancelAsync(session, 1, "  Not needed  ");
+        var row = await db.ReceiptStatusChanges.SingleAsync();
+        Assert.AreEqual("DRAFT", row.FromStatus); Assert.AreEqual("CANCELLED", row.ToStatus); Assert.AreEqual("Not needed", row.Reason);
+        var audit = import ? (await new ImportService(db, auth).GetByIdAsync(session, 1))!.Audit : (await new ExportService(db, auth).GetByIdAsync(session, 1))!.Audit;
+        Assert.AreEqual(1, audit.CancelledBy); Assert.AreEqual("Test Admin", audit.CancelledByName); Assert.AreEqual(row.ChangedAt, audit.CancelledAt);
+        Assert.AreEqual(0, await db.InventoryTransactions.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task LifecycleHistory_PagesStablyProtectsScopeAndPreventsHistoryDeletion()
+    {
+        await using var db = Context(); var auth = new AuthorizationService(db); var session = Admin();
+        db.ImportReceipts.Add(new ImportReceipt { ImportReceiptId = 1, ReceiptCode = "I", WarehouseId = 1, SupplierId = 1, CreatedBy = 1, Status = "DRAFT" });
+        var time = new DateTime(2026, 10, 15);
+        for (var i = 1; i <= 25; i++) db.ReceiptStatusChanges.Add(new ReceiptStatusChange { ReceiptStatusChangeId = i, ImportReceiptId = 1, FromStatus = "REJECTED", ToStatus = "DRAFT", ChangedBy = 1, ChangedAt = time });
+        await db.SaveChangesAsync(); var service = new ReceiptAuditService(db, auth);
+        var first = await service.GetStatusChangesAsync(session, true, 1); var second = await service.GetStatusChangesAsync(session, true, 1, 2);
+        Assert.AreEqual(25, first.Total); Assert.AreEqual(20, first.Rows.Count); Assert.AreEqual(25L, first.Rows[0].Id); Assert.AreEqual(5, second.Rows.Count); Assert.AreEqual(5L, second.Rows[0].Id);
+        Assert.IsFalse(first.Rows.Select(x => x.Id).Intersect(second.Rows.Select(x => x.Id)).Any());
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => new ImportService(db, auth).DeleteDraftAsync(session, 1));
+        await Assert.ThrowsExceptionAsync<ArgumentOutOfRangeException>(() => service.GetStatusChangesAsync(session, true, 1, 0));
+        await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.GetStatusChangesAsync(new UserSession(), true, 1));
+        await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.GetStatusChangesAsync(session, false, 1));
+        Assert.AreEqual(25, await db.ReceiptStatusChanges.CountAsync());
+    }
+
+    [DataTestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
     public async Task Rejections_PreserveNotesAndAllHistoryAcrossResubmit(bool import)
     {
         await using var db = Context(); var auth = new AuthorizationService(db); var session = Admin();

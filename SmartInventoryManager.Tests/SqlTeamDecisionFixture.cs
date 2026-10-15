@@ -86,6 +86,7 @@ internal static class SqlTeamDecisionFixture
             Assert.AreEqual("APPROVED", unchanged.Status); Assert.IsNull(unchanged.CompletedBy); Assert.IsNull(unchanged.CompletedAt);
             Assert.IsFalse(await db.InventoryTransactions.AnyAsync(x => x.ReferenceType == "EXPORT_RECEIPT" && x.ReferenceId == injected));
             Assert.IsFalse(await db.SystemLogs.AnyAsync(x => x.EntityName == "ExportReceipt" && x.EntityId == injected && x.Action == "COMPLETE_EXPORT"));
+            Assert.IsFalse(await db.ReceiptStatusChanges.AnyAsync(x => x.ExportReceiptId == injected && x.ToStatus == "COMPLETED"));
         }
         finally
         {
@@ -93,6 +94,7 @@ internal static class SqlTeamDecisionFixture
             var warehouses = new[] { a.WarehouseId, b.WarehouseId };
             var exports = await db.ExportReceipts.Where(x => warehouses.Contains(x.WarehouseId)).Select(x => x.ExportReceiptId).ToArrayAsync();
             await db.ReceiptRejections.Where(x => exports.Contains(x.ExportReceiptId ?? 0)).ExecuteDeleteAsync();
+            await db.ReceiptStatusChanges.Where(x => exports.Contains(x.ExportReceiptId ?? 0)).ExecuteDeleteAsync();
             await db.SystemLogs.Where(x => (x.EntityName == "Product" && x.EntityId == product.ProductId) || (x.EntityName == "ExportReceipt" && exports.Contains(x.EntityId ?? 0))).ExecuteDeleteAsync();
             await db.Notifications.Where(x => x.Message.Contains(token)).ExecuteDeleteAsync();
             await db.ExportDetails.Where(x => exports.Contains(x.ExportReceiptId)).ExecuteDeleteAsync();
