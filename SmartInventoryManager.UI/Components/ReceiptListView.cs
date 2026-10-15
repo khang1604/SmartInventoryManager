@@ -49,6 +49,7 @@ internal sealed class ReceiptListView : UserControl
         AddAction("Xem chi tiết", () => OpenAsync(SelectedId(), false), "eye");
         AddAction("Xuất PDF phiếu", ExportReceiptAsync);
         AddAction("Lịch sử từ chối", async () => { var id = SelectedId(); if (id.HasValue) { using var form = new ReceiptRejectionHistoryForm(_services, _import, id.Value); form.ShowDialog(FindForm()); } });
+        AddAction("Lịch sử xử lý", async () => { var id = SelectedId(); if (id.HasValue) { using var form = new ReceiptRejectionHistoryForm(_services, _import, id.Value, statusHistory: true); form.ShowDialog(FindForm()); } });
         AddAction("Sửa phiếu", () => OpenAsync(SelectedId(), true), "pencil");
         AddAction("Gửi duyệt", () => TransitionAsync("submit"));
         AddAction("Duyệt", () => TransitionAsync("approve"));
@@ -199,6 +200,7 @@ internal sealed class ReceiptListView : UserControl
         EnableAction("Xem chi tiết", true);
         EnableAction("Xuất PDF phiếu", true);
         EnableAction("Lịch sử từ chối", true);
+        EnableAction("Lịch sử xử lý", true);
         try
         {
             var rights = await _services.RunAsync(async () =>

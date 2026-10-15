@@ -53,7 +53,7 @@ internal sealed class ReceiptEditor : UserControl
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 140));
         root.Controls.Add(_audit, 0, 6);
         root.Controls.Add(ProductUi.Label(import ? "Phiếu nhập kho" : "Phiếu xuất kho", 18, true), 0, 0);
         _fields.Controls.AddRange([LiveUi.Field("Mã phiếu (tự động)", _code), LiveUi.Field("Kho *", _warehouse)]);
@@ -166,7 +166,8 @@ internal sealed class ReceiptEditor : UserControl
 
     private void ShowAudit(ReceiptAuditDto audit)
     {
-        _audit.Text = $"Hoàn tất: {audit.CompletedByName ?? "Chưa có dữ liệu"} • {audit.CompletedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}\r\nLý do từ chối gần nhất: {audit.RejectReason ?? "—"}\r\nLý do hủy: {audit.CancelReason ?? "—"}";
+        static string Stamp(string? name, DateTime? at) => $"{name ?? "Chưa có dữ liệu"} • {at?.ToString("dd/MM/yyyy HH:mm:ss") ?? "—"}";
+        _audit.Text = $"Gửi duyệt gần nhất: {Stamp(audit.SubmittedByName, audit.SubmittedAt)}\r\nDuyệt gần nhất: {Stamp(audit.ApprovedByName, audit.ApprovedAt)}\r\nHoàn tất: {Stamp(audit.CompletedByName, audit.CompletedAt)}\r\nHủy: {Stamp(audit.CancelledByName, audit.CancelledAt)}\r\nLý do từ chối gần nhất: {audit.RejectReason ?? "—"}\r\nLý do hủy: {audit.CancelReason ?? "—"}";
     }
 
     private async Task LoadAsync()

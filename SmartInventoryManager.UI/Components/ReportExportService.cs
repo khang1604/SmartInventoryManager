@@ -56,6 +56,9 @@ internal static class ReportExportService
                 column.Item().Text($"Người tạo: {creator}");
                 if (audit is not null)
                 {
+                    column.Item().Text($"Gửi duyệt gần nhất: {audit.SubmittedByName ?? "Chưa có dữ liệu"} • {audit.SubmittedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
+                    column.Item().Text($"Duyệt gần nhất: {audit.ApprovedByName ?? "Chưa có dữ liệu"} • {audit.ApprovedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
+                    column.Item().Text($"Hủy: {audit.CancelledByName ?? "Chưa có dữ liệu"} • {audit.CancelledAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
                     column.Item().Text($"Hoàn tất: {audit.CompletedByName ?? "Chưa có dữ liệu"} • {audit.CompletedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—"}");
                     if (!string.IsNullOrWhiteSpace(audit.CancelReason)) column.Item().Text($"Lý do hủy: {audit.CancelReason}");
                     if (!string.IsNullOrWhiteSpace(audit.RejectReason)) column.Item().Text($"Lý do từ chối gần nhất: {audit.RejectReason}");
