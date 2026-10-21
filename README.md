@@ -10,8 +10,8 @@
 
 1. Chạy bộ cài. .NET đã đóng kèm; máy khách không cần SQL Server hoặc Visual Studio.
 2. Nếu chưa có Tailscale, có thể chọn cài VPN chính thức trong bộ cài; Windows có thể yêu cầu quyền quản trị.
-3. Chưa được mời/duyệt truy cập server: chọn **Để sau / Đóng**. Không cần tạo ADMIN hoặc kết nối DB ngay khi cài.
-4. Sau khi quản trị viên cấp quyền VPN, mở **VioWare - Configure server** trong Start Menu hoặc **Cấu hình kết nối máy chủ** ở màn hình đăng nhập.
+3. Chưa được mời/duyệt truy cập server: chọn **Đóng**. Không cần tạo ADMIN hoặc kết nối DB ngay khi cài.
+4. Sau khi quản trị viên cấp quyền VPN, mở **VioWare - Configure server** trong Start Menu (hoặc chạy `SmartInventoryManager.UI.exe --configure`).
 5. Nhập địa chỉ, cổng, tên dữ liệu và SQL login do quản trị viên cấp → **Kiểm tra kết nối → Lưu và tiếp tục**.
 6. Đăng nhập VioWare bằng tài khoản ADMIN/manager/STAFF do quản trị viên cung cấp. Đây là tài khoản khác SQL login và Tailscale.
 

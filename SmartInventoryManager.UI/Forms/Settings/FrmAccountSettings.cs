@@ -28,7 +28,7 @@ internal sealed class FrmAccountSettings : Form
             SettingsUi.Pair("Họ tên", profileErrors.Wrap(fullName)),
             SettingsUi.Pair("Email", profileErrors.Wrap(email)), Actions(saveProfile), profileNotice));
         body.Controls.Add(SettingsUi.Group("Thông tin công việc • Chỉ xem", AppColors.Lavender, 220,
-            SettingsUi.Fields(("Tên đăng nhập", user?.Username ?? "", true), ("Quyền truy cập", user?.RoleName ?? "", true),
+            SettingsUi.Fields(("Tên đăng nhập", user?.Username ?? "", true), ("Quyền truy cập", LiveUi.RoleText(user?.RoleName), true),
                 ("Chức vụ", role, true), ("Kho làm việc", "Theo ngữ cảnh hiện tại", true))));
 
         var currentPassword = new TextBox { Name = "txtCurrentPassword", AccessibleName = "Mật khẩu hiện tại", UseSystemPasswordChar = true };
@@ -42,9 +42,9 @@ internal sealed class FrmAccountSettings : Form
         var passwordFields = ProductUi.Layout(1, 5);
         passwordFields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         foreach (var height in new[] { 66, 66, 66, 48, 42 }) passwordFields.RowStyles.Add(new RowStyle(SizeType.Absolute, height));
-        passwordFields.Controls.Add(SettingsUi.Pair("Mật khẩu hiện tại", passwordErrors.Wrap(currentPassword)), 0, 0);
-        passwordFields.Controls.Add(SettingsUi.Pair("Mật khẩu mới · Ít nhất 8 ký tự", passwordErrors.Wrap(newPassword)), 0, 1);
-        passwordFields.Controls.Add(SettingsUi.Pair("Xác nhận mật khẩu mới", passwordErrors.Wrap(confirmPassword)), 0, 2);
+        passwordFields.Controls.Add(SettingsUi.Pair("Mật khẩu hiện tại", passwordErrors.Wrap(currentPassword, password: true)), 0, 0);
+        passwordFields.Controls.Add(SettingsUi.Pair("Mật khẩu mới · Ít nhất 8 ký tự", passwordErrors.Wrap(newPassword, password: true)), 0, 1);
+        passwordFields.Controls.Add(SettingsUi.Pair("Xác nhận mật khẩu mới", passwordErrors.Wrap(confirmPassword, password: true)), 0, 2);
         passwordFields.Controls.Add(Actions(savePassword, cancelPassword), 0, 3);
         passwordFields.Controls.Add(passwordNotice, 0, 4);
         var security = SettingsUi.Group("Bảo mật", AppColors.Mint, 126, Actions(toggle));

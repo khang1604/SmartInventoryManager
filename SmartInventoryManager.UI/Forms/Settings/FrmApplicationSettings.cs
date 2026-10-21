@@ -15,7 +15,7 @@ internal sealed class FrmApplicationSettings : Form
         {
             Text = caption, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat,
             TextAlign = ContentAlignment.MiddleCenter, Size = new Size(130, 34), Margin = Padding.Empty,
-            AccessibleName = "Menu mặc định: " + caption,
+            AccessibleName = "Menu khi mở ứng dụng: " + caption,
             // [COLOR CONFIG]: lựa chọn menu dùng lavender, viền nhạt và chữ tối.
             BackColor = AppColors.Surface, ForeColor = AppColors.Text,
             FlatAppearance = { BorderColor = AppColors.Border, CheckedBackColor = AppColors.Lavender, MouseOverBackColor = AppColors.Sky }
@@ -25,7 +25,7 @@ internal sealed class FrmApplicationSettings : Form
         compact.Checked = UiPreferences.Current.CollapsedMenu; expanded.Checked = !compact.Checked;
         var page = LiveUi.Choice("cboPageSize", "Số dòng mỗi trang"); page.Items.AddRange(["25 dòng", "50 dòng", "100 dòng"]);
         page.SelectedIndex = UiPreferences.Current.PageSize switch { 25 => 0, 100 => 2, _ => 1 };
-        body.Controls.Add(SettingsUi.Group("Giao diện", AppColors.Sky, 160, SettingsUi.Pair("Cỡ chữ", font), SettingsUi.Pair("Menu mặc định", menu)));
+        body.Controls.Add(SettingsUi.Group("Giao diện", AppColors.Sky, 194, SettingsUi.Pair("Cỡ chữ", font), SettingsUi.Pair("Menu khi mở ứng dụng", menu), ProductUi.Label("Lưu trạng thái menu cho lần mở ứng dụng; nút ‹ thay đổi ngay khi đang dùng.", 9)));
         body.Controls.Add(SettingsUi.Group("Hiển thị bảng", AppColors.Mint, 138, SettingsUi.Pair("Số dòng mỗi trang", page),
             ProductUi.Label("Áp dụng cho bảng sản phẩm có phân trang; các bảng khác cuộn để xem thêm.", 9)));
         body.Controls.Add(SettingsUi.Group("Thông tin ứng dụng", AppColors.Lavender, 150,

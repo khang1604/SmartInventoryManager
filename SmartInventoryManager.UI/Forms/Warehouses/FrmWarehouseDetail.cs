@@ -27,7 +27,7 @@ public sealed class FrmWarehouseDetail : Form
         MinimumSize = new Size(500, 480);
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        MaximizeBox = false;
+        MaximizeBox = MinimizeBox = false;
         // [COLOR CONFIG]: nền và chữ theo bảng màu KH duyệt.
         BackColor = AppColors.Workspace;
         ForeColor = AppColors.Text;
@@ -111,7 +111,7 @@ public sealed class FrmWarehouseDetail : Form
         save.Enabled = _services is not null;
         save.TabIndex = 6;
         save.Margin = Padding.Empty;
-        save.AccessibleDescription = "Lưu thông tin qua Service";
+        save.AccessibleDescription = "Lưu thông tin";
         save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);
@@ -129,6 +129,7 @@ public sealed class FrmWarehouseDetail : Form
                 try
                 {
                     var managers = await services.RunAsync(() => services.Warehouses.GetActiveManagersAsync(services.Session));
+                    if (IsDisposed || Disposing) return;
                     var picker = Controls.Find("cboManager", true).OfType<ComboBox>().Single();
                     picker.DisplayMember = "Name";
                     picker.ValueMember = "Id";
@@ -143,10 +144,10 @@ public sealed class FrmWarehouseDetail : Form
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, LiveUi.LoadError(ex), "Người quản lý kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    if (!IsDisposed && !Disposing) MessageBox.Show(this, LiveUi.LoadError(ex), "Người quản lý kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             };
-        if(location && services is not null) Shown+=async(_,_)=> { try { var choices=await services.RunAsync(()=>services.Warehouses.GetActiveAsync(services.Session)); var picker=Controls.Find("cboWarehouse",true).OfType<ComboBox>().Single(); picker.DisplayMember="Name"; picker.ValueMember="Id"; picker.DataSource=new[]{new LookupItemDto(0,"","Chọn kho")}.Concat(choices).ToList(); picker.SelectedValue=locationDto?.WarehouseId ?? 0; } catch(Exception ex) { MessageBox.Show(this,LiveUi.LoadError(ex),"Kho",MessageBoxButtons.OK,MessageBoxIcon.Warning); } };
+        if(location && services is not null) Shown+=async(_,_)=> { try { var choices=await services.RunAsync(()=>services.Warehouses.GetActiveAsync(services.Session)); if (IsDisposed || Disposing) return; var picker=Controls.Find("cboWarehouse",true).OfType<ComboBox>().Single(); picker.DisplayMember="Name"; picker.ValueMember="Id"; picker.DataSource=new[]{new LookupItemDto(0,"","Chọn kho")}.Concat(choices).ToList(); picker.SelectedValue=locationDto?.WarehouseId ?? 0; } catch(Exception ex) { if (!IsDisposed && !Disposing) MessageBox.Show(this,LiveUi.LoadError(ex),"Kho",MessageBoxButtons.OK,MessageBoxIcon.Warning); } };
     }
 
     private void LoadWarehouse(WarehouseDto value) { Input("txtWarehouseCode").Text = value.WarehouseCode; Input("txtWarehouseName").Text = value.WarehouseName; Input("txtAddress").Text = value.Location ?? string.Empty; Check().Checked = value.IsActive; }

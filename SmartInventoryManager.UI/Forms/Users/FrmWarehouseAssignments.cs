@@ -9,6 +9,8 @@ public sealed class FrmWarehouseAssignments : Form
     public FrmWarehouseAssignments(UiServices services, UserListItemDto user)
     {
         Text = "Phân kho — " + user.Username;
+        MinimizeBox = false;
+        ShowInTaskbar = false;
         Shown += (_, _) => WorkflowUi.FitToWorkingArea(this);
         MinimumSize = new Size(620, 500);
         Size = new Size(820, 600); StartPosition = FormStartPosition.CenterParent;
@@ -19,6 +21,7 @@ public sealed class FrmWarehouseAssignments : Form
         var page = new DataListPage<WarehouseAssignmentDto>(services, "Phân kho của " + user.Username,
             [("WarehouseName", "Kho"), ("IsActive", "Trạng thái")],
             (_, _, _, _) => services.Assignments.GetAsync(services.Session, user.UserId));
+        page.PreserveSelection(row => row.WarehouseId);
         page.AddFilter("Kho", choice);
         page.Action("Phân kho / kích hoạt lại", async () =>
         {
@@ -39,10 +42,11 @@ public sealed class FrmWarehouseAssignments : Form
             try
             {
                 var rows = await services.RunAsync(() => services.Warehouses.GetAllAsync(services.Session));
+                if (IsDisposed || Disposing) return;
                 choice.DataSource = new[] { new LookupItemDto(0, "", "Chọn kho") }
                     .Concat(rows.Where(row => row.IsActive).Select(row => new LookupItemDto(row.WarehouseId, row.WarehouseCode, row.WarehouseName))).ToList();
             }
-            catch (Exception ex) { MessageBox.Show(this, LiveUi.LoadError(ex), "Phân kho", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { if (!IsDisposed && !Disposing) MessageBox.Show(this, LiveUi.LoadError(ex), "Phân kho", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         };
     }
 }

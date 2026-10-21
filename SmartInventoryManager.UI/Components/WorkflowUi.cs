@@ -187,13 +187,13 @@ internal static class WorkflowUi
         var button = ProductUi.Button(name, caption, icon);
         button.Width = Math.Max(145, TextRenderer.MeasureText(caption, button.Font).Width + 48);
         button.Enabled = false;
-        button.AccessibleDescription = "Chưa sẵn sàng: chưa có dữ liệu được chọn hoặc hợp đồng thao tác";
+        button.AccessibleDescription = "Chọn một dòng để thao tác.";
         return button;
     }
 
     public static void StyleForm(Form form)
     {
-        form.Shown += (_, _) => FitToWorkingArea(form);
+        form.Shown += (_, _) => { if (form.Modal) form.MinimizeBox = false; FitToWorkingArea(form); };
         ScrollbarAppearance.Apply(form);
         UiBrand.ApplyIcon(form);
         form.Font = new Font("Segoe UI", 10F);

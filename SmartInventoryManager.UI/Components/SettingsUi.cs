@@ -39,6 +39,7 @@ internal static class SettingsUi
     public static (TableLayoutPanel Root, FlowLayoutPanel Body, FlowLayoutPanel Footer) Root(Form form, string title, string description, Size size)
     {
         WorkflowUi.StyleForm(form);
+        form.MinimizeBox = false;
         form.Text = $"VioWare - {title}";
         form.AutoScaleMode = AutoScaleMode.Font;
         var workArea = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1366, 768);

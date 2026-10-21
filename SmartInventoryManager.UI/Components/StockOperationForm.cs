@@ -60,6 +60,7 @@ internal sealed class StockOperationForm : Form
         _save.Click += async (_, _) => await SaveAsync();
         actions.Controls.AddRange([_save, _refresh, close]);
         _refresh.Click += async (_, _) => { if (!_busy) await RefreshContextAsync(); };
+        LiveUi.OnLookupSearch(_destination, () => { if (_transfer) { _save.Enabled = false; _context.Text = "Chọn một kho đích trong danh sách để tiếp tục."; } });
         _destination.SelectedIndexChanged += async (_, _) => { if (!_busy && _transfer) await RefreshContextAsync(); };
         root.Controls.Add(actions, 0, 3);
         Controls.Add(root);
@@ -127,7 +128,7 @@ internal sealed class StockOperationForm : Form
 
     private async Task SaveAsync()
     {
-        if (_busy || _submitted || _committed) return;
+        if (_busy || _submitted || _committed || (_transfer && LiveUi.HasPendingSearch(_destination))) return;
         _errors.Clear();
         var quantity = decimal.ToInt32(_quantity.Value);
         var destinationId = (_destination.SelectedItem as LookupItemDto)?.Id ?? 0;

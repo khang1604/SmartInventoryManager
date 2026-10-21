@@ -190,7 +190,7 @@ internal static class ConnectedPages
         "Lịch sử tồn kho",
         [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("TransactionType", "Loại giao dịch"),
             ("MovementCode", "Mã biến động"), ("TransferCode", "Liên kết chuyển kho"), ("Quantity", "Số lượng"),
-            ("BeforeQuantity", "Tồn trước"), ("AfterQuantity", "Tồn sau"), ("SignedDifference", "Chênh lệch"), ("ReferenceType", "Loại tham chiếu"), ("ReferenceId", "ID tham chiếu"),
+            ("BeforeQuantity", "Tồn trước"), ("AfterQuantity", "Tồn sau"), ("SignedDifference", "Chênh lệch"), ("ReferenceType", "Chứng từ liên quan"), ("ReferenceId", "Số liên quan"),
             ("CreatorName", "Người tạo"), ("CreatedAt", "Thời gian"), ("Note", "Ghi chú")],
         async (warehouseId, search, from, to) => (await services.Inventory.GetHistoryAsync(services.Session, warehouseId, productId, from, to))
             .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true, history: true);

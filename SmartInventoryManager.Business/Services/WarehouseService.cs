@@ -35,7 +35,7 @@ public sealed class WarehouseService
     public async Task<IReadOnlyList<WarehouseDto>> GetAllAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         if (!session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập.");
-        var warehouseIds = await _authorization.GetAccessibleWarehouseIdsAsync(session, cancellationToken);
+        var warehouseIds = await _authorization.GetWarehouseDirectoryIdsAsync(session, cancellationToken);
         return await _dbContext.Warehouses.AsNoTracking()
             .Where(item => warehouseIds.Contains(item.WarehouseId))
             .OrderBy(item => item.WarehouseCode)

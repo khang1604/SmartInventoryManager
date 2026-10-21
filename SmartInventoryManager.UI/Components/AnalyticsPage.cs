@@ -43,6 +43,7 @@ internal sealed class AnalyticsPage : Form
         Shown += async (_, _) => await LoadAsync();
         tabs.SelectedIndexChanged += (_, _) => UpdateSummary();
         _warehouse.SelectedIndexChanged += (_, _) => InvalidateData();
+        LiveUi.OnLookupSearch(_warehouse, () => { InvalidateData(); _message.Text = "Chọn một kho trong danh sách rồi nhấn Làm mới."; });
         _a.ValueChanged += (_, _) => InvalidateData();
         _b.ValueChanged += (_, _) => InvalidateData();
     }
@@ -59,7 +60,9 @@ internal sealed class AnalyticsPage : Form
 
     private async Task LoadAsync()
     {
-        if (_busy) return; _busy = true; Enabled = false; _data = null; _message.Text = "Đang tải phân tích…";
+        if (_busy) return;
+        if (LiveUi.HasPendingSearch(_warehouse)) { InvalidateData(); _message.Text = "Chọn một kho trong danh sách rồi nhấn Làm mới."; return; }
+        _busy = true; Enabled = false; _data = null; _message.Text = "Đang tải phân tích…";
         try
         {
             if (_warehouse.DataSource is null)
@@ -81,7 +84,7 @@ internal sealed class AnalyticsPage : Form
 
     private void InvalidateData()
     {
-        if (_busy || _data is null) return;
+        if (_busy) return;
         _data = null; foreach (var grid in new[] { _valuation, _movement, _reorder, _abc }) grid.DataSource = null;
         _message.Text = "Bộ lọc đã đổi. Nhấn Làm mới trước khi xem hoặc xuất dữ liệu.";
     }
@@ -96,7 +99,7 @@ internal sealed class AnalyticsPage : Form
 
     private void Export()
     {
-        if (_busy || _data is null) { _message.Text = "Làm mới dữ liệu trước khi xuất."; return; }
+        if (_busy || _data is null || LiveUi.HasPendingSearch(_warehouse)) { _message.Text = "Làm mới dữ liệu trước khi xuất."; return; }
         using var dialog = new SaveFileDialog { Filter = "Excel (*.xlsx)|*.xlsx", DefaultExt = "xlsx", AddExtension = true, FileName = "Inventory-Analytics.xlsx" };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try { ReportExportService.ExportAnalyticsExcel(dialog.FileName, _data, _a.Value / 100, _b.Value / 100); _message.Text = "Đã xuất dữ liệu phân tích theo phạm vi vừa tải."; }

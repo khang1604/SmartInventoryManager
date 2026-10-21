@@ -229,22 +229,24 @@ internal static class WarehouseUi
                 catch (Exception ex) { MessageBox.Show(form, LiveUi.LoadError(ex), "Kho", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             };
             warehouse.SelectedIndexChanged += async (_, _) => await page.RefreshAsync();
+            page.PreserveSelection(row => row.LocationId);
             page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
             if(canManage) {
                 page.Action("Thêm vị trí",async()=> { using var detail=new FrmWarehouseDetail(services,true); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
                 page.SelectedAction("Sửa",async(row,_)=> { using var detail=new FrmWarehouseDetail(services,true,row); detail.ShowDialog(form); },"pencil");
-                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái vị trí đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) await services.RunAsync(()=>services.Locations.SetActiveAsync(services.Session,row.LocationId,!row.IsActive)); },"dash-circle");
+                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái vị trí đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) { await services.RunAsync(()=>services.Locations.SetActiveAsync(services.Session,row.LocationId,!row.IsActive)); state.SelectedIndex = 0; } },"dash-circle");
             }
             state.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); form.Controls.Add(page);
         }
         else
         {
             var page=new DataListPage<WarehouseDto>(services,"Kho trong phạm vi được phép",[("WarehouseCode","Mã kho"),("WarehouseName","Tên kho"),("Location","Địa chỉ"),("ManagerName","Người quản lý"),("IsActive","Trạng thái")],async (_,search,_,_) => (await services.Warehouses.GetAllAsync(services.Session)).Where(row=>Matches(row.WarehouseCode,row.WarehouseName,search,row.IsActive)).ToList());
+            page.PreserveSelection(row => row.WarehouseId);
             page.AddFilter("Trạng thái",state); page.AddDetailsColumn();
             if(canManage) {
                 page.Action("Thêm kho",async()=> { using var detail=new FrmWarehouseDetail(services,false); if(detail.ShowDialog(form)==DialogResult.OK) await page.RefreshAsync(); },"plus-lg");
                 page.SelectedAction("Sửa",async(row,_)=> { using var detail=new FrmWarehouseDetail(services,false,row); detail.ShowDialog(form); },"pencil");
-                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái kho đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) await services.RunAsync(()=>services.Warehouses.SetActiveAsync(services.Session,row.WarehouseId,!row.IsActive)); },"dash-circle");
+                page.SelectedAction("Đổi trạng thái",async(row,_)=> { if(MessageBox.Show(form,"Thay đổi trạng thái kho đã chọn?","Xác nhận",MessageBoxButtons.OKCancel,MessageBoxIcon.Question)==DialogResult.OK) { await services.RunAsync(()=>services.Warehouses.SetActiveAsync(services.Session,row.WarehouseId,!row.IsActive)); state.SelectedIndex = 0; } },"dash-circle");
             }
             state.SelectedIndexChanged+=async(_,_)=>await page.RefreshAsync(); form.Controls.Add(page);
         }
@@ -255,7 +257,7 @@ internal static class WarehouseUi
         var button = ProductUi.Button(name, text, icon);
         button.Width = width;
         button.Enabled = false;
-        button.AccessibleDescription = "Chưa sẵn sàng: chưa có dữ liệu được chọn hoặc hợp đồng thao tác";
+        button.AccessibleDescription = "Chọn một dòng để thao tác.";
         return button;
     }
 }

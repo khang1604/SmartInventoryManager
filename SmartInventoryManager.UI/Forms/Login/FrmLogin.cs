@@ -24,22 +24,13 @@ namespace SmartInventoryManager.UI.Forms.Login
         private const string PlaceholderUsername = "Tên đăng nhập";
         private const string PlaceholderPassword = "Mật khẩu";
         private readonly PictureBox _logoPictureBox = new();
-        private readonly LinkLabel _connectionLink = new() { Text = "Cấu hình kết nối máy chủ", AccessibleName = "Cấu hình kết nối máy chủ" };
-        public bool ConnectionSettingsRequested { get; private set; }
+
 
         public FrmLogin(AuthService authService)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             InitializeComponent();
             SetupUI();
-            pnlLeft.Controls.Add(_connectionLink);
-            _connectionLink.LinkClicked += (_, _) =>
-            {
-                if (_isSigningIn) return;
-                ConnectionSettingsRequested = true;
-                DialogResult = DialogResult.Retry;
-                Close();
-            };
             var remembered = RememberedUsername.Load();
             chkRemember.Text = "Nhớ tên đăng nhập";
             chkRemember.Width = 200;
@@ -80,7 +71,6 @@ namespace SmartInventoryManager.UI.Forms.Login
             lnkForgotPassword.SetBounds(fieldLeft + fieldWidth - Scale(135), Scale(402), Scale(123), Scale(20));
             btnLogin.SetBounds(fieldLeft, Scale(438), fieldWidth, Scale(46));
             label2.SetBounds(fieldLeft, Scale(494), fieldWidth, Scale(64));
-            _connectionLink.SetBounds(fieldLeft, Scale(560), fieldWidth, Scale(24));
             label7.Location = new Point(pnlLeft.ClientSize.Width - label7.Width - Scale(12),
                 Math.Max(pnlLeft.ClientSize.Height, Scale(600)) - label7.Height - Scale(8));
         }
@@ -226,7 +216,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             }
             catch (InvalidOperationException exception) when (exception.Message == "Thông tin đăng nhập bị trùng giữa các tài khoản. Vui lòng liên hệ ADMIN để kiểm tra.")
             {
-                label2.Text = exception.Message;
+                label2.Text = "Thông tin đăng nhập bị trùng. Vui lòng liên hệ quản trị viên để kiểm tra.";
             }
             catch (Exception exception)
             {

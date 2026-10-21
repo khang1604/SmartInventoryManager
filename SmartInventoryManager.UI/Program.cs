@@ -87,7 +87,6 @@ namespace SmartInventoryManager.UI
             {
                 using var loginForm = new FrmLogin(authService);
                 var loginResult = loginForm.ShowDialog();
-                if (loginForm.ConnectionSettingsRequested) return true;
                 if (loginResult != DialogResult.OK || loginForm.AuthenticatedUser is null)
                 {
                     return false;

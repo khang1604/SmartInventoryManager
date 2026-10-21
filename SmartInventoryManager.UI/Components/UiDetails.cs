@@ -61,7 +61,7 @@ internal static class UiDetails
         {
             if (e.Value is bool active) { e.Value = active ? "Đang hoạt động" : "Ngừng hoạt động"; e.FormattingApplied = true; }
             else if (grid.Columns[e.ColumnIndex].HeaderText is "Vai trò" && e.Value is string role)
-                e.Value = role switch { "ADMIN" => "Quản trị viên", "WAREHOUSE_MANAGER" => "Quản lý kho", "STAFF" => "Nhân viên kho", _ => role };
+                e.Value = LiveUi.RoleText(role);
         };
     }
 
