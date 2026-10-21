@@ -2,7 +2,7 @@
 
 Đồ án ứng dụng desktop quản lý nhiều kho bằng C# và Windows Forms. Hệ thống hỗ trợ quản lý hàng hóa, nhập/xuất, tồn kho, phân quyền, cảnh báo và báo cáo.
 
-**Mã nguồn đồ án được giữ đầy đủ**: UI, Business, Data, Common, migrations, tests, công cụ bootstrap và tài liệu. SQL legacy được giữ để tham khảo; schema hiện hành do EF Core Migrations quản lý.
+**Mã nguồn đồ án được giữ đầy đủ**: UI, Business, Data, Common, migrations, tests, công cụ bootstrap và tài liệu. Schema hiện hành do EF Core Migrations quản lý; bộ script schema/seed SQL cũ đã được loại khỏi source. Resource đang dùng nằm trong `SmartInventoryManager.UI/Resources`. Script phân quyền triển khai tại `Documentation/Deployment/ConfigureRuntimePermissions.sql` vẫn được giữ riêng.
 
 ## Tải và cài phần mềm
 

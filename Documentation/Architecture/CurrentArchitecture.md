@@ -1,6 +1,6 @@
 # Kiến trúc hiện hành — 14/10/2026
 
-Mô tả code sau các quyết định TeamChot, không thay thế kết quả nghiệm thu. Schema quản lý bằng EF Core Migrations; SQL legacy giữ để tham khảo. Dự án có 19 entity sau khi bổ sung ReceiptRejection và ReceiptStatusChange, giữ nguyên ba file Configurations.
+Mô tả code sau các quyết định TeamChot, không thay thế kết quả nghiệm thu. Schema quản lý bằng EF Core Migrations; bộ script schema/seed SQL cũ đã được đưa ra khỏi source theo yêu cầu ngày 21/10/2026. SQL trong migrations và truy vấn Data (Dashboard, sequence chuyển kho) vẫn cần thiết; script phân quyền triển khai được giữ riêng tại `Documentation/Deployment/ConfigureRuntimePermissions.sql`. Dự án có 19 entity sau khi bổ sung ReceiptRejection và ReceiptStatusChange, giữ nguyên ba file Configurations.
 
 ## Ranh giới các tầng
 
