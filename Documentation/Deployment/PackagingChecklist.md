@@ -1,6 +1,6 @@
 # Đóng gói VioWare và cấu hình máy khách
 
-Bản hiện hành: **v1.0.1**, Windows x64 self-contained. Source phục vụ chấm đồ án được giữ đầy đủ; binary phát hành qua GitHub Releases. Kết quả và giới hạn kiểm tra nằm tại [ProjectStatus.md](../Architecture/ProjectStatus.md).
+Bản hiện hành: **v1.0.2**, Windows x64 self-contained. Source phục vụ chấm đồ án được giữ đầy đủ; binary phát hành qua GitHub Releases. Kết quả và giới hạn kiểm tra nằm tại [ProjectStatus.md](../Architecture/ProjectStatus.md).
 
 ## Cài trước, cấp quyền sau
 
@@ -8,7 +8,7 @@ Bản hiện hành: **v1.0.1**, Windows x64 self-contained. Source phục vụ c
 2. Có thể chọn cài MSI Tailscale chính thức nếu máy chưa có. MSI hiển thị bước cài riêng và có thể yêu cầu ADMIN Windows. Installer không đăng nhập VPN hoặc lưu authkey.
 3. Chưa có quyền server: đóng màn hình cấu hình bằng **Để sau / Đóng**; không yêu cầu mạng/DB hoặc tạo ADMIN để cài phần mềm.
 4. Quản trị viên gửi lời mời VPN, duyệt thiết bị và giới hạn quyền máySQL/cổngSQL trong policy/firewall. Cài xong hoặc chấp nhận lời mời không tự cấp quyền SQL.
-5. Mở shortcut **VioWare - Configure server** hoặc link cấu hình ở màn hình đăng nhập. Nhập server (không kèm instance/cổng), cổng, database và SQLlogin được cấp. Chọn WindowsAuthentication chỉ khi tài khoản/domain thực sự có quyền.
+5. Mở shortcut **VioWare - Configure server**. Nhập server (không kèm instance/cổng), cổng, database và SQLlogin được cấp. Chọn WindowsAuthentication chỉ khi tài khoản/domain thực sự có quyền.
 6. Kiểm tra kết nối → lưu → đăng nhập VioWare bằng tài khoản do quản trị viên cấp. Không có bootstrap ADMIN trong bộ cài máy khách.
 
 Cấu hình được bảo vệ bằng DPAPI CurrentUser tại `%LOCALAPPDATA%\VioWare\connection.dat`. Không lưu password dạng rõ. Người khác trên máy không dùng được profile của user này; mã chạy với cùng quyền Windows vẫn có thể giải mã, nên DPAPI không thay thế quyềnSQL/VPN. Không gửi file profile cho máy khác; nhập lại khi đổi tài khoản Windows.
@@ -24,7 +24,7 @@ Từ repository root, trên Windows có SDK.NET10 và InnoSetup6.7.3+:
 ```powershell
 dotnet restore SmartInventoryManager.slnx
 dotnet build SmartInventoryManager.slnx -c Release --no-restore -m:1 -nr:false
-dotnet publish SmartInventoryManager.UI/SmartInventoryManager.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -o artifacts/publish/app-win-x64 -m:1 -nr:false
+dotnet publish SmartInventoryManager.UI/SmartInventoryManager.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -p:Version=1.0.2 -o artifacts/publish/app-1.0.2-win-x64 -m:1 -nr:false
 winget download --id Tailscale.Tailscale --version 1.104.1 --exact --source winget --architecture x64 --download-directory artifacts/tools/Tailscale --accept-package-agreements --accept-source-agreements
 ```
 
@@ -37,7 +37,7 @@ MSI phải có tên `Tailscale_1.104.1_Machine_X64_wix_en-US.msi` trong `artifac
 Sau đó mở `Installer/VioWare.iss` bằng InnoSetupCompiler → **Build → Compile**, hoặc chạy `ISCC.exe Installer/VioWare.iss`. Output:
 
 ```text
-artifacts/installer/VioWare-Setup-1.0.1-win-x64-self-contained.exe
+artifacts/installer/VioWare-Setup-1.0.2-win-x64-self-contained.exe
 ```
 
 Script giữ AppId cố định để cập nhật, cài per-user tại `%LOCALAPPDATA%\Programs\VioWare`. VioWare không cần nâng quyền; bước cài VPN có thể cần. MSI chỉ được chạy khi người cài chọn task và chưa phát hiện Tailscale ở vị trí cài chuẩn. Không update/gỡ Tailscale đã có. Có link tải chính thức ở màn hình cấu hình nếu VPN nằm tại đường dẫn khác.
