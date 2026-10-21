@@ -108,7 +108,7 @@ public partial class FrmProductDetail : Form
         save.Margin = Padding.Empty;
         save.Enabled = _services is not null;
         save.TabIndex = 10;
-        save.AccessibleDescription = "Lưu thông tin sản phẩm qua Service";
+        save.AccessibleDescription = "Lưu thông tin sản phẩm";
         save.Click += async (_, _) => await SaveAsync();
         actions.Controls.Add(close);
         actions.Controls.Add(save);

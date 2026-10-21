@@ -86,7 +86,7 @@ public partial class FrmCategory : Form
             var add = ProductUi.Button("btnAdd", "Thêm danh mục", "plus-lg", true);
             add.Width = 180;
             add.TabIndex = 2;
-            add.AccessibleDescription = "Thêm danh mục qua Service";
+            add.AccessibleDescription = "Thêm danh mục";
             add.Click += async (_, _) =>
             {
                 if (_services is null) return;

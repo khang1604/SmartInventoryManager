@@ -41,7 +41,7 @@ public sealed class FrmUserDetail : Form
         {
             var position = fields.GetPositionFromControl(input);
             fields.Controls.Remove(input);
-            fields.Controls.Add(errors.Wrap(input), position.Column, position.Row);
+            fields.Controls.Add(errors.Wrap(input, input == password || input == confirm), position.Column, position.Row);
         }
         foreach (var row in new[] { 1, 3, 5 }) fields.RowStyles[row].Height = 76;
         contextNote.AutoSize = false; contextNote.Height = 70;

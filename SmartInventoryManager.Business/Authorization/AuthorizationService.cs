@@ -221,6 +221,17 @@ public sealed class AuthorizationService
             : new HashSet<int>();
     }
 
+    // Directory visibility does not grant operational access to an inactive warehouse.
+    public async Task<IReadOnlySet<int>> GetWarehouseDirectoryIdsAsync(UserSession session, CancellationToken cancellationToken = default)
+    {
+        if (IsStaff(session)) return await GetAccessibleWarehouseIdsAsync(session, cancellationToken);
+        if (!await IsActorActiveAsync(session, cancellationToken)) return new HashSet<int>();
+        var query = _dbContext.Warehouses.AsNoTracking();
+        if (IsWarehouseManager(session)) query = query.Where(warehouse => warehouse.ManagerId == session.CurrentUser!.UserId);
+        else if (!IsAdmin(session)) return new HashSet<int>();
+        return (await query.Select(warehouse => warehouse.WarehouseId).ToListAsync(cancellationToken)).ToHashSet();
+    }
+
     public async Task<bool> CanViewWarehouseAsync(UserSession session, int warehouseId, CancellationToken cancellationToken = default)
     {
         var warehouseIds = await GetAccessibleWarehouseIdsAsync(session, cancellationToken);

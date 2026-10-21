@@ -17,6 +17,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
     private readonly FlowLayoutPanel _filters = LiveUi.Toolbar();
     private readonly FlowLayoutPanel _actions = LiveUi.Toolbar();
     private readonly string _scope;
+    private readonly Func<int> _pageSize;
     private Func<int, string, DateTime?, DateTime?, int, int, Task<PagedResultDto<T>>>? _pageQuery;
     private readonly TableLayoutPanel _root;
     private readonly FlowLayoutPanel _pager = LiveUi.Toolbar();
@@ -24,6 +25,13 @@ internal sealed class DataListPage<T> : UserControl where T : class
     private readonly AntdUI.Button _next = ProductUi.Button("btnNextPage", "Trang sau", "chevron-right");
     private int _page = 1;
     private bool _busy;
+    private bool _resettingFilters;
+    private int _lookupVersion;
+    private readonly HashSet<Control> _lookupDisabledActions = new();
+    private bool HasPendingSearch => (_requiresWarehouse && LiveUi.HasPendingSearch(_warehouse))
+        || _extraFilters.OfType<ComboBox>().Any(LiveUi.HasPendingSearch);
+    private Func<T, object>? _selectionKey;
+    private readonly List<Control> _extraFilters = new();
     private bool _actionRunning;
     private string _summary = "";
     public void SetSummary(string summary) => _summary = summary;
@@ -35,8 +43,9 @@ internal sealed class DataListPage<T> : UserControl where T : class
     public DataListPage(UiServices services, string scope,
         (string Property, string Caption)[] columns,
         Func<int, string, DateTime?, DateTime?, Task<IReadOnlyList<T>>> query,
-        bool requiresWarehouse = false, bool history = false)
+        bool requiresWarehouse = false, bool history = false, Func<int>? pageSize = null)
     {
+        _pageSize = pageSize ?? (() => UiPreferences.Current.PageSize);
         _services = services; _query = query; _scope = scope; _requiresWarehouse = requiresWarehouse; _history = history;
         Dock = DockStyle.Fill;
         var root = _root = ProductUi.Layout(1, 5);
@@ -72,8 +81,28 @@ internal sealed class DataListPage<T> : UserControl where T : class
         Action("Làm mới", RefreshAsync, "arrow-clockwise");
         Action("Bỏ bộ lọc", async () =>
         {
-            _search.Clear(); _from.Checked = _to.Checked = false;
-            if (_type.Items.Count > 0) _type.SelectedIndex = 0;
+            _resettingFilters = true;
+            try
+            {
+                _search.Clear(); _from.Checked = _to.Checked = false;
+                if (_requiresWarehouse && _warehouse is SearchableLookupComboBox core)
+                {
+                    core.ResetSearch();
+                    if (string.Equals(_services.Session.CurrentUser?.RoleName?.Trim(), "STAFF", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _warehouse.SelectedIndex = -1;
+                        if (_services.Session.CurrentWarehouseId is int current) _warehouse.SelectedValue = current;
+                    }
+                }
+                if (_type.Items.Count > 0) _type.SelectedIndex = 0;
+                foreach (var control in _extraFilters)
+                {
+                    if (control is SearchableLookupComboBox lookup) lookup.ResetSearch();
+                    else if (control is ComboBox combo && combo.Items.Count > 0) combo.SelectedIndex = 0;
+                    else if (control is TextBox text) text.Clear();
+                }
+            }
+            finally { _resettingFilters = false; }
             await RefreshAsync();
         });
         _grid = LiveUi.Grid("dgvData", columns);
@@ -84,12 +113,16 @@ internal sealed class DataListPage<T> : UserControl where T : class
                 e.Value = LiveUi.StockStatusText(stockStatus);
             else if (_grid.Columns[e.ColumnIndex].Name is "StockStatus" or "ReceiptType" or "Status" && e.Value is string value) e.Value = LiveUi.StatusText(value);
             if (e.Value is bool active) e.Value = _grid.Columns[e.ColumnIndex].Name == "IsRead" ? (active ? "Đã đọc" : "Chưa đọc") : (active ? "Đang hoạt động" : "Ngừng hoạt động");
-            if (_grid.Columns[e.ColumnIndex].Name == "RoleName" && e.Value is string role) e.Value = role switch { "ADMIN" => "Quản trị viên", "WAREHOUSE_MANAGER" => "Quản lý kho", "STAFF" => "Nhân viên kho", _ => role };
+            if (_grid.Columns[e.ColumnIndex].Name == "RoleName" && e.Value is string role) e.Value = LiveUi.RoleText(role);
             if (_grid.Columns[e.ColumnIndex].Name is "AlertType" or "TransactionType" && e.Value is string status)
                 e.Value = LiveUi.StatusText(status);
+            if (_grid.Columns[e.ColumnIndex].Name == "ReferenceType" && e.Value is string reference)
+                e.Value = reference switch { "IMPORT_RECEIPT" => "Phiếu nhập", "EXPORT_RECEIPT" => "Phiếu xuất", "MANUAL" => "Điều chỉnh / chuyển kho", _ => "Khác" };
+            if (_grid.Columns[e.ColumnIndex].Name == "Description")
+                e.Value = e.Value switch { "User account operation; credentials are never recorded." => "Đã cập nhật tài khoản.", "Đã hoàn tất nghiệp vụ kho." => "Đã cập nhật kho.", _ => e.Value };
             if (_grid.Columns[e.ColumnIndex].Name == "Action" && e.Value is string action) e.Value = LiveUi.LogActionText(action);
             if (_grid.Columns[e.ColumnIndex].Name == "EntityName" && e.Value is string entity)
-                e.Value = entity switch { "ImportReceipt" => "Phiếu nhập", "ExportReceipt" => "Phiếu xuất", "Product" => "Sản phẩm", "UserWarehouse" => "Phân kho", _ => "Dữ liệu hệ thống" };
+                e.Value = entity switch { "ImportReceipt" => "Phiếu nhập", "ExportReceipt" => "Phiếu xuất", "Product" => "Sản phẩm", "UserWarehouse" => "Phân kho", "User" => "Tài khoản", "Inventory" => "Tồn kho", "Warehouse" => "Kho", _ => "Dữ liệu hệ thống" };
         };
         _actions.WrapContents = true;
         _actions.AutoScroll = false;
@@ -111,6 +144,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         root.Controls.Add(_pager, 0, 4);
         LiveUi.KeepTableVisible(this, root);
         Controls.Add(root);
+        WatchLookup(_warehouse);
         Load += async (_, _) => await RefreshAsync();
         VisibleChanged += async (_, _) =>
         {
@@ -126,7 +160,40 @@ internal sealed class DataListPage<T> : UserControl where T : class
     public void AddDetailsColumn(bool insetButton = false) => UiDetails.AddColumn(_grid, insetButton);
 
     public IReadOnlyList<T> CurrentRows => _grid.DataSource is IEnumerable<T> rows ? rows.ToList() : [];
-    public void AddFilter(string caption, Control control) => _filters.Controls.Add(LiveUi.Field(caption, control));
+    public void AddFilter(string caption, Control control)
+    {
+        _extraFilters.Add(control);
+        if (control is ComboBox lookup) WatchLookup(lookup);
+        _filters.Controls.Add(LiveUi.Field(caption, control));
+    }
+    private void WatchLookup(ComboBox lookup)
+    {
+        LiveUi.OnLookupSearch(lookup, InvalidateLookupData);
+        lookup.SelectedIndexChanged += async (_, _) =>
+        {
+            if (_initialized && !_busy && !_resettingFilters && !LiveUi.HasPendingSearch(lookup))
+            {
+                RestoreLookupActions();
+                if (lookup == _warehouse && _requiresWarehouse) await RefreshAsync();
+            }
+        };
+    }
+    private void InvalidateLookupData()
+    {
+        _lookupVersion++;
+        _grid.DataSource = null;
+        _previous.Enabled = _next.Enabled = false;
+        _message.Text = "Chọn một kho trong danh sách để xem dữ liệu.";
+        foreach (Control button in _actions.Controls.Cast<Control>().Skip(2))
+            if (button.Enabled) { _lookupDisabledActions.Add(button); button.Enabled = false; }
+    }
+    private void RestoreLookupActions()
+    {
+        if (HasPendingSearch) return;
+        foreach (var button in _lookupDisabledActions) if (!button.IsDisposed) button.Enabled = true;
+        _lookupDisabledActions.Clear();
+    }
+    public DataListPage<T> PreserveSelection(Func<T, object> key) { _selectionKey = key; return this; }
     public IReadOnlyList<T> DisplayedRows => _grid.Rows.Cast<DataGridViewRow>().Select(row => row.DataBoundItem).OfType<T>().ToList();
     public string SearchText => _search.Text.Trim();
     public int SelectedType => _type.SelectedIndex;
@@ -140,6 +207,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         button.Click += async (_, _) =>
         {
             if (_busy || _actionRunning) return;
+            if (HasPendingSearch && caption != "Bỏ bộ lọc") { InvalidateLookupData(); return; }
             _actionRunning = true;
             button.Enabled = false;
             try { await action(); }
@@ -181,7 +249,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
             action.Button.Enabled = false;
             if (action.Permission is not null) action.Button.Visible = false;
         }
-        if (_grid.CurrentRow?.DataBoundItem is not T row) return;
+        if (HasPendingSearch || _grid.CurrentRow?.DataBoundItem is not T row) return;
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
         foreach (var action in _selectedActions)
         {
@@ -209,7 +277,9 @@ internal sealed class DataListPage<T> : UserControl where T : class
 
     private async Task LoadPageAsync(bool resetPage)
     {
-        if (_busy) return;
+        if (_busy || _resettingFilters || IsDisposed) return;
+        if (HasPendingSearch) { InvalidateLookupData(); return; }
+        var selectedKey = _grid.CurrentRow?.DataBoundItem is T selected ? _selectionKey?.Invoke(selected) : null;
         if (resetPage) _page = 1;
         _initialized = true;
         if (_history && _from.Checked && _to.Checked && _from.Value.Date > _to.Value.Date)
@@ -232,11 +302,12 @@ internal sealed class DataListPage<T> : UserControl where T : class
             var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
             if (_requiresWarehouse && warehouseId == 0)
             { _grid.DataSource = null; _message.Text = "Chưa có kho đang hoạt động để xem dữ liệu."; return; }
+            var lookupVersion = _lookupVersion;
             var from = _history && _from.Checked ? _from.Value.Date : (DateTime?)null;
             var to = _history && _to.Checked ? _to.Value.Date : (DateTime?)null;
             IReadOnlyList<T> rows;
             int? totalCount = null;
-            var size = Math.Clamp(UiPreferences.Current.PageSize, 1, 100);
+            var size = Math.Clamp(_pageSize(), 1, 100);
             if (_pageQuery is null) rows = await _services.RunAsync(() => _query(warehouseId, _search.Text.Trim(), from, to));
             else
             {
@@ -246,6 +317,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
                 _next.Enabled = (long)_page * size < result.TotalCount;
             }
             if (IsDisposed) return;
+            if (lookupVersion != _lookupVersion || HasPendingSearch) { InvalidateLookupData(); return; }
             if (_history && _type.SelectedIndex > 0)
             {
                 var type = _type.SelectedIndex switch { 1 => "IMPORT", 2 => "EXPORT", 3 => "ADJUSTMENT", 4 => "TRANSFER_IN", _ => "TRANSFER_OUT" };
@@ -264,6 +336,16 @@ internal sealed class DataListPage<T> : UserControl where T : class
             }
             if (typeof(T) == typeof(InventoryReportRowDto) && _type.SelectedIndex > 0) { var status = _type.SelectedIndex switch { 1 => "OUT_OF_STOCK", 2 => "LOW_STOCK", 3 => "NORMAL", _ => "OVERSTOCK" }; rows = rows.Where(row => row is InventoryReportRowDto item && LiveUi.StatusText(item.StockStatus) == LiveUi.StatusText(status)).ToList(); }
             _grid.DataSource = rows.ToList();
+            if (selectedKey is not null && _selectionKey is not null)
+            {
+                foreach (DataGridViewRow row in _grid.Rows)
+                    if (row.DataBoundItem is T item && Equals(_selectionKey(item), selectedKey))
+                    {
+                        _grid.CurrentCell = row.Cells.Cast<DataGridViewCell>().First(cell => cell.Visible);
+                        row.Selected = true;
+                        break;
+                    }
+            }
             var warehouse = _requiresWarehouse ? $" • Kho: {(_warehouse.SelectedItem as LookupItemDto)?.Name}" : "";
             var filtered = !string.IsNullOrWhiteSpace(_search.Text) || from.HasValue || to.HasValue || _type.SelectedIndex > 0;
             _message.Text = $"{_scope}{warehouse} • " + (rows.Count == 0
@@ -277,6 +359,11 @@ internal sealed class DataListPage<T> : UserControl where T : class
             _busy = false;
             if (!IsDisposed) _filters.Enabled = _actions.Enabled = _grid.Enabled = _pager.Enabled = true;
         }
-        if (!IsDisposed) await UpdateSelectedActionsAsync();
+        if (!IsDisposed)
+        {
+            RestoreLookupActions();
+            if (HasPendingSearch) InvalidateLookupData();
+            await UpdateSelectedActionsAsync();
+        }
     }
 }

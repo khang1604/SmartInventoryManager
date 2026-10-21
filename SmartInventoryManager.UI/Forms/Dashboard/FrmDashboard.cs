@@ -101,6 +101,7 @@ public partial class FrmDashboard : Form
         {
             _refreshDelay.Tick += async (_, _) => { _refreshDelay.Stop(); if (_services.HasPendingOperations) { _refreshDelay.Start(); return; } if (Visible) await LoadDataAsync(); };
             _warehouse.SelectedIndexChanged += (_, _) => QueueRefresh();
+            LiveUi.OnLookupSearch(_warehouse, () => { _refreshDelay.Stop(); ClearData("Chọn một kho trong danh sách để xem số liệu."); });
             _period.RangeChanged += (_, _) => QueueRefresh();
             Shown += async (_, _) => await LoadDataAsync();
             VisibleChanged += (_, _) => { if (Visible) QueueRefresh(); };
@@ -111,11 +112,20 @@ public partial class FrmDashboard : Form
         else Disposed += (_, _) => _refreshDelay.Dispose();
     }
 
-    private void QueueRefresh() { if (_loading || IsDisposed || _services is null) return; _refreshDelay.Stop(); _refreshDelay.Start(); }
+    private void ClearData(string message)
+    {
+        foreach (var card in _cards) { card.MetricValue = "—"; card.MetricNote = "Chưa chọn kho"; }
+        _activity.DataSource = null; _alerts.ShowAlerts([]);
+        _chart.ShowSeries([], []); _lowest.ShowHorizontal([], []); _distribution.ShowHorizontal([], []);
+        _note.Text = message;
+    }
+
+    private void QueueRefresh() { if (_loading || IsDisposed || _services is null || LiveUi.HasPendingSearch(_warehouse)) return; _refreshDelay.Stop(); _refreshDelay.Start(); }
 
     private async Task LoadDataAsync()
     {
         if (_services is null || _loading) return;
+        if (LiveUi.HasPendingSearch(_warehouse)) { ClearData("Chọn một kho trong danh sách để xem số liệu."); return; }
         if (!_period.IsValid) { _note.Text = "Ngày bắt đầu không được sau ngày kết thúc."; return; }
         _loading = true; _refresh.Enabled = _warehouse.Enabled = _period.Enabled = false;
         _note.Text = "Đang tải dữ liệu…";

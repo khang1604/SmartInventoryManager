@@ -22,7 +22,7 @@ internal sealed class ReceiptEditor : UserControl
     private readonly ComboBox _warehouse = LiveUi.Choice("cboWarehouse", "Kho");
     private readonly ComboBox _supplier = LiveUi.Choice("cboSupplier", "Nhà cung cấp");
     private readonly Label _message = ProductUi.Label("Đang tải biểu mẫu…");
-    private readonly TextBox _audit = new() { ReadOnly = true, Multiline = true, WordWrap = true, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, AccessibleName = "Audit phiếu" };
+    private readonly TextBox _audit = new() { ReadOnly = true, Multiline = true, WordWrap = true, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, AccessibleName = "Lịch sử xử lý phiếu" };
     private readonly Label _total = ProductUi.Label("Tổng tiền xem trước: 0 đ", 12, true);
     private readonly DataGridView _lines = LiveUi.Grid("dgvReceiptLines");
     private readonly FlowLayoutPanel _fields = LiveUi.Toolbar();
@@ -123,6 +123,14 @@ internal sealed class ReceiptEditor : UserControl
             }
             catch (Exception ex) { if (!IsDisposed) _message.Text = LiveUi.Error(ex); }
         };
+        LiveUi.OnLookupSearch(_warehouse, () =>
+        {
+            _dirty = true; _editable = false; _stock = null;
+            _save.Enabled = _add.Enabled = _remove.Enabled = false;
+            _note.ReadOnly = _lines.ReadOnly = true;
+            if (!_import) foreach (DataGridViewRow row in _lines.Rows) row.Cells["CurrentStock"].Value = null;
+            _message.Text = "Chọn một kho trong danh sách để tiếp tục.";
+        });
         _supplier.SelectedIndexChanged += (_, _) => { if (!_binding) _dirty = true; };
         _add.Click += (_, _) => { if (_editable && !_busy) { _lines.Rows.Add(); _dirty = true; } };
         _remove.Click += (_, _) =>
@@ -342,7 +350,7 @@ internal sealed class ReceiptEditor : UserControl
 
     private async Task SaveAsync()
     {
-        if (_busy || !_editable) return;
+        if (_busy || !_editable || LiveUi.HasPendingSearch(_warehouse)) return;
         _lines.EndEdit();
         _errors.Clear();
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;

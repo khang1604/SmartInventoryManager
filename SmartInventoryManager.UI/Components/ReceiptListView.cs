@@ -20,6 +20,8 @@ internal sealed class ReceiptListView : UserControl
     private AntdUI.Button _create = null!;
     private bool _busy;
     private bool _initialized;
+    private int _lookupVersion;
+    private bool _resettingFilters;
     private bool _hiddenAfterLoad;
     private int _actionsVersion;
     private int _page = 1;
@@ -52,8 +54,17 @@ internal sealed class ReceiptListView : UserControl
         AddAction("Làm mới", LoadAsync, "arrow-clockwise");
         AddAction("Bỏ bộ lọc", async () =>
         {
-            _search.Clear(); _status.SelectedIndex = 0; _warehouse.SelectedIndex = 0;
-            _from.Checked = _to.Checked = false;
+            _resettingFilters = true;
+            try
+            {
+                _search.Clear(); _status.SelectedIndex = 0;
+                if (_warehouse is SearchableLookupComboBox lookup) lookup.ResetSearch();
+                else if (_warehouse.Items.Count > 0) _warehouse.SelectedIndex = 0;
+                if (_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId is int current)
+                    _warehouse.SelectedValue = current;
+                _from.Checked = _to.Checked = false;
+            }
+            finally { _resettingFilters = false; }
             await LoadAsync();
         });
         _create = AddAction("Tạo phiếu", () => OpenAsync(null, true), "plus-lg");
@@ -106,6 +117,8 @@ internal sealed class ReceiptListView : UserControl
         root.Controls.Add(LiveUi.TableFrame(_grid), 0, 3);
         root.Controls.Add(pager, 0, 4);
         Controls.Add(root);
+        LiveUi.OnLookupSearch(_warehouse, InvalidateWarehouse);
+        _warehouse.SelectedIndexChanged += async (_, _) => { if (_initialized && !_busy && !_resettingFilters && !LiveUi.HasPendingSearch(_warehouse)) await LoadAsync(); };
         _search.KeyDown += async (_, e) =>
         {
             if (e.KeyCode != Keys.Enter) return;
@@ -124,10 +137,19 @@ internal sealed class ReceiptListView : UserControl
         };
     }
 
+    private void InvalidateWarehouse()
+    {
+        _lookupVersion++; _actionsVersion++;
+        _grid.DataSource = null;
+        _previous.Enabled = _next.Enabled = false;
+        for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
+        _message.Text = "Chọn một kho trong danh sách để xem phiếu.";
+    }
+
     private AntdUI.Button AddAction(string text, Func<Task> action, string? icon = null)
     {
         var button = ProductUi.Button("btn" + _actions.Controls.Count, text, icon);
-        button.Click += async (_, _) => { if (!_busy) await action(); };
+        button.Click += async (_, _) => { if (!_busy && (!LiveUi.HasPendingSearch(_warehouse) || text == "Bỏ bộ lọc")) await action(); };
         _actions.Controls.Add(button);
         return button;
     }
@@ -155,7 +177,8 @@ internal sealed class ReceiptListView : UserControl
 
     private async Task LoadAsync()
     {
-        if (_busy) return;
+        if (_busy || _resettingFilters) return;
+        if (LiveUi.HasPendingSearch(_warehouse)) { InvalidateWarehouse(); return; }
         _initialized = true;
         if (_from.Checked && _to.Checked && _from.Value.Date > _to.Value.Date)
         { _message.Text = "Ngày bắt đầu không được sau ngày kết thúc."; return; }
@@ -172,6 +195,7 @@ internal sealed class ReceiptListView : UserControl
                 _warehouse.DataSource = new[] { new LookupItemDto(0, "", "Tất cả kho") }.Concat(warehouses).ToList();
                 if (_services.Authorization.IsStaff(_services.Session) && _services.Session.CurrentWarehouseId.HasValue) _warehouse.SelectedValue = _services.Session.CurrentWarehouseId.Value;
             }
+            var lookupVersion = _lookupVersion;
             var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id;
             if (warehouseId == 0) warehouseId = null;
             var status = _status.SelectedIndex switch { 1 => "DRAFT", 2 => "PENDING_APPROVAL", 3 => "APPROVED", 4 => "REJECTED", 5 => "COMPLETED", 6 => "CANCELLED", _ => null };
@@ -186,13 +210,13 @@ internal sealed class ReceiptListView : UserControl
             if (_import)
             {
                 var result = await _services.RunAsync(() => _services.Imports.GetPageAsync(_services.Session, request));
-                if (IsDisposed) return;
+                if (IsDisposed || lookupVersion != _lookupVersion || LiveUi.HasPendingSearch(_warehouse)) return;
                 _grid.DataSource = result.Items.ToList(); _page = result.PageNumber; total = result.TotalCount;
             }
             else
             {
                 var result = await _services.RunAsync(() => _services.Exports.GetPageAsync(_services.Session, request));
-                if (IsDisposed) return;
+                if (IsDisposed || lookupVersion != _lookupVersion || LiveUi.HasPendingSearch(_warehouse)) return;
                 _grid.DataSource = result.Items.ToList(); _page = result.PageNumber; total = result.TotalCount;
             }
             _previous.Enabled = _page > 1; _next.Enabled = (long)_page * size < total;
@@ -209,6 +233,7 @@ internal sealed class ReceiptListView : UserControl
     private async Task UpdateActionsAsync()
     {
         var version = ++_actionsVersion;
+        if (LiveUi.HasPendingSearch(_warehouse)) { InvalidateWarehouse(); return; }
         for (int i = 2; i < _actions.Controls.Count; i++) _actions.Controls[i].Enabled = false;
         _create.Enabled = _services.Authorization.IsAdmin(_services.Session)
             || _services.Authorization.IsWarehouseManager(_services.Session)

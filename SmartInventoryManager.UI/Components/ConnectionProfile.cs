@@ -12,7 +12,7 @@ internal sealed record ConnectionProfile(string Server, int Port, string Databas
         if (string.IsNullOrWhiteSpace(Server) || Server.IndexOfAny([';', '\r', '\n', ',', '\\']) >= 0
             || Port is < 1 or > 65535 || string.IsNullOrWhiteSpace(Database)
             || (!WindowsAuthentication && (string.IsNullOrWhiteSpace(Username) || string.IsNullOrEmpty(Password))))
-            throw new ArgumentException("Nhập địa chỉ máy chủ (không kèm cổng hoặc instance), tên dữ liệu và thông tin đăng nhập kết nối.");
+            throw new ArgumentException("Nhập địa chỉ máy chủ, tên dữ liệu và thông tin kết nối. Nhập cổng ở ô riêng.");
         var builder = new SqlConnectionStringBuilder
         {
             DataSource = $"tcp:{Server.Trim()},{Port}", InitialCatalog = Database.Trim(),

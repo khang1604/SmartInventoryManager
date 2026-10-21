@@ -56,7 +56,7 @@ internal sealed class ReceiptRejectionHistoryForm : Form
                 var data = await _services.RunAsync(() => _services.ReceiptAudits.GetRejectionsAsync(_services.Session, _import, _receiptId, _page));
                 _grid.DataSource = data.Rows.ToList(); total = data.Total;
             }
-            _message.Text = total == 0 ? "Chưa có lịch sử được ghi nhận. Không suy đoán lịch sử dữ liệu cũ."
+            _message.Text = total == 0 ? "Chưa có lịch sử xử lý."
                 : $"{total} lần xử lý • Trang {_page} • 20 dòng/trang";
             _previous.Enabled = _page > 1; _next.Enabled = _page * 20 < total;
         }

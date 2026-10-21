@@ -2,7 +2,7 @@
 
 Đồ án ứng dụng desktop quản lý nhiều kho bằng C# và Windows Forms. Hệ thống hỗ trợ quản lý hàng hóa, nhập/xuất, tồn kho, phân quyền, cảnh báo và báo cáo.
 
-**Mã nguồn đồ án được giữ đầy đủ**: UI, Business, Data, Common, migrations, tests, công cụ bootstrap và tài liệu. SQL legacy được giữ để tham khảo; schema hiện hành do EF Core Migrations quản lý.
+**Mã nguồn đồ án được giữ đầy đủ**: UI, Business, Data, Common, migrations, tests, công cụ bootstrap và tài liệu. Schema hiện hành do EF Core Migrations quản lý; bộ script schema/seed SQL cũ đã được loại khỏi source. Resource đang dùng nằm trong `SmartInventoryManager.UI/Resources`. Script phân quyền triển khai tại `Documentation/Deployment/ConfigureRuntimePermissions.sql` vẫn được giữ riêng.
 
 ## Tải và cài phần mềm
 
@@ -10,8 +10,8 @@
 
 1. Chạy bộ cài. .NET đã đóng kèm; máy khách không cần SQL Server hoặc Visual Studio.
 2. Nếu chưa có Tailscale, có thể chọn cài VPN chính thức trong bộ cài; Windows có thể yêu cầu quyền quản trị.
-3. Chưa được mời/duyệt truy cập server: chọn **Để sau / Đóng**. Không cần tạo ADMIN hoặc kết nối DB ngay khi cài.
-4. Sau khi quản trị viên cấp quyền VPN, mở **VioWare - Configure server** trong Start Menu hoặc **Cấu hình kết nối máy chủ** ở màn hình đăng nhập.
+3. Chưa được mời/duyệt truy cập server: chọn **Đóng**. Không cần tạo ADMIN hoặc kết nối DB ngay khi cài.
+4. Sau khi quản trị viên cấp quyền VPN, mở **VioWare - Configure server** trong Start Menu (hoặc chạy `SmartInventoryManager.UI.exe --configure`).
 5. Nhập địa chỉ, cổng, tên dữ liệu và SQL login do quản trị viên cấp → **Kiểm tra kết nối → Lưu và tiếp tục**.
 6. Đăng nhập VioWare bằng tài khoản ADMIN/manager/STAFF do quản trị viên cung cấp. Đây là tài khoản khác SQL login và Tailscale.
 

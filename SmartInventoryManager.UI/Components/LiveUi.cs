@@ -9,15 +9,22 @@ internal static class LiveUi
 {
     public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("vi-VN");
 
-    public static ComboBox Choice(string name, string caption) => new()
+    public static ComboBox Choice(string name, string caption)
     {
-        Name = name,
-        AccessibleName = caption,
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        Width = 190,
-        Font = new Font("Segoe UI", 10),
-        Margin = new Padding(0, 8, 12, 0)
-    };
+        ComboBox choice = caption.Contains("Kho", StringComparison.CurrentCultureIgnoreCase)
+            && !caption.Contains("Trạng thái", StringComparison.CurrentCultureIgnoreCase)
+            ? new SearchableLookupComboBox() : new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+        choice.Name = name; choice.AccessibleName = caption;
+        choice.Width = 190; choice.Font = new Font("Segoe UI", 10);
+        choice.Margin = new Padding(0, 8, 12, 0);
+        return choice;
+    }
+
+    public static bool HasPendingSearch(ComboBox box) => box is SearchableLookupComboBox { IsSearchPending: true };
+    public static void OnLookupSearch(ComboBox box, Action invalidate)
+    {
+        if (box is SearchableLookupComboBox lookup) lookup.SearchPending += (_, _) => invalidate();
+    }
 
     public static Control Field(string caption, Control control)
     {
@@ -247,6 +254,11 @@ internal static class LiveUi
         _ => "Chưa xác định"
     };
 
+    public static string RoleText(string? role) => role switch
+    {
+        "ADMIN" => "Quản trị viên", "WAREHOUSE_MANAGER" => "Quản lý kho", "STAFF" => "Nhân viên kho", _ => "Chưa xác định"
+    };
+
     public static string StatusText(string status) => status switch
     {
         "DRAFT" => "Nháp",
@@ -291,15 +303,22 @@ internal static class LiveUi
         Debug.WriteLine(exception);
         return exception switch
         {
-            SmartInventoryManager.Business.Services.BusinessConflictException conflict => conflict.Message,
+            SmartInventoryManager.Business.Services.BusinessConflictException => "Dữ liệu đang được xử lý. Hãy làm mới trước khi thử lại.",
             UnauthorizedAccessException => "Bạn chưa đăng nhập hoặc không có quyền thao tác tại kho này.",
-            ArgumentException argument when !string.IsNullOrWhiteSpace(argument.Message)
-                => argument.Message,
+            ArgumentException argument => ValidationMessage(argument),
             KeyNotFoundException => "Dữ liệu không còn tồn tại. Hãy làm mới danh sách.",
             InvalidOperationException when exception.Message is
                 "Tên đăng nhập hoặc email trùng với thông tin đăng nhập của tài khoản khác."
                 or "Hãy đổi hoặc gỡ người quản lý tại các kho trước khi đổi vai trò hoặc vô hiệu hóa tài khoản này."
-                or "Hệ thống phải còn ít nhất một ADMIN đang hoạt động." => exception.Message,
+                => exception.Message,
+            InvalidOperationException when exception.Message == "Hệ thống phải còn ít nhất một ADMIN đang hoạt động."
+                => "Cần giữ ít nhất một quản trị viên đang hoạt động.",
+            InvalidOperationException when exception.Message == "Không thể ngừng danh mục đang có sản phẩm hoạt động."
+                => "Không thể ngừng hoạt động danh mục vì vẫn còn sản phẩm đang hoạt động thuộc danh mục này.",
+            InvalidOperationException when exception.Message == "Mã kho đã tồn tại."
+                => "Mã kho đã tồn tại, kể cả kho đang ngừng hoạt động. Hãy tìm kho cũ để kích hoạt lại hoặc dùng mã khác.",
+            InvalidOperationException when exception.Message == "Người quản lý phải là tài khoản quản lý kho đang hoạt động."
+                => exception.Message,
             InvalidOperationException when exception.Message.Contains("không đủ", StringComparison.OrdinalIgnoreCase)
                 => "Tồn kho không đủ. Hãy giảm số lượng hoặc làm mới tồn kho trước khi thử lại.",
             InvalidOperationException when exception.Message == "Số lượng điều chỉnh không được làm tồn kho âm."
@@ -309,6 +328,23 @@ internal static class LiveUi
             DbUpdateException => "Không lưu được dữ liệu. Hãy làm mới để kiểm tra kết quả; liên hệ quản trị viên nếu lỗi vẫn xảy ra.",
             _ => "Chưa thực hiện được thao tác. Hãy làm mới dữ liệu hoặc thử lại; không gửi lại khi chưa kiểm tra kết quả."
         };
+    }
+
+    internal static string ValidationMessage(ArgumentException exception)
+    {
+        var message = exception.Message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        if (!string.IsNullOrEmpty(exception.ParamName))
+        {
+            var suffix = new ArgumentException(string.Empty, exception.ParamName).Message.Trim();
+            var index = message.IndexOf(suffix, StringComparison.Ordinal);
+            if (index >= 0) message = message[..index].TrimEnd();
+        }
+        string[] starts = ["Mã ", "Tên ", "Số lượng ", "Lý do ", "Ghi chú ", "Kho ", "Địa ", "Người ", "Chi tiết ",
+            "Giá ", "Tồn ", "Mật khẩu ", "Email ", "Vai trò ", "Ngày ", "Khoảng ", "Danh mục ", "Mô tả ",
+            "Vui lòng ", "Đơn giá ", "Sản phẩm ", "Thông tin ", "Nhập ", "Ngưỡng ", "Trang ", "Kích thước ",
+            "Tài khoản ", "Nội dung ", "Trạng thái ", "Loại "];
+        return starts.Any(start => message.StartsWith(start, StringComparison.Ordinal))
+            ? message : "Thông tin chưa hợp lệ. Vui lòng kiểm tra các ô đã nhập.";
     }
 
     public static string LoadError(Exception exception)

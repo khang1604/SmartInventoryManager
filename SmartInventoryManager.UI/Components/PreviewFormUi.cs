@@ -7,6 +7,7 @@ internal static class PreviewFormUi
     public static TableLayoutPanel Root(Form form, string title, Size size)
     {
         WorkflowUi.StyleForm(form);
+        form.MinimizeBox = false;
         form.Text = $"VioWare - {title}";
         form.ClientSize = size;
         form.MinimumSize = new Size(560, 540);
@@ -51,7 +52,7 @@ internal static class PreviewFormUi
         var save = ProductUi.Button("btnSave", "Lưu", primary: true);
         save.Enabled = false;
         save.TabIndex = 91;
-        save.AccessibleDescription = "Chưa sẵn sàng: thiếu hợp đồng lưu dữ liệu";
+        save.AccessibleDescription = "Chưa thể lưu thông tin.";
         actions.Controls.Add(close);
         actions.Controls.Add(save);
         form.CancelButton = close;

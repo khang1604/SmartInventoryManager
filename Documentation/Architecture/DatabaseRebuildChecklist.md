@@ -1,6 +1,6 @@
-# Database Rebuild Checklist — cập nhật 15/10/2026
+# Database Rebuild Checklist — cập nhật 21/10/2026
 
-EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost/SmartInventoryManagerDB; production riêng chưa được cung cấp. Checklist này cập nhật theo code và kiểm tra SQL thật, thay trạng thái pending trước quyết định TeamChot. SQL legacy được giữ, không chạy chồng lên migration. Chi tiết tại [báo cáo hiện hành](ProjectStatus.md) và [kiến trúc](CurrentArchitecture.md).
+EF Core Migrations là nguồn schema duy nhất. Các kết quả TEST dưới đây là bằng chứng theo thời điểm từng mục, không thay nghiệm thu hiện tại. Bộ script schema/seed SQL cũ đã được đưa ra khỏi source ngày 21/10/2026; không chạy chồng lên migration. SQL trong migrations/Data queries và script phân quyền triển khai vẫn được giữ. Chi tiết tại [báo cáo hiện hành](ProjectStatus.md) và [kiến trúc](CurrentArchitecture.md).
 
 ## 1. Model và baseline
 
@@ -45,15 +45,15 @@ EF Core Migrations là nguồn schema duy nhất. TEST được phép: localhost
 - [x] DB tạm localhost/SmartInventoryManagerBootstrapTest_20261014 được phép tạo/dọn; đã drop đúng target. DB TEST chính khôngdrop/reset.
 - [x] STAFF/hai kho fixture của vòng trước và UI audit fixture vòng này được dọn đúng scope sau kiểm tra; không đổi tài khoản demo.
 - [x] SQL integration fixtures tự dọn, opt-in đúng target; không tính skipped/inconclusive làPASS.
-- [x] Seed tách migration;08_SeedData.sql giữguardplaceholder/DBcódữliệu; SQL cũ giữ nguyên.
+- [x] Seed tách migration; bộ script seed cũ đã được đưa ra khỏi source. Tạo dữ liệu kiểm thử qua Service theo phạm vi được duyệt, không tự seed khi mở ứng dụng.
 - [ ] Danh sách assignment/seed production được chủ nghiệp vụ phê duyệt.
-- [ ] Trước chạy11_SeedAdminAccount.sql trên môi trường thật phải review tác dụng cập nhật admin đang có; ưu tiên Setup cho DBtrắng.
+- [x] Bỏ script seed ADMIN cũ; dùng Setup tương tác cho DB chưa có quản trị viên hoạt động, không ghi đè tài khoản hiện có.
 
 ## 5. Analytics và schema authority
 
 - [x] Giai đoạn đầu dùng giá trịước tínhQty×PurchasePrice; ABCcompletedexportdetail12tháng, deadstock90ngày/earliestmovement, suggestions Max−Qty theo quyết định đã duyệt, giữ warehouseauthorization.
 - [ ] Bình quân gia quyền: chốt tồn đầu kỳ, chi phí transfer và adjustmentvaluation trước giai đoạn2.
-- [x] SQL03/04 làlegacyreference;05/06 chưa triển khai,07 không dùng; không dùng SQL legacy thay migration hoặc trigger tựpoststock.
+- [x] Không còn bộ script schema/seed trong `Database/`; không có runtime/build/installer đọc các file đó. Không xóa SQL đang dùng trong migrations hoặc Data queries và không dùng trigger tự post tồn kho.
 - [ ] Views/SP/trigger chỉ triển khai nếu có nhu cầu/hợp đồng riêng được duyệt.
 
 ## 6. Triển khai và nghiệm thu còn lại
