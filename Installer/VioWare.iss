@@ -1,7 +1,7 @@
-; Publish self-contained win-x64 to artifacts/publish/app-win-x64 first.
+; Publish self-contained win-x64 to artifacts/publish/app-{version}-win-x64 first.
 ; .NET is bundled. SQL connection configuration remains a prerequisite.
 #ifndef AppVersion
-  #define AppVersion "1.0.1"
+  #define AppVersion "1.0.2"
 #endif
 
 [Setup]
@@ -26,7 +26,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 Name: "tailscale"; Description: "Install Tailscale VPN (official installer; Windows may request administrator approval)"; Flags: unchecked; Check: NeedsTailscale
 
 [Files]
-Source: "..\artifacts\publish\app-win-x64\*"; DestDir: "{app}"; Excludes: "*.pdb,*.config,*.config.example,connection.dat,connection.dat.tmp,launchSettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\artifacts\publish\app-{#AppVersion}-win-x64\*"; DestDir: "{app}"; Excludes: "*.pdb,*.config,*.config.example,connection.dat,connection.dat.tmp,launchSettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\artifacts\tools\Tailscale\Tailscale_1.104.1_Machine_X64_wix_en-US.msi"; DestDir: "{tmp}"; DestName: "tailscale-setup.msi"; Flags: deleteafterinstall; Tasks: tailscale; Check: NeedsTailscale
 
 [Icons]
