@@ -11,6 +11,38 @@ namespace SmartInventoryManager.UI.Tests;
 public sealed class TesterReportRegressionTests
 {
     [TestMethod]
+    public void UserRolesStayTranslatedWhenDetailsColumnIsAddedAndDataRefreshes() => Sta(() =>
+    {
+        using var services = SyntheticServices();
+        IReadOnlyList<UserListItemDto> rows = new[]
+        {
+            new UserListItemDto(1, "synthetic.admin", "Synthetic Admin", null, RoleNames.Admin, true, DateTime.Today),
+            new UserListItemDto(2, "synthetic.manager", "Synthetic Manager", null, RoleNames.WarehouseManager, true, DateTime.Today),
+            new UserListItemDto(3, "synthetic.staff", "Synthetic Staff", null, RoleNames.Staff, true, DateTime.Today)
+        };
+        using var page = new DataListPage<UserListItemDto>(services, "Synthetic users",
+            [("Username", "Tên đăng nhập"), ("RoleName", "Vai trò")],
+            (_, _, _, _) => Task.FromResult(rows), pageSize: () => 50);
+        page.AddDetailsColumn();
+        page.BindingContext = new BindingContext();
+        page.CreateControl();
+        var grid = (DataGridView)page.Controls.Find("dgvData", true).Single();
+        grid.CreateControl();
+        foreach (var pass in new[] { 1, 2 })
+        {
+            page.RefreshAsync().GetAwaiter().GetResult();
+            Assert.AreEqual(3, grid.Rows.Count);
+            var expected = new[] { "Quản trị viên", "Quản lý kho", "Nhân viên kho" };
+            for (var i = 0; i < rows.Count; i++)
+            {
+                var cell = grid.Rows[i].Cells["RoleName"];
+                Assert.AreEqual(rows[i].RoleName, cell.Value, "Formatting must not change the stored role.");
+                Assert.AreEqual(expected[i], cell.FormattedValue, $"Role display failed after refresh {pass}.");
+            }
+        }
+    });
+
+    [TestMethod]
     public void EmptyLookupMessageIsVietnameseAndUnrelatedKeysKeepFallback() => Sta(() =>
     {
         var previous = AntdUI.Localization.Provider;
@@ -155,6 +187,9 @@ public sealed class TesterReportRegressionTests
         Assert.AreEqual("Quản trị viên", LiveUi.RoleText("ADMIN"));
         Assert.AreEqual("Quản lý kho", LiveUi.RoleText("WAREHOUSE_MANAGER"));
         Assert.AreEqual("Nhân viên kho", LiveUi.RoleText("STAFF"));
+        Assert.AreEqual("Quản trị viên", LiveUi.RoleText(" admin "));
+        Assert.AreEqual("Quản lý kho", LiveUi.RoleText("warehouse_manager"));
+        Assert.AreEqual("Chưa xác định", LiveUi.RoleText("UNSUPPORTED_ROLE"));
         Assert.IsFalse(LiveUi.Error(new InvalidOperationException("Hệ thống phải còn ít nhất một ADMIN đang hoạt động.")).Contains("ADMIN"));
         Assert.IsFalse(AccountFieldErrors.SafeMessage(new InvalidOperationException("Hệ thống phải còn ít nhất một ADMIN đang hoạt động.")).Contains("ADMIN"));
     }

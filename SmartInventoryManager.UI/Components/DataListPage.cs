@@ -113,7 +113,11 @@ internal sealed class DataListPage<T> : UserControl where T : class
                 e.Value = LiveUi.StockStatusText(stockStatus);
             else if (_grid.Columns[e.ColumnIndex].Name is "StockStatus" or "ReceiptType" or "Status" && e.Value is string value) e.Value = LiveUi.StatusText(value);
             if (e.Value is bool active) e.Value = _grid.Columns[e.ColumnIndex].Name == "IsRead" ? (active ? "Đã đọc" : "Chưa đọc") : (active ? "Đang hoạt động" : "Ngừng hoạt động");
-            if (_grid.Columns[e.ColumnIndex].Name == "RoleName" && e.Value is string role) e.Value = LiveUi.RoleText(role);
+            if (_grid.Columns[e.ColumnIndex].Name == "RoleName" && e.Value is string role)
+            {
+                e.Value = LiveUi.RoleText(role);
+                e.FormattingApplied = true;
+            }
             if (_grid.Columns[e.ColumnIndex].Name is "AlertType" or "TransactionType" && e.Value is string status)
                 e.Value = LiveUi.StatusText(status);
             if (_grid.Columns[e.ColumnIndex].Name == "ReferenceType" && e.Value is string reference)
