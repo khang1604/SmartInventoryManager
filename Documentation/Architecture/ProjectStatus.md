@@ -1260,3 +1260,12 @@ Trạng thái Git: các tầng đã commit riêng trên Backend; chưa push đ�
 
 
 </details>
+
+## Cập nhật 25/10/2026 — v1.0.4
+
+- Giữ contract STAFF được phân nhiều kho, mỗi phiên làm việc tại một kho hiện tại hợp lệ; quản lý tiếp tục phụ trách nhiều kho qua Warehouse.ManagerId.
+- Form phân kho dùng một dropdown chọn nhiều kho; tên các kho đã lưu nằm trên từng dòng. Lưu toàn bộ lựa chọn trong một transaction; bỏ chọn giữ bản ghi IsActive=false, không xóa lịch sử. Không cần migration mới.
+- Việt hóa thông báo NoData của AntdUI, giữ provider/fallback cho các khóa khác.
+- Release build đạt 0 warning/error; 179 test Business không nối SQL và 22 test UI đạt. Native UI InMemory đã kiểm tra chọn nhiều, lưu/mở lại, thu hồi một/toàn bộ, chọn kho STAFF và chặn khi chưa phân công. Ca đổi kho trong main có người dùng hỗ trợ chọn trong modal; sau đó đã xác nhận footer và Dashboard cập nhật.
+- Hai báo cáo môn học cập nhật quy tắc, mô tả, ảnh form và mục lục trên nền bản nhóm cung cấp. Bộ cài Windows x64 self-contained v1.0.4 giữ AppId, hỗ trợ cài đè bằng cùng tài khoản Windows và giữ profile kết nối ngoài thư mục app.
+- Chưa nghiệm thu cài đè trên máy khách, SQL concurrency/network hoặc toàn bộ DPI/máy in. InMemory không chứng minh giao dịch SQL.

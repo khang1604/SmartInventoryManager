@@ -1,10 +1,10 @@
 # Đóng gói VioWare và cấu hình máy khách
 
-Bản hiện hành: **v1.0.3**, Windows x64 self-contained. Source phục vụ chấm đồ án được giữ đầy đủ; binary phát hành qua GitHub Releases. Kết quả và giới hạn kiểm tra nằm tại [ProjectStatus.md](../Architecture/ProjectStatus.md).
+Bản hiện hành: **v1.0.4**, Windows x64 self-contained. Source phục vụ chấm đồ án được giữ đầy đủ; binary phát hành qua GitHub Releases. Kết quả và giới hạn kiểm tra nằm tại [ProjectStatus.md](../Architecture/ProjectStatus.md).
 
 ## Cập nhật từ bản cũ
 
-Đóng VioWare, tải bộ cài v1.0.3 từ GitHub Release và chạy bằng cùng tài khoản Windows đã cài bản trước. Giữ thư mục cài đặt mà bộ cài tự nhận diện. Không cần gỡ phần mềm; cấu hình kết nối đã lưu được giữ lại. Nếu đã có Tailscale thì không cần cài lại. Bản sửa phân kho này không thay đổi schema và không cần chạy migration. Đây là bộ cài đầy đủ hỗ trợ cài đè, không phải gói vá riêng.
+Đóng VioWare, tải bộ cài v1.0.4 từ GitHub Release và chạy bằng cùng tài khoản Windows đã cài bản trước. Giữ thư mục cài đặt mà bộ cài tự nhận diện. Không cần gỡ phần mềm; cấu hình kết nối đã lưu được giữ lại. Nếu đã có Tailscale thì không cần cài lại. Bản sửa phân kho này không thay đổi schema và không cần chạy migration. Đây là bộ cài đầy đủ hỗ trợ cài đè, không phải gói vá riêng.
 
 ## Cài trước, cấp quyền sau
 
@@ -28,7 +28,7 @@ Từ repository root, trên Windows có SDK.NET10 và InnoSetup6.7.3+:
 ```powershell
 dotnet restore SmartInventoryManager.slnx
 dotnet build SmartInventoryManager.slnx -c Release --no-restore -m:1 -nr:false
-dotnet publish SmartInventoryManager.UI/SmartInventoryManager.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -p:Version=1.0.3 -o artifacts/publish/app-1.0.3-win-x64 -m:1 -nr:false
+dotnet publish SmartInventoryManager.UI/SmartInventoryManager.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -p:Version=1.0.4 -o artifacts/publish/app-1.0.4-win-x64 -m:1 -nr:false
 winget download --id Tailscale.Tailscale --version 1.104.1 --exact --source winget --architecture x64 --download-directory artifacts/tools/Tailscale --accept-package-agreements --accept-source-agreements
 ```
 
@@ -41,7 +41,7 @@ MSI phải có tên `Tailscale_1.104.1_Machine_X64_wix_en-US.msi` trong `artifac
 Sau đó mở `Installer/VioWare.iss` bằng InnoSetupCompiler → **Build → Compile**, hoặc chạy `ISCC.exe Installer/VioWare.iss`. Output:
 
 ```text
-artifacts/installer/VioWare-Setup-1.0.3-win-x64-self-contained.exe
+artifacts/installer/VioWare-Setup-1.0.4-win-x64-self-contained.exe
 ```
 
 Script giữ AppId cố định để cập nhật, cài per-user tại `%LOCALAPPDATA%\Programs\VioWare`. VioWare không cần nâng quyền; bước cài VPN có thể cần. MSI chỉ được chạy khi người cài chọn task và chưa phát hiện Tailscale ở vị trí cài chuẩn. Không update/gỡ Tailscale đã có. Có link tải chính thức ở màn hình cấu hình nếu VPN nằm tại đường dẫn khác.

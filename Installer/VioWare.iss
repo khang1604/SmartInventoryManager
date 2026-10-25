@@ -1,7 +1,7 @@
 ; Publish self-contained win-x64 to artifacts/publish/app-{version}-win-x64 first.
 ; .NET is bundled. SQL connection configuration remains a prerequisite.
 #ifndef AppVersion
-  #define AppVersion "1.0.3"
+  #define AppVersion "1.0.4"
 #endif
 
 [Setup]
