@@ -6,7 +6,7 @@
 
 ## Tải và cài phần mềm
 
-**[Tải bộ cài Windows x64 v1.0.3](https://github.com/khang1604/SmartInventoryManager/releases/tag/v1.0.3)** — tải file `VioWare-Setup-1.0.3-win-x64-self-contained.exe` trong Assets. Repo private: cần đăng nhập GitHub bằng tài khoản được cấp quyền để xem/tải release.
+**[Tải bộ cài Windows x64 v1.0.4](https://github.com/khang1604/SmartInventoryManager/releases/tag/v1.0.4)** — tải file `VioWare-Setup-1.0.4-win-x64-self-contained.exe` trong Assets. Repo private: cần đăng nhập GitHub bằng tài khoản được cấp quyền để xem/tải release.
 
 1. Chạy bộ cài. .NET đã đóng kèm; máy khách không cần SQL Server hoặc Visual Studio.
 2. Nếu chưa có Tailscale, có thể chọn cài VPN chính thức trong bộ cài; Windows có thể yêu cầu quyền quản trị.
@@ -69,7 +69,7 @@ dotnet test SmartInventoryManager.Tests/SmartInventoryManager.Tests.csproj -c Re
 dotnet run --project SmartInventoryManager.UI
 ```
 
-Bản bàn giao cố định: tag `v1.0.3` hoặc nhánh `Backend`; khi repo được archive vẫn clone/pull/tải source được. Không push thay đổi vào bản bàn giao; owner có thể unarchive nếu cần sửa. File `Properties/launchSettings.example.json` là mẫu cấu hình local, không có credentials; không commit file launchSettings thật.
+Bản bàn giao cố định: tag `v1.0.4` hoặc nhánh `Backend`; khi repo được archive vẫn clone/pull/tải source được. Không push thay đổi vào bản bàn giao; owner có thể unarchive nếu cần sửa. File `Properties/launchSettings.example.json` là mẫu cấu hình local, không có credentials; không commit file launchSettings thật.
 
 DB mới: cấu hình connection triển khai riêng, apply migrations đã review rồi dùng `SmartInventoryManager.Setup` bootstrap tương tác trên máy quản trị. Máy khách không chạy bootstrap hoặc migrations. Không dùng bộ test SQL mutation trên DB production.
 

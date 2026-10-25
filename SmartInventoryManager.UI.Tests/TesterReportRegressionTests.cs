@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SmartInventoryManager.Business.Authorization;
@@ -11,6 +11,27 @@ namespace SmartInventoryManager.UI.Tests;
 public sealed class TesterReportRegressionTests
 {
     [TestMethod]
+    public void EmptyLookupMessageIsVietnameseAndUnrelatedKeysKeepFallback() => Sta(() =>
+    {
+        var previous = AntdUI.Localization.Provider;
+        var language = AntdUI.Localization.CurrentLanguage;
+        try
+        {
+            VietnameseUiLocalization.Apply();
+            var provider = AntdUI.Localization.Provider;
+            Assert.AreEqual("Không có dữ liệu phù hợp.", AntdUI.Localization.Get("NoData", "Untranslated"));
+            Assert.AreEqual("Original fallback", AntdUI.Localization.Get("SyntheticUnknownKey", "Original fallback"));
+            VietnameseUiLocalization.Apply();
+            Assert.AreSame(provider, AntdUI.Localization.Provider);
+        }
+        finally
+        {
+            AntdUI.Localization.Provider = previous;
+            AntdUI.Localization.SetLanguage(language);
+        }
+    });
+
+    [TestMethod]
     public void AssignmentDialogConstructsWithExistingIconsAndShowsIdentity() => Sta(() =>
     {
         using var services = SyntheticServices();
@@ -18,7 +39,7 @@ public sealed class TesterReportRegressionTests
             new(3, "synthetic.staff", "Synthetic Staff", null, RoleNames.Staff, true, DateTime.Today));
         Assert.AreEqual("Synthetic Staff (synthetic.staff)", form.Controls.Find("lblAssignmentUser", true).Single().Text);
         Assert.IsFalse(form.Controls.Find("btnAssignmentSave", true).Single().Enabled);
-        Assert.IsInstanceOfType<SearchableLookupComboBox>(form.Controls.Find("cboAssignmentWarehouse", true).Single());
+        Assert.IsInstanceOfType<AntdUI.SelectMultiple>(form.Controls.Find("cboAssignmentWarehouse", true).Single());
     });
 
     private static void Sta(Action action)

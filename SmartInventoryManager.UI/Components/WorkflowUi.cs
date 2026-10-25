@@ -193,6 +193,7 @@ internal static class WorkflowUi
 
     public static void StyleForm(Form form)
     {
+        VietnameseUiLocalization.Apply();
         form.Shown += (_, _) => { if (form.Modal) form.MinimizeBox = false; FitToWorkingArea(form); };
         ScrollbarAppearance.Apply(form);
         UiBrand.ApplyIcon(form);

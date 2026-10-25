@@ -38,20 +38,6 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
             if (!await db.Warehouses.AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive, ct))
                 throw new InvalidOperationException("Kho phải đang hoạt động.");
         }
-        // Mỗi STAFF chỉ có một phân công còn hiệu lực. Giữ các dòng cũ để tra cứu.
-        if (active)
-        {
-            var previous = await db.UserWarehouses
-                .Where(item => item.UserId == userId && item.WarehouseId != warehouseId && item.IsActive)
-                .ToListAsync(ct);
-            foreach (var item in previous)
-            {
-                item.IsActive = false;
-                db.SystemLogs.Add(new SystemLog { UserId = session.CurrentUser!.UserId,
-                    Action = "DEACTIVATE_ASSIGNMENT", EntityName = "UserWarehouse",
-                    Description = $"Tài khoản #{userId}; kho #{item.WarehouseId}.", CreatedAt = DateTime.Now });
-            }
-        }
         var assignment = await db.UserWarehouses.SingleOrDefaultAsync(item => item.UserId == userId && item.WarehouseId == warehouseId, ct);
         if (assignment is null)
         {
@@ -62,6 +48,40 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
         assignment.IsActive = active;
         db.SystemLogs.Add(new SystemLog { UserId = session.CurrentUser!.UserId, Action = active ? "ACTIVATE_ASSIGNMENT" : "DEACTIVATE_ASSIGNMENT",
             EntityName = "UserWarehouse", Description = $"Tài khoản #{userId}; kho #{warehouseId}.", CreatedAt = DateTime.Now });
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+    }
+
+    public async Task SetWarehousesAsync(UserSession session, int userId, IReadOnlyCollection<int> warehouseIds, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(warehouseIds);
+        if (userId <= 0 || warehouseIds.Any(id => id <= 0)) throw new ArgumentOutOfRangeException(nameof(userId));
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct) : null;
+        await RequireAdminAsync(session, ct);
+        if (!await db.Users.AnyAsync(user => user.UserId == userId && user.IsActive && user.Role.RoleName == RoleNames.Staff, ct))
+            throw new InvalidOperationException("Chỉ phân kho cho tài khoản nhân viên đang hoạt động.");
+        var selected = warehouseIds.ToHashSet();
+        var assignments = await db.UserWarehouses.Where(item => item.UserId == userId).ToListAsync(ct);
+        // Phân công cũ tại kho ngừng hoạt động có thể giữ lại hoặc thu hồi, không được cấp mới.
+        var activated = selected.Except(assignments.Where(item => item.IsActive).Select(item => item.WarehouseId)).ToArray();
+        if (await db.Warehouses.CountAsync(warehouse => activated.Contains(warehouse.WarehouseId) && warehouse.IsActive, ct) != activated.Length)
+            throw new InvalidOperationException("Kho được phân công thêm phải đang hoạt động.");
+        foreach (var id in activated.Where(id => assignments.All(item => item.WarehouseId != id)))
+        {
+            var added = new UserWarehouse { UserId = userId, WarehouseId = id, IsActive = false };
+            db.UserWarehouses.Add(added);
+            assignments.Add(added);
+        }
+        foreach (var item in assignments)
+        {
+            var active = selected.Contains(item.WarehouseId);
+            if (item.IsActive == active) continue;
+            item.IsActive = active;
+            db.SystemLogs.Add(new SystemLog { UserId = session.CurrentUser!.UserId,
+                Action = active ? "ACTIVATE_ASSIGNMENT" : "DEACTIVATE_ASSIGNMENT", EntityName = "UserWarehouse",
+                Description = $"Tài khoản #{userId}; kho #{item.WarehouseId}.", CreatedAt = DateTime.Now });
+        }
         await db.SaveChangesAsync(ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
     }
