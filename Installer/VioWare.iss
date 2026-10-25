@@ -1,16 +1,20 @@
 ; Publish self-contained win-x64 to artifacts/publish/app-{version}-win-x64 first.
 ; .NET is bundled. SQL connection configuration remains a prerequisite.
 #ifndef AppVersion
-  #define AppVersion "1.0.2"
+  #define AppVersion "1.0.3"
 #endif
 
 [Setup]
 AppId={{B7D25B34-7BDB-4CCE-905E-497CFE363BB0}
 AppName=VioWare
 AppVersion={#AppVersion}
+AppVerName=VioWare {#AppVersion}
 DefaultDirName={localappdata}\Programs\VioWare
 DefaultGroupName=VioWare
 PrivilegesRequired=lowest
+UsePreviousAppDir=yes
+CloseApplications=yes
+RestartApplications=no
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\artifacts\installer

@@ -334,6 +334,7 @@ If Git refuses deletion after a squash merge, leave the local branch until its w
 
 ## Staff Permissions
 - STAFF assignments are persisted in `UserWarehouse` with composite key `(UserId, WarehouseId)` and Restrict FKs. Active assignment, active user and active warehouse are required; warehouse-scoped access is limited to the validated current warehouse. `Location` is not the authorization source, and selecting a warehouse never grants access by itself.
+- Each STAFF has at most one active warehouse assignment. ADMIN reassigns STAFF by deactivating previous assignments and activating the selected warehouse atomically; retain inactive rows. WAREHOUSE_MANAGER may manage multiple warehouses via Warehouse.ManagerId at the Warehouse page.
 - Only ADMIN manages STAFF assignments. Deactivation retains the row with `IsActive=false`; reactivation must validate the STAFF role and active account/warehouse. Do not grant STAFF assignments to ADMIN or WAREHOUSE_MANAGER.
 - WAREHOUSE_MANAGER scope uses `Warehouse.ManagerId`, referencing an active WAREHOUSE_MANAGER; ADMIN is not restricted to one warehouse. UI menu/filter restrictions do not replace Business checks.
 

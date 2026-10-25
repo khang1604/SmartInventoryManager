@@ -10,6 +10,17 @@ namespace SmartInventoryManager.UI.Tests;
 [TestClass]
 public sealed class TesterReportRegressionTests
 {
+    [TestMethod]
+    public void AssignmentDialogConstructsWithExistingIconsAndShowsIdentity() => Sta(() =>
+    {
+        using var services = SyntheticServices();
+        using var form = new SmartInventoryManager.Forms.Users.FrmWarehouseAssignments(services,
+            new(3, "synthetic.staff", "Synthetic Staff", null, RoleNames.Staff, true, DateTime.Today));
+        Assert.AreEqual("Synthetic Staff (synthetic.staff)", form.Controls.Find("lblAssignmentUser", true).Single().Text);
+        Assert.IsFalse(form.Controls.Find("btnAssignmentSave", true).Single().Enabled);
+        Assert.IsInstanceOfType<SearchableLookupComboBox>(form.Controls.Find("cboAssignmentWarehouse", true).Single());
+    });
+
     private static void Sta(Action action)
     {
         Exception? failure = null;
