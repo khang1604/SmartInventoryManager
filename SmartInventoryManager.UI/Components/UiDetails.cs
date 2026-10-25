@@ -59,9 +59,13 @@ internal static class UiDetails
         };
         grid.CellFormatting += (_, e) =>
         {
+            if (e.FormattingApplied) return;
             if (e.Value is bool active) { e.Value = active ? "Đang hoạt động" : "Ngừng hoạt động"; e.FormattingApplied = true; }
             else if (grid.Columns[e.ColumnIndex].HeaderText is "Vai trò" && e.Value is string role)
+            {
                 e.Value = LiveUi.RoleText(role);
+                e.FormattingApplied = true;
+            }
         };
     }
 

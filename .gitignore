@@ -15,3 +15,17 @@ obj/
 /artifacts/
 
 .nuget-project-cache/
+
+# Documents and agent rules stay local; submitted separately
+/Documentation/
+/.agents/
+/.codex/
+/AGENTS.md
+/CLAUDE.md
+/.github/copilot-instructions.md
+/.github/instructions/
+/.github/agents/
+/.github/prompts/
+
+# Local merge-conflict backup (excluded from compilation)
+/SmartInventoryManager.Data/Migrations/InventoryDbContextModelSnapshot_BASE_678.cs

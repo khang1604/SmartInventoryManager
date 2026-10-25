@@ -254,7 +254,7 @@ internal static class LiveUi
         _ => "Chưa xác định"
     };
 
-    public static string RoleText(string? role) => role switch
+    public static string RoleText(string? role) => role?.Trim().ToUpperInvariant() switch
     {
         "ADMIN" => "Quản trị viên", "WAREHOUSE_MANAGER" => "Quản lý kho", "STAFF" => "Nhân viên kho", _ => "Chưa xác định"
     };
