@@ -27,7 +27,7 @@ public partial class FrmUserManagement : Form
                     using var form = new FrmWarehouseAssignments(services, user);
                     form.ShowDialog(this);
                     await Task.CompletedTask;
-                }, "building");
+                }, "building", (user, _) => Task.FromResult(user.IsActive && user.RoleName == "STAFF"));
                 page.SelectedAction("Sửa thông tin", async (user, _) =>
                 {
                     using var detail = new FrmUserDetail(services, user);

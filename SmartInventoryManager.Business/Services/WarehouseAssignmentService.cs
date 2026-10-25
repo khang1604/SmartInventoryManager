@@ -27,6 +27,8 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
 
     public async Task SetActiveAsync(UserSession session, int userId, int warehouseId, bool active, CancellationToken ct = default)
     {
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct) : null;
         await RequireAdminAsync(session, ct);
         if (userId <= 0 || warehouseId <= 0) throw new ArgumentOutOfRangeException(nameof(userId));
         if (active)
@@ -35,6 +37,20 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
                 throw new InvalidOperationException("Chỉ phân kho cho tài khoản nhân viên đang hoạt động.");
             if (!await db.Warehouses.AnyAsync(warehouse => warehouse.WarehouseId == warehouseId && warehouse.IsActive, ct))
                 throw new InvalidOperationException("Kho phải đang hoạt động.");
+        }
+        // Mỗi STAFF chỉ có một phân công còn hiệu lực. Giữ các dòng cũ để tra cứu.
+        if (active)
+        {
+            var previous = await db.UserWarehouses
+                .Where(item => item.UserId == userId && item.WarehouseId != warehouseId && item.IsActive)
+                .ToListAsync(ct);
+            foreach (var item in previous)
+            {
+                item.IsActive = false;
+                db.SystemLogs.Add(new SystemLog { UserId = session.CurrentUser!.UserId,
+                    Action = "DEACTIVATE_ASSIGNMENT", EntityName = "UserWarehouse",
+                    Description = $"Tài khoản #{userId}; kho #{item.WarehouseId}.", CreatedAt = DateTime.Now });
+            }
         }
         var assignment = await db.UserWarehouses.SingleOrDefaultAsync(item => item.UserId == userId && item.WarehouseId == warehouseId, ct);
         if (assignment is null)
@@ -47,5 +63,6 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
         db.SystemLogs.Add(new SystemLog { UserId = session.CurrentUser!.UserId, Action = active ? "ACTIVATE_ASSIGNMENT" : "DEACTIVATE_ASSIGNMENT",
             EntityName = "UserWarehouse", Description = $"Tài khoản #{userId}; kho #{warehouseId}.", CreatedAt = DateTime.Now });
         await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
     }
 }
