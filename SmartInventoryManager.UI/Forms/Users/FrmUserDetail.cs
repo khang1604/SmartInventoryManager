@@ -8,8 +8,10 @@ namespace SmartInventoryManager.Forms.Users;
 public sealed class FrmUserDetail : Form
 {
     internal bool RequiresSignIn { get; private set; }
+    // Khởi tạo màn hình thông tin tài khoản người dùng.
     public FrmUserDetail() : this(null) { }
 
+    // Khởi tạo màn hình thông tin tài khoản người dùng.
     public FrmUserDetail(UiServices? services, UserListItemDto? user = null, bool resetPassword = false)
     {
         AutoScaleMode = AutoScaleMode.Font;
@@ -139,6 +141,7 @@ public sealed class FrmUserDetail : Form
         }
     }
 
+    // Tìm điều khiển theo tên trong cây thành phần của form.
     private static T FindControl<T>(Control root, string name) where T : Control
     {
         foreach (Control control in root.Controls)

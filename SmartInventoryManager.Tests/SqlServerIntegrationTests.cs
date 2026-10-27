@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Tests;
 [TestCategory("SQLServer")]
 public sealed class SqlServerIntegrationTests
 {
+    // Kiểm tra tích hợp vòng đời tài khoản, phân kho, tranh chấp định danh và lịch sử xử lý.
     [TestMethod]
     [Timeout(120000)]
     public async Task FinalAcceptance_AccountsAssignmentsIdentifierRacesAndLifecycleHistory()
@@ -22,6 +23,7 @@ public sealed class SqlServerIntegrationTests
         await SqlFinalAcceptanceFixture.RunAsync(options);
     }
 
+    // Tạo tùy chọn kết nối SQL Server theo cấu hình tích hợp được cấp cho kiểm thử.
     private static DbContextOptions<InventoryDbContext> Options()
     {
         var connection = Environment.GetEnvironmentVariable("SMART_INVENTORY_SQL_TEST_CONNECTION_STRING");
@@ -33,6 +35,7 @@ public sealed class SqlServerIntegrationTests
         return new DbContextOptionsBuilder<InventoryDbContext>().UseSqlServer(connection).Options;
     }
 
+    // Tìm tài khoản ADMIN còn hoạt động và tạo phiên cho ca kiểm thử tích hợp.
     private static async Task<UserSession> AdminAsync(InventoryDbContext db)
     {
         Assert.IsFalse((await db.Database.GetPendingMigrationsAsync()).Any(), "Apply the approved test migrations before integration tests.");
@@ -41,6 +44,7 @@ public sealed class SqlServerIntegrationTests
         return session;
     }
 
+    // Kiểm tra tích hợp hoàn tất phiếu qua các context mới không ghi nhận tồn hai lần.
     [TestMethod]
     [Timeout(60000)]
     public async Task ReceiptPosting_UsesFreshContextsAndDoesNotPostTwice()
@@ -50,6 +54,7 @@ public sealed class SqlServerIntegrationTests
         await SqlReceiptFixture.RunAsync(options, await AdminAsync(db));
     }
 
+    // Kiểm tra deadlock rollback giao dịch bị chọn và mỗi hiệu ứng chỉ được commit một lần.
     [TestMethod]
     [Timeout(60000)]
     public async Task DeadlockRetry_RollsBackVictimAndCommitsEachEffectOnce()
@@ -60,6 +65,7 @@ public sealed class SqlServerIntegrationTests
         await SqlDeadlockFixture.RunAsync(options);
     }
 
+    // Kiểm tra tổng hợp nhập xuất ADO.NET khớp dữ liệu biến động trong phạm vi được phép.
     [TestMethod]
     public async Task Dashboard_AdoDailyTotalsMatchAuthorizedMovementSource()
     {
@@ -78,6 +84,7 @@ public sealed class SqlServerIntegrationTests
         Assert.AreEqual(result.InventoryLineCount, result.StockDistribution.Sum(item => item.Count));
     }
 
+    // Kiểm tra tích hợp chuyển kho, nhiều phiếu xuất, tranh chấp hủy và rollback khi chèn lỗi.
     [TestMethod]
     [Timeout(90000)]
     public async Task TeamDecisionWorkflows_TransferDifferentExportsCancelRaceAndInjectedRollback()

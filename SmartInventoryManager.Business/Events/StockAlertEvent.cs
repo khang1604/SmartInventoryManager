@@ -2,6 +2,7 @@ namespace SmartInventoryManager.Business.Events;
 
 public sealed class StockAlertEvent : EventArgs
 {
+    // Khởi tạo dữ liệu sự kiện phát sinh hoặc xử lý cảnh báo tồn kho.
     public StockAlertEvent(
         int productId,
         int warehouseId,

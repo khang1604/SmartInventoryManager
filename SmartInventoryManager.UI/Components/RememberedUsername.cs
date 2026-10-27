@@ -8,6 +8,7 @@ internal sealed record RememberedUsername(string? Username)
 {
     private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VioWare", "remembered-username.json");
 
+    // Đọc tên đăng nhập đã được người dùng chọn ghi nhớ trên máy.
     internal static string? Load(string? path = null)
     {
         try
@@ -23,6 +24,7 @@ internal sealed record RememberedUsername(string? Username)
         }
     }
 
+    // Lưu lựa chọn ghi nhớ tên đăng nhập và bỏ qua lỗi lưu cục bộ.
     internal static bool TrySave(string? username, string? path = null)
     {
         try

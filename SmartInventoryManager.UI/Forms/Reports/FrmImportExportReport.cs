@@ -4,6 +4,7 @@ namespace SmartInventoryManager.Forms.Reports;
 
 public partial class FrmImportExportReport : Form
 {
+    // Khởi tạo màn hình báo cáo nhập xuất.
     public FrmImportExportReport(UiServices services)
     {
         InitializeComponent();
@@ -11,6 +12,7 @@ public partial class FrmImportExportReport : Form
         Controls.Add(ConnectedPages.ImportExportReport(services));
     }
 
+    // Khởi tạo màn hình báo cáo nhập xuất.
     public FrmImportExportReport()
     {
         InitializeComponent();

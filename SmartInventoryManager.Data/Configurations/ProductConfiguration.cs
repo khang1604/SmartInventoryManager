@@ -7,6 +7,7 @@ namespace SmartInventoryManager.Data.Configurations
     public class ProductConfiguration
         : IEntityTypeConfiguration<Product>
     {
+        // Cấu hình ánh xạ, quan hệ và ràng buộc dữ liệu của sản phẩm.
         public void Configure(EntityTypeBuilder<Product> builder)
         {
             builder.ToTable("Products");

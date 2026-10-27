@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public sealed class TeamDecisionTests
 {
+    // Tạo DbContext bộ nhớ riêng và chuẩn bị dữ liệu cho ca kiểm thử.
     private static InventoryDbContext Context()
     {
         var db = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -23,11 +24,13 @@ public sealed class TeamDecisionTests
         db.Suppliers.Add(new Supplier { SupplierId = 1, SupplierCode = "S1", SupplierName = "Supplier", IsActive = true });
         db.SaveChanges(); return db;
     }
+    // Tạo phiên quản trị viên giả lập cho ca kiểm thử.
     private static UserSession Admin()
     {
         var session = new UserSession(); session.SignIn(new(1, "test-admin", "Test Admin", null, RoleNames.Admin)); return session;
     }
 
+    // Kiểm tra lịch sử lưu đủ từng lần chuyển trạng thái và người xử lý mới nhất.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -69,6 +72,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(9, await db.ReceiptStatusChanges.CountAsync());
     }
 
+    // Kiểm tra hủy phiếu lưu người thực hiện, lý do và không làm thay đổi tồn.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -89,6 +93,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(0, await db.InventoryTransactions.CountAsync());
     }
 
+    // Kiểm tra lịch sử phân trang ổn định, bảo vệ phạm vi xem và không cho xóa dấu vết.
     [TestMethod]
     public async Task LifecycleHistory_PagesStablyProtectsScopeAndPreventsHistoryDeletion()
     {
@@ -107,6 +112,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(25, await db.ReceiptStatusChanges.CountAsync());
     }
 
+    // Kiểm tra gửi lại phiếu giữ ghi chú và toàn bộ lịch sử từ chối.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -128,6 +134,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(2, history.Total); Assert.AreEqual("Reason 1", history.Rows[0].Reason);
     }
 
+    // Kiểm tra phải có lý do hợp lệ trước khi chuyển trạng thái hủy phiếu.
     [TestMethod]
     public async Task Cancel_RequiresReasonBeforeChangingState()
     {
@@ -139,6 +146,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual("No longer needed", (await db.ImportReceipts.SingleAsync()).CancelReason);
     }
 
+    // Kiểm tra hoàn tất và điều chỉnh lưu đủ số lượng, lịch sử cùng người xử lý.
     [TestMethod]
     public async Task CompletionAndAdjustment_PersistQuantityAuditAndCompletionActor()
     {
@@ -151,6 +159,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(5, adjustment.BeforeQuantity); Assert.AreEqual(3, adjustment.AfterQuantity); Assert.AreEqual(-2, adjustment.SignedDifference);
     }
 
+    // Kiểm tra hai biến động chuyển kho có chung mã tham chiếu và số lượng trái dấu.
     [TestMethod]
     public async Task Transfer_UsesSharedReferenceAndOppositeSignedMovements()
     {
@@ -162,6 +171,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(4, rows[0].AfterQuantity); Assert.AreEqual(3, rows[1].AfterQuantity);
     }
 
+    // Kiểm tra phân tích dùng giá trị dòng phiếu hoàn tất và phân biệt lịch sử chưa đủ dữ liệu.
     [TestMethod]
     public async Task Analytics_UsesCompletedDetailValueAndDistinguishesUnknownHistory()
     {
@@ -175,6 +185,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(8, result.Stock[0].SuggestedQuantity); Assert.AreEqual("DEAD_STOCK", result.Stock[0].MovementStatus); Assert.AreEqual("INSUFFICIENT_HISTORY", result.Stock[1].MovementStatus);
     }
 
+    // Kiểm tra ABC giữ dòng vượt ngưỡng trong nhóm đang tích lũy và dùng đúng khoảng thời gian.
     [TestMethod]
     public async Task Analytics_AbcIncludesCrossingRowAndUsesExactWindow()
     {
@@ -192,6 +203,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual(100m, data.Abc.Sum(x => x.ExportValue)); Assert.AreEqual(1m, data.Abc.Last().CumulativeShare);
     }
 
+    // Kiểm tra giá trị xuất bằng 0 không bị ép vào một nhóm ABC.
     [TestMethod]
     public async Task Analytics_ZeroValuesStayUnclassified()
     {
@@ -201,6 +213,7 @@ public sealed class TeamDecisionTests
         Assert.AreEqual("UNCLASSIFIED", data.Abc.Single().Classification); Assert.AreEqual(0m, data.Abc.Single().ValueShare);
     }
 
+    // Kiểm tra nhân viên không được xem phân tích hoặc lịch sử của kho ngoài phạm vi.
     [TestMethod]
     public async Task AnalyticsAndAudit_DenyOtherWarehouseForStaff()
     {
@@ -216,6 +229,7 @@ public sealed class TeamDecisionTests
         await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => new ReceiptAuditService(db, auth).GetRejectionsAsync(session, false, 1));
     }
 
+    // Kiểm tra lịch sử từ chối có phân trang và chặn xóa phiếu nháp đã có lịch sử.
     [TestMethod]
     public async Task RejectionHistory_PaginatesAndPreventsDeletingHistoricalDraft()
     {

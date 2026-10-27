@@ -9,10 +9,12 @@ public sealed class FrmSupplierDetail : Form
     private readonly UiServices? _services;
     private readonly int? _supplierId;
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa nhà cung cấp.
     public FrmSupplierDetail() : this((UiServices?)null, (int?)null)
     {
     }
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa nhà cung cấp.
     public FrmSupplierDetail(UiServices services, SupplierDto? supplier = null) : this(services, supplier?.SupplierId)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
@@ -20,6 +22,7 @@ public sealed class FrmSupplierDetail : Form
         Shown += (_, _) => { if (supplier is not null) LoadSupplier(supplier); };
     }
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa nhà cung cấp.
     private FrmSupplierDetail(UiServices? services, int? supplierId)
     {
         _services = services;
@@ -110,6 +113,7 @@ public sealed class FrmSupplierDetail : Form
         Controls.Add(root);
     }
 
+    // Đưa thông tin nhà cung cấp lên các trường chỉnh sửa.
     private void LoadSupplier(SupplierDto supplier)
     {
         FindControl<AntdUI.Input>("txtSupplierCode").Text = supplier.SupplierCode;
@@ -123,6 +127,7 @@ public sealed class FrmSupplierDetail : Form
 
     private bool _saving;
 
+    // Kiểm tra các trường nhập rồi tạo hoặc cập nhật nhà cung cấp.
     private async Task SaveAsync()
     {
         if (_services is null || _saving) return;
@@ -151,8 +156,10 @@ public sealed class FrmSupplierDetail : Form
         finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
+    // Tìm điều khiển theo tên trong cây thành phần của form.
     private T FindControl<T>(string name) where T : Control => Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
 
+    // Tạo vùng tiêu đề để phân nhóm các trường thông tin trên form.
     private static TableLayoutPanel Section(string caption, int lastInputHeight)
     {
         var section = ProductUi.Layout(1, 2);
@@ -178,6 +185,7 @@ public sealed class FrmSupplierDetail : Form
         return fields;
     }
 
+    // Thêm nhãn và điều khiển nhập liệu vào bố cục form.
     private static void AddField(TableLayoutPanel fields, int column, int row, string caption,
         string name, int maxLength, int tabIndex, bool span = false, bool multiline = false)
     {

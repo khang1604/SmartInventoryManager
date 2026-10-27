@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Data.Queries;
 public static class DatabaseConnectionProbe
 {
     // Read-only connection check. Never migrate, bootstrap or grant permissions here.
+    // Kiểm tra kết nối và khả năng truy vấn mà không thay đổi cấu trúc hay dữ liệu.
     public static async Task CheckAsync(string connectionString, CancellationToken cancellationToken)
     {
         await using var connection = new SqlConnection(connectionString);

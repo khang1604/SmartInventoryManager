@@ -7,6 +7,7 @@ namespace SmartInventoryManager.Data.Configurations
     public class ImportReceiptConfiguration
         : IEntityTypeConfiguration<ImportReceipt>
     {
+        // Cấu hình ánh xạ, quan hệ và ràng buộc dữ liệu của phiếu nhập.
         public void Configure(EntityTypeBuilder<ImportReceipt> builder)
         {
             builder.ToTable("ImportReceipts", table =>
@@ -52,6 +53,7 @@ namespace SmartInventoryManager.Data.Configurations
     public class ImportDetailConfiguration
         : IEntityTypeConfiguration<ImportDetail>
     {
+        // Cấu hình ánh xạ, quan hệ và ràng buộc dữ liệu của chi tiết phiếu nhập.
         public void Configure(EntityTypeBuilder<ImportDetail> builder)
         {
             builder.ToTable("ImportDetails", table =>

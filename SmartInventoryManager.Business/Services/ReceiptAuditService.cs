@@ -7,6 +7,7 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class ReceiptAuditService(InventoryDbContext db, AuthorizationService authorization)
 {
+    // Lấy lịch sử các lần từ chối phiếu theo quyền và phân trang.
     public async Task<ReceiptRejectionPageDto> GetRejectionsAsync(UserSession session, bool import, int receiptId, int page = 1, CancellationToken ct = default)
     {
         await EnsureCanReadAsync(session, import, receiptId, page, ct);
@@ -17,6 +18,7 @@ public sealed class ReceiptAuditService(InventoryDbContext db, AuthorizationServ
         return new(total, page, 20, rows);
     }
 
+    // Lấy lịch sử chuyển trạng thái phiếu theo quyền và phân trang.
     public async Task<ReceiptStatusChangePageDto> GetStatusChangesAsync(UserSession session, bool import, int receiptId, int page = 1, CancellationToken ct = default)
     {
         await EnsureCanReadAsync(session, import, receiptId, page, ct);
@@ -27,6 +29,7 @@ public sealed class ReceiptAuditService(InventoryDbContext db, AuthorizationServ
         return new(total, page, 20, rows);
     }
 
+    // Kiểm tra người dùng có quyền đọc lịch sử của phiếu.
     private async Task EnsureCanReadAsync(UserSession session, bool import, int receiptId, int page, CancellationToken ct)
     {
         if (receiptId <= 0) throw new ArgumentOutOfRangeException(nameof(receiptId));

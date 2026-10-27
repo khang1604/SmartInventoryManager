@@ -5,6 +5,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal sealed class RoundedSurface : Panel
 {
+    // Khởi tạo vùng giao diện có nền và đường viền bo góc.
     public RoundedSurface()
     {
         DoubleBuffered = true;
@@ -12,6 +13,7 @@ internal sealed class RoundedSurface : Panel
         // [COLOR CONFIG]: nền trắng và đường viền nhạt cho các nhóm cài đặt.
         BackColor = AppColors.Surface; ForeColor = AppColors.Text;
     }
+    // Vẽ nền của vùng giao diện theo kiểu bo góc.
     protected override void OnPaintBackground(PaintEventArgs e)
     {
         // [COLOR CONFIG]: góc ngoài theo nền cha, bề mặt trắng nằm trong đường bo góc.
@@ -22,6 +24,7 @@ internal sealed class RoundedSurface : Panel
         using var brush = new SolidBrush(BackColor);
         e.Graphics.FillPath(brush, path);
     }
+    // Vẽ đường viền của vùng giao diện bo góc.
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
@@ -36,6 +39,7 @@ internal sealed class RoundedSurface : Panel
 
 internal static class SettingsUi
 {
+    // Tạo bố cục gốc cho form với vùng nội dung và thao tác.
     public static (TableLayoutPanel Root, FlowLayoutPanel Body, FlowLayoutPanel Footer) Root(Form form, string title, string description, Size size)
     {
         WorkflowUi.StyleForm(form);
@@ -65,6 +69,7 @@ internal static class SettingsUi
         root.Controls.Add(heading, 0, 0); root.Controls.Add(body, 0, 1); root.Controls.Add(footer, 0, 2);
         form.Controls.Add(root); return (root, body, footer);
     }
+    // Tạo vùng nhóm các trường thông tin có tiêu đề.
     public static RoundedSurface Group(string title, Color tint, int height, params Control[] contents)
     {
         var group = new RoundedSurface { Height = height, Margin = new Padding(0, 0, 0, 12), Padding = new Padding(14) };
@@ -81,6 +86,7 @@ internal static class SettingsUi
         }
         group.Controls.Add(rows); return group;
     }
+    // Tạo bố cục hai thành phần thông tin đặt cạnh nhau.
     public static Control Pair(string caption, Control value)
     {
         var row = ProductUi.Layout(2, 1);
@@ -89,6 +95,7 @@ internal static class SettingsUi
         value.Dock = DockStyle.Top; value.Margin = new Padding(8, 10, 0, 0);
         row.Controls.Add(value, 1, 0); return row;
     }
+    // Tạo bố cục dạng bảng để sắp xếp các trường nhập liệu.
     public static Control Fields(params (string Caption, string Value, bool ReadOnly)[] fields)
     {
         var grid = ProductUi.Layout(2, (fields.Length + 1) / 2);
@@ -108,6 +115,7 @@ internal static class SettingsUi
         }
         return grid;
     }
+    // Tạo phần hiển thị ảnh đại diện hoặc ký hiệu người dùng.
     public static AntdUI.Button Avatar(int size = 52)
     {
         var avatar = ProductUi.Button("avatar", "", "person");

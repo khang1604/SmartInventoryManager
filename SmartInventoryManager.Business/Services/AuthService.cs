@@ -12,11 +12,13 @@ namespace SmartInventoryManager.Business.Services
         private readonly InventoryDbContext _dbContext;
         private readonly PasswordHasher _passwordHasher = new();
 
+        // Khởi tạo service xác thực sử dụng dữ liệu tài khoản trong DbContext.
         public AuthService(InventoryDbContext dbContext)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         }
 
+        // Kiểm tra tên đăng nhập hoặc email và mật khẩu đã được nhập.
         public IReadOnlyList<string> ValidateLoginCredentials(string? username, string? password)
         {
             var errors = new List<string>();
@@ -34,6 +36,7 @@ namespace SmartInventoryManager.Business.Services
             return errors.AsReadOnly();
         }
 
+        // Xác thực tài khoản hoạt động và đối chiếu mật khẩu đã băm.
         public async Task<AuthenticatedUserDto?> AuthenticateAsync(
             string? username,
             string? password,
@@ -70,6 +73,7 @@ namespace SmartInventoryManager.Business.Services
                 user.Role.RoleName);
         }
 
+        // Kiểm tra thông tin đăng ký tài khoản trước khi tạo người dùng.
         public IReadOnlyList<string> ValidateSignup(string? fullName, string? email, string? password, string? confirmPassword)
         {
             var errors = new List<string>();
@@ -105,11 +109,14 @@ namespace SmartInventoryManager.Business.Services
             return errors.AsReadOnly();
         }
 
+        // Băm mật khẩu để lưu và sử dụng khi xác thực.
         public string HashPassword(string password) => _passwordHasher.HashPassword(password);
 
+        // Đối chiếu mật khẩu nhập vào với chuỗi băm đã lưu.
         public bool VerifyPassword(string? password, string? storedPasswordHash) =>
             _passwordHasher.VerifyPassword(password, storedPasswordHash);
 
+        // Kiểm tra người dùng có vai trò được yêu cầu.
         public bool HasRole(string? currentRole, string? requiredRole)
         {
             return !string.IsNullOrWhiteSpace(currentRole) &&
@@ -120,6 +127,7 @@ namespace SmartInventoryManager.Business.Services
                     StringComparison.OrdinalIgnoreCase);
         }
 
+        // Kiểm tra người dùng có ít nhất một vai trò trong danh sách cho phép.
         public bool HasAnyRole(string? currentRole, params string[] allowedRoles)
         {
             if (string.IsNullOrWhiteSpace(currentRole))
@@ -130,6 +138,7 @@ namespace SmartInventoryManager.Business.Services
             return allowedRoles.Any(role => HasRole(currentRole, role));
         }
 
+        // Kiểm tra tên vai trò thuộc các vai trò được hệ thống hỗ trợ.
         public bool IsKnownRole(string? role)
         {
             return HasAnyRole(
@@ -139,6 +148,7 @@ namespace SmartInventoryManager.Business.Services
                 RoleNames.Staff);
         }
 
+        // Kiểm tra chuỗi email có định dạng hợp lệ.
         private static bool IsValidEmail(string email)
         {
             var normalizedEmail = email.Trim();

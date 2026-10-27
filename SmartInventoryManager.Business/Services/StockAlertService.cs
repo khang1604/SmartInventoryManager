@@ -15,6 +15,7 @@ public sealed class StockAlertService : IStockAlertService
     private readonly AuthorizationService _authorization;
     private readonly StockEventPublisher _publisher;
 
+    // Khởi tạo service xử lý cảnh báo tồn kho cùng các thành phần phụ thuộc.
     public StockAlertService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
@@ -25,16 +26,19 @@ public sealed class StockAlertService : IStockAlertService
     public event EventHandler<StockAlertEvent>? AlertChanged
     { add => _publisher.AlertChanged += value; remove => _publisher.AlertChanged -= value; }
 
+    // Lấy các cảnh báo tồn kho chưa được xử lý trong phạm vi cho phép.
     public async Task<IReadOnlyList<StockAlertDto>> GetOpenAsync(
         UserSession session,
         int warehouseId,
         CancellationToken cancellationToken = default)
         => await GetAsync(session, warehouseId, false, cancellationToken);
 
+    // Lấy các cảnh báo tồn kho đã được xử lý trong phạm vi cho phép.
     public Task<IReadOnlyList<StockAlertDto>> GetResolvedAsync(
         UserSession session, int warehouseId, CancellationToken cancellationToken = default)
         => GetAsync(session, warehouseId, true, cancellationToken);
 
+    // Lấy cảnh báo tồn kho theo điều kiện tra cứu và phạm vi truy cập.
     private async Task<IReadOnlyList<StockAlertDto>> GetAsync(
         UserSession session, int warehouseId, bool resolved, CancellationToken cancellationToken)
     {
@@ -68,6 +72,7 @@ public sealed class StockAlertService : IStockAlertService
             .ToListAsync(cancellationToken);
     }
 
+    // Đối chiếu số tồn và ngưỡng để tạo, đổi loại hoặc đóng cảnh báo.
     public async Task RefreshAsync(
         int productId,
         int warehouseId,
@@ -151,6 +156,7 @@ public sealed class StockAlertService : IStockAlertService
         }
     }
 
+    // Ghi nhận người dùng đã xử lý cảnh báo tồn kho.
     public async Task ResolveAsync(
         UserSession session,
         long alertId,
@@ -186,6 +192,7 @@ public sealed class StockAlertService : IStockAlertService
             alert.ResolvedAt ?? DateTime.Now));
     }
 
+    // Đóng các cảnh báo đang mở của sản phẩm theo điều kiện xử lý.
     public async Task ResolveForProductAsync(
         int productId,
         CancellationToken cancellationToken = default,
@@ -227,6 +234,7 @@ public sealed class StockAlertService : IStockAlertService
         }
     }
 
+    // Chuyển trạng thái tồn kho sang loại cảnh báo tương ứng.
     private static string ToAlertType(StockStatus status)
     {
         return status switch
@@ -239,6 +247,7 @@ public sealed class StockAlertService : IStockAlertService
         };
     }
 
+    // Kiểm tra phiên đăng nhập hợp lệ trước khi xử lý yêu cầu.
     private static void ValidateSession(UserSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -248,6 +257,7 @@ public sealed class StockAlertService : IStockAlertService
         }
     }
 
+    // Kiểm tra mã định danh kho là số dương.
     private static void ValidateWarehouseId(int warehouseId)
     {
         if (warehouseId <= 0)

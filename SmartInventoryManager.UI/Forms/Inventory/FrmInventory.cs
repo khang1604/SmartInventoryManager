@@ -4,12 +4,14 @@ namespace SmartInventoryManager.Forms.Inventory;
 
 public partial class FrmInventory : Form
 {
+    // Khởi tạo màn hình theo dõi tồn và thao tác điều chỉnh, chuyển kho.
     public FrmInventory(UiServices services)
     {
         InitializeComponent();
         WorkflowUi.StyleForm(this);
         Controls.Add(ConnectedPages.Inventory(services));
     }
+    // Khởi tạo màn hình theo dõi tồn và thao tác điều chỉnh, chuyển kho.
     public FrmInventory()
     {
         InitializeComponent();

@@ -8,6 +8,7 @@ namespace SmartInventoryManager.Business.Services;
 // SaveChanges/transaction ownership remains with the calling receipt service.
 internal static class ReceiptStatusAudit
 {
+    // Cập nhật trạng thái phiếu và thêm bản ghi lịch sử người thực hiện, thời điểm, lý do.
     internal static void Change(InventoryDbContext db, UserSession session, ImportReceipt receipt, string next, string? reason = null)
     {
         var change = Create(session, receipt.Status, next, reason);
@@ -23,6 +24,7 @@ internal static class ReceiptStatusAudit
         db.ReceiptStatusChanges.Add(change);
     }
 
+    // Cập nhật trạng thái phiếu và thêm bản ghi lịch sử người thực hiện, thời điểm, lý do.
     internal static void Change(InventoryDbContext db, UserSession session, ExportReceipt receipt, string next, string? reason = null)
     {
         var change = Create(session, receipt.Status, next, reason);
@@ -38,6 +40,7 @@ internal static class ReceiptStatusAudit
         db.ReceiptStatusChanges.Add(change);
     }
 
+    // Tạo bản ghi lịch sử cho trạng thái ban đầu của phiếu.
     private static ReceiptStatusChange Create(UserSession session, string previous, string next, string? reason)
     {
         if (previous == next) throw new InvalidOperationException("Trạng thái phiếu không thay đổi.");

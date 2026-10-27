@@ -9,6 +9,7 @@ internal static class LiveUi
 {
     public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("vi-VN");
 
+    // Tạo hộp chọn có hỗ trợ tìm kiếm và lựa chọn dữ liệu.
     public static ComboBox Choice(string name, string caption)
     {
         ComboBox choice = caption.Contains("Kho", StringComparison.CurrentCultureIgnoreCase)
@@ -20,12 +21,15 @@ internal static class LiveUi
         return choice;
     }
 
+    // Kiểm tra hộp chọn đang có từ khóa chưa xác định thành lựa chọn hợp lệ.
     public static bool HasPendingSearch(ComboBox box) => box is SearchableLookupComboBox { IsSearchPending: true };
+    // Đăng ký xử lý khi nội dung tìm kiếm trong hộp chọn thay đổi.
     public static void OnLookupSearch(ComboBox box, Action invalidate)
     {
         if (box is SearchableLookupComboBox lookup) lookup.SearchPending += (_, _) => invalidate();
     }
 
+    // Tạo ô nhập liệu theo kích thước và thông tin mô tả.
     public static Control Field(string caption, Control control)
     {
         var panel = ProductUi.Layout(1, 2);
@@ -42,6 +46,7 @@ internal static class LiveUi
         return panel;
     }
 
+    // Chuyển lỗi xuất tệp thành thông báo dễ hiểu cho người dùng.
     public static string ExportError(Exception exception)
     {
         Debug.WriteLine(exception);
@@ -54,6 +59,7 @@ internal static class LiveUi
         };
     }
 
+    // Tạo vùng chứa các bộ lọc và nút thao tác trên giao diện.
     public static FlowLayoutPanel Toolbar() => new()
     {
         Dock = DockStyle.Fill,
@@ -62,10 +68,12 @@ internal static class LiveUi
         Margin = Padding.Empty
     };
 
+    // Điều chỉnh vùng công cụ khi các điều khiển phải xuống dòng.
     public static void FitWrappedToolbar(FlowLayoutPanel toolbar, TableLayoutPanel root, int row)
     {
         toolbar.WrapContents = true;
         toolbar.AutoScroll = false;
+        // Tính lại kích thước bố cục theo vùng hiển thị hiện tại.
         void Fit()
         {
             var width = Math.Max(160, toolbar.ClientSize.Width);
@@ -90,10 +98,12 @@ internal static class LiveUi
         Fit();
     }
 
+    // Giữ vùng bảng dữ liệu có đủ không gian khi kích thước giao diện thay đổi.
     public static void KeepTableVisible(ScrollableControl host, TableLayoutPanel root)
     {
         host.AutoScroll = true;
         root.Dock = DockStyle.Top;
+        // Tính lại kích thước bố cục theo vùng hiển thị hiện tại.
         void Fit()
         {
             var height = root.Padding.Vertical + (int)root.RowStyles.Cast<RowStyle>()
@@ -105,6 +115,7 @@ internal static class LiveUi
         host.ClientSizeChanged += (_, _) => Fit();
     }
 
+    // Tạo khung chứa bảng dữ liệu với bố cục và màu nền thống nhất.
     public static Control TableFrame(Control content)
     {
         var frame = new RoundedSurface
@@ -117,6 +128,7 @@ internal static class LiveUi
         content.Dock = DockStyle.Fill;
         content.Margin = Padding.Empty;
         frame.Controls.Add(content);
+        // Áp dụng định dạng hiển thị chung cho các bảng dữ liệu.
         void StyleTables(Control control)
         {
             if (control is DataGridView table)
@@ -124,6 +136,7 @@ internal static class LiveUi
                 var bodyFont = new Font("Segoe UI", 10F, FontStyle.Regular);
                 table.Font = bodyFont;
                 Font? headerFont = null;
+                // Đặt phông chữ tiêu đề cột phù hợp với cài đặt hiển thị.
                 void ApplyHeaderFont()
                 {
                     var previous = headerFont;
@@ -146,6 +159,7 @@ internal static class LiveUi
                 table.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
                 // [COLOR CONFIG]: đường ngang nhạt, bỏ viền đen giữa các tiêu đề.
                 table.GridColor = AppColors.Border;
+                // Áp dụng vùng bo góc cho bảng dữ liệu.
                 void RoundTable()
                 {
                     if (table.Width < 2 || table.Height < 2) return;
@@ -166,9 +180,11 @@ internal static class LiveUi
         return frame;
     }
 
+    // Tạo cột dữ liệu với tên, tiêu đề và cách hiển thị phù hợp.
     public static DataGridViewColumn Column(DataGridView grid, string name) =>
         grid.Columns[name] ?? throw new InvalidOperationException("Thiếu cột giao diện: " + name);
 
+    // Tạo bảng dữ liệu với các cột và định dạng dùng chung.
     public static DataGridView Grid(string name, params (string Property, string Caption)[] columns)
     {
         var grid = new ScrollableGrid
@@ -245,6 +261,7 @@ internal static class LiveUi
         return grid;
     }
 
+    // Chuyển mã trạng thái tồn sang tên tiếng Việt.
     public static string StockStatusText(SmartInventoryManager.Business.Inventory.StockStatus status) => status switch
     {
         SmartInventoryManager.Business.Inventory.StockStatus.OutOfStock => "Hết hàng",
@@ -254,11 +271,13 @@ internal static class LiveUi
         _ => "Chưa xác định"
     };
 
+    // Chuyển mã vai trò sang tên tiếng Việt.
     public static string RoleText(string? role) => role?.Trim().ToUpperInvariant() switch
     {
         "ADMIN" => "Quản trị viên", "WAREHOUSE_MANAGER" => "Quản lý kho", "STAFF" => "Nhân viên kho", _ => "Chưa xác định"
     };
 
+    // Chuyển trạng thái hoạt động sang nội dung tiếng Việt.
     public static string StatusText(string status) => status switch
     {
         "DRAFT" => "Nháp",
@@ -279,6 +298,7 @@ internal static class LiveUi
         _ => "Chưa xác định"
     };
 
+    // Chuyển mã thao tác nhật ký sang tên hiển thị tiếng Việt.
     public static string LogActionText(string action) => action switch
     {
         "COMPLETE_IMPORT" => "Hoàn tất phiếu nhập",
@@ -298,6 +318,7 @@ internal static class LiveUi
         _ => "Thao tác hệ thống"
     };
 
+    // Chuyển ngoại lệ thành thông báo lỗi phù hợp trên giao diện.
     public static string Error(Exception exception)
     {
         Debug.WriteLine(exception);
@@ -330,6 +351,7 @@ internal static class LiveUi
         };
     }
 
+    // Giữ nội dung lỗi nhập liệu cần thiết và loại chi tiết kỹ thuật thừa.
     internal static string ValidationMessage(ArgumentException exception)
     {
         var message = exception.Message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
@@ -347,6 +369,7 @@ internal static class LiveUi
             ? message : "Thông tin chưa hợp lệ. Vui lòng kiểm tra các ô đã nhập.";
     }
 
+    // Tạo thông báo khi tải dữ liệu thất bại.
     public static string LoadError(Exception exception)
     {
         Debug.WriteLine(exception);

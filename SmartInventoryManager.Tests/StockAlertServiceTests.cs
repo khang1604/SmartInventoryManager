@@ -8,6 +8,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class StockAlertServiceTests
 {
+    // Kiểm tra phiên mới khởi tạo chưa có người dùng đăng nhập.
     [TestMethod]
     public void NewSession_IsUnauthenticated()
     {
@@ -17,6 +18,7 @@ public class StockAlertServiceTests
         Assert.IsNull(session.CurrentUser);
     }
 
+    // Kiểm tra đăng nhập và đăng xuất cập nhật đúng trạng thái phiên.
     [TestMethod]
     public void SignInAndSignOut_UpdateSessionState()
     {
@@ -34,6 +36,7 @@ public class StockAlertServiceTests
         Assert.IsNull(session.CurrentUser);
     }
 
+    // Kiểm tra đăng nhập không chấp nhận thông tin người dùng rỗng.
     [TestMethod]
     public void SignIn_RejectsNullUser()
     {
@@ -42,6 +45,7 @@ public class StockAlertServiceTests
         Assert.Throws<ArgumentNullException>(() => session.SignIn(null!));
     }
 
+    // Kiểm tra sự kiện cảnh báo giữ đúng dữ liệu xác nhận xử lý.
     [TestMethod]
     public void StockAlertEvent_PreservesResolutionPayload()
     {

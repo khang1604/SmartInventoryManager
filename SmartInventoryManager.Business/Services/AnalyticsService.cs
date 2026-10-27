@@ -7,6 +7,7 @@ namespace SmartInventoryManager.Business.Services;
 
 public sealed class AnalyticsService(InventoryDbContext db, AuthorizationService authorization)
 {
+    // Lấy các kết quả phân tích tồn kho theo điều kiện tra cứu và phạm vi truy cập.
     public async Task<AnalyticsDto> GetAsync(UserSession session, int? warehouseId = null, decimal aThreshold = .80m, decimal bThreshold = .95m,
         DateTime? asOf = null, CancellationToken ct = default)
     {

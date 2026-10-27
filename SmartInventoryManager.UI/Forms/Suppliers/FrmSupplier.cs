@@ -6,6 +6,7 @@ namespace SmartInventoryManager.Forms.Suppliers;
 
 public partial class FrmSupplier : Form
 {
+    // Khởi tạo màn hình danh sách nhà cung cấp.
     public FrmSupplier(UiServices services)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
@@ -15,8 +16,10 @@ public partial class FrmSupplier : Form
     }
     private readonly bool _canManageSuppliers;
 
+    // Khởi tạo màn hình danh sách nhà cung cấp.
     public FrmSupplier() : this(false) { }
 
+    // Khởi tạo màn hình danh sách nhà cung cấp.
     public FrmSupplier(bool canManageSuppliers)
     {
         _canManageSuppliers = canManageSuppliers;
@@ -24,6 +27,7 @@ public partial class FrmSupplier : Form
         BuildLayout();
     }
 
+    // Tạo và sắp xếp các vùng giao diện của màn hình.
     private void BuildLayout()
     {
         Text = "Nhà cung cấp";
@@ -174,6 +178,7 @@ public partial class FrmSupplier : Form
         Controls.Add(root);
     }
 
+    // Tải danh sách nhà cung cấp theo bộ lọc và cập nhật bảng hiển thị.
     private async Task LoadSuppliersAsync()
     {
         if (_services is null || _grid is null) return;
@@ -190,17 +195,20 @@ public partial class FrmSupplier : Form
         catch (Exception ex) { MessageBox.Show(this, LiveUi.Error(ex), "Không thể tải nhà cung cấp", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 
+    // Định dạng trạng thái hoạt động thành nội dung dễ đọc trong bảng.
     private void FormatStatus(object? sender, DataGridViewCellFormattingEventArgs e)
     {
         if (_grid is not null && _grid.Columns[e.ColumnIndex].Name == "Status" && e.Value is bool active) e.Value = active ? "Đang hoạt động" : "Ngừng hoạt động";
     }
 
+    // Cập nhật khả năng thao tác theo dòng đang chọn và quyền người dùng.
     private void UpdateActions()
     {
         var selected = _grid?.CurrentRow?.DataBoundItem is SupplierDto;
         foreach (Control control in Controls.Find("btnEdit", true).Concat(Controls.Find("btnDeactivate", true))) control.Enabled = selected;
     }
 
+    // Mở form sửa đối tượng đang chọn và tải lại dữ liệu sau khi lưu.
     private async Task EditSelectedAsync()
     {
         if (_services is null || _grid?.CurrentRow?.DataBoundItem is not SupplierDto supplier) return;
@@ -208,6 +216,7 @@ public partial class FrmSupplier : Form
         if (detail.ShowDialog(this) == DialogResult.OK) await LoadSuppliersAsync();
     }
 
+    // Đổi trạng thái hoạt động của đối tượng đang chọn rồi tải lại danh sách.
     private async Task ToggleSelectedAsync()
     {
         if (_services is null || _grid?.CurrentRow?.DataBoundItem is not SupplierDto supplier) return;
@@ -218,6 +227,7 @@ public partial class FrmSupplier : Form
     private readonly UiServices? _services;
     private DataGridView? _grid;
 
+    // Thông báo chức năng chưa được kết nối trong chế độ xem trước giao diện.
     private static AntdUI.Button Unavailable(string name, string text, string icon)
     {
         var button = ProductUi.Button(name, text, icon);
@@ -226,6 +236,7 @@ public partial class FrmSupplier : Form
         return button;
     }
 
+    // Tạo cột dữ liệu với tên, tiêu đề và cách hiển thị phù hợp.
     private static DataGridViewTextBoxColumn Column(string name, string caption, float weight) => new()
     {
         Name = name, HeaderText = caption, FillWeight = weight, MinimumWidth = 120,

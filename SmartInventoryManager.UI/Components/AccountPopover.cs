@@ -4,6 +4,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal sealed class AccountPopover : ToolStripDropDown
 {
+    // Khởi tạo menu tài khoản cùng các thao tác cài đặt và đăng xuất.
     public AccountPopover(string role, int width, Action appSettings, Action accountSettings, Action logout)
     {
         AutoSize = false; Padding = Padding.Empty; Margin = Padding.Empty;
@@ -37,6 +38,7 @@ internal sealed class AccountPopover : ToolStripDropDown
             e.Graphics.DrawLine(pen, 0, spacer.Height - 1, spacer.Width, spacer.Height - 1);
         };
         root.Controls.Add(spacer, 0, 3);
+        // Tạo nút thao tác và gắn xử lý tương ứng vào giao diện.
         void AddAction(string name, string caption, string icon, int row, Action action)
         {
             var button = ProductUi.Button(name, caption, icon);

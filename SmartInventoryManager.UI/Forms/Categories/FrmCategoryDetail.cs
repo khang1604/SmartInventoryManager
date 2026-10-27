@@ -9,10 +9,12 @@ public sealed class FrmCategoryDetail : Form
     private readonly UiServices? _services;
     private readonly int? _categoryId;
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa danh mục.
     public FrmCategoryDetail() : this((UiServices?)null, (int?)null)
     {
     }
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa danh mục.
     public FrmCategoryDetail(UiServices services, CategoryDto? category = null) : this(services, category?.CategoryId)
     {
         _services = services;
@@ -23,6 +25,7 @@ public sealed class FrmCategoryDetail : Form
         };
     }
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa danh mục.
     private FrmCategoryDetail(UiServices? services, int? categoryId)
     {
         _services = services;
@@ -118,6 +121,7 @@ public sealed class FrmCategoryDetail : Form
         Controls.Add(root);
     }
 
+    // Đưa thông tin danh mục hiện có lên các trường chỉnh sửa.
     private void LoadCategory(CategoryDto category)
     {
         FindControl<AntdUI.Input>("txtCategoryName").Text = category.CategoryName;
@@ -127,6 +131,7 @@ public sealed class FrmCategoryDetail : Form
 
     private bool _saving;
 
+    // Kiểm tra các trường nhập rồi tạo hoặc cập nhật danh mục.
     private async Task SaveAsync()
     {
         if (_services is null || _saving) return;
@@ -144,5 +149,6 @@ public sealed class FrmCategoryDetail : Form
         finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
+    // Tìm điều khiển theo tên trong cây thành phần của form.
     private T FindControl<T>(string name) where T : Control => Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
 }

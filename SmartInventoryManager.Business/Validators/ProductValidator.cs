@@ -2,6 +2,7 @@ namespace SmartInventoryManager.Business.Validators
 {
     public class ProductValidator
     {
+        // Kiểm tra tên, mã, đơn vị, giá và ngưỡng tồn của sản phẩm.
         public IReadOnlyList<string> Validate(
             string? productCode,
             string? productName,
@@ -45,6 +46,7 @@ namespace SmartInventoryManager.Business.Validators
             return errors.AsReadOnly();
         }
 
+        // Cho biết thông tin sản phẩm có vượt qua các kiểm tra hợp lệ hay không.
         public bool IsValid(
             string? productCode,
             string? productName,

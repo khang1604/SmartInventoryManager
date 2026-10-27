@@ -10,12 +10,14 @@ public sealed record WarehouseAssignmentDto(int UserId, int WarehouseId, string 
 
 public sealed class WarehouseAssignmentService(InventoryDbContext db, AuthorizationService authorization)
 {
+    // Đối chiếu tài khoản quản trị còn hoạt động trước khi phân công kho.
     private async Task RequireAdminAsync(UserSession session, CancellationToken ct)
     {
         if (!authorization.IsAdmin(session)) throw new UnauthorizedAccessException("Chỉ quản trị viên được quản lý phân kho.");
         await authorization.EnsureActiveActorAsync(session, ct);
     }
 
+    // Lấy phân công kho của nhân viên theo điều kiện tra cứu và phạm vi truy cập.
     public async Task<IReadOnlyList<WarehouseAssignmentDto>> GetAsync(UserSession session, int userId, CancellationToken ct = default)
     {
         await RequireAdminAsync(session, ct);
@@ -25,6 +27,7 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
             .ToListAsync(ct);
     }
 
+    // Đổi trạng thái hoạt động của phân công kho của nhân viên sau khi kiểm tra điều kiện liên quan.
     public async Task SetActiveAsync(UserSession session, int userId, int warehouseId, bool active, CancellationToken ct = default)
     {
         await using var transaction = db.Database.IsRelational()
@@ -52,6 +55,7 @@ public sealed class WarehouseAssignmentService(InventoryDbContext db, Authorizat
         if (transaction is not null) await transaction.CommitAsync(ct);
     }
 
+    // Lưu đồng thời danh sách kho được chọn và thu hồi các phân công bỏ chọn.
     public async Task SetWarehousesAsync(UserSession session, int userId, IReadOnlyCollection<int> warehouseIds, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(warehouseIds);

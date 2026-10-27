@@ -10,6 +10,7 @@ namespace SmartInventoryManager.Business.Services;
 
 internal static class StockWorkflowEffects
 {
+    // Lưu thay đổi và commit trước khi phát sự kiện, gửi thông báo hậu xử lý.
     internal static async Task CommitAsync(InventoryDbContext db, IDbContextTransaction? transaction, UserSession session,
         string action, string entityName, int? entityId, StockEventPublisher publisher, Action onCommitted, CancellationToken ct)
     {
@@ -45,6 +46,7 @@ internal static class StockWorkflowEffects
         catch (Exception ex) { Debug.WriteLine($"Best-effort stock notification failed: {ex.GetType().Name}"); }
     }
 
+    // Tạo cấu hình DbContext riêng phục vụ việc lưu thông báo sau giao dịch.
     private static DbContextOptions<InventoryDbContext> OptionsForNotifications(this InventoryDbContext db) =>
         new DbContextOptionsBuilder<InventoryDbContext>().UseSqlServer(db.Database.GetConnectionString()).Options;
 }

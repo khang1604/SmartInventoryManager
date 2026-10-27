@@ -3,6 +3,7 @@ namespace SmartInventoryManager.UI.Components;
 internal static class MainIcons
 {
     // Mỗi SVG trong Resources/Icons được nhúng theo tên file; supplier dùng icon shop.
+    // Lấy biểu tượng SVG đã nhúng theo tên biểu tượng được yêu cầu.
     public static string Get(string name)
     {
         var resourceName = name == "supplier" ? "shop" : name;

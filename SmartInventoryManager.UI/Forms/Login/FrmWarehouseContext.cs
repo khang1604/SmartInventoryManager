@@ -11,6 +11,7 @@ internal sealed class FrmWarehouseContext : Form
     private readonly AntdUI.Button _continue = ProductUi.Button("btnContinue", "Vào ứng dụng", primary: true);
     private bool _loading;
 
+    // Khởi tạo màn hình chọn kho làm việc của nhân viên.
     public FrmWarehouseContext(UiServices services)
     {
         _services = services;
@@ -44,6 +45,7 @@ internal sealed class FrmWarehouseContext : Form
 
     private int SelectedId => (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
 
+    // Xác nhận lựa chọn kho làm việc hợp lệ rồi đóng cửa sổ chọn kho.
     private void ChooseWarehouse()
     {
         if (_loading || SelectedId <= 0) return;
@@ -52,6 +54,7 @@ internal sealed class FrmWarehouseContext : Form
         Close();
     }
 
+    // Tải các kho được phân công để người dùng chọn kho làm việc.
     private async Task LoadWarehousesAsync()
     {
         _loading = true;

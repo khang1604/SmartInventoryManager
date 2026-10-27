@@ -10,6 +10,7 @@ namespace SmartInventoryManager.UI.Tests;
 [TestClass]
 public sealed class TesterReportRegressionTests
 {
+    // Kiểm tra tên vai trò giữ tiếng Việt khi thêm cột chi tiết và tải lại dữ liệu.
     [TestMethod]
     public void UserRolesStayTranslatedWhenDetailsColumnIsAddedAndDataRefreshes() => Sta(() =>
     {
@@ -42,6 +43,7 @@ public sealed class TesterReportRegressionTests
         }
     });
 
+    // Kiểm tra thông báo tra cứu rỗng dùng tiếng Việt và các khóa khác vẫn có nội dung dự phòng.
     [TestMethod]
     public void EmptyLookupMessageIsVietnameseAndUnrelatedKeysKeepFallback() => Sta(() =>
     {
@@ -63,6 +65,7 @@ public sealed class TesterReportRegressionTests
         }
     });
 
+    // Kiểm tra form phân kho mở được với biểu tượng hiện có và hiển thị danh tính nhân viên.
     [TestMethod]
     public void AssignmentDialogConstructsWithExistingIconsAndShowsIdentity() => Sta(() =>
     {
@@ -74,6 +77,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsInstanceOfType<AntdUI.SelectMultiple>(form.Controls.Find("cboAssignmentWarehouse", true).Single());
     });
 
+    // Chạy thao tác giao diện trên luồng STA và chuyển tiếp lỗi về ca kiểm thử.
     private static void Sta(Action action)
     {
         Exception? failure = null;
@@ -82,23 +86,28 @@ public sealed class TesterReportRegressionTests
         Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(20)), "Synthetic UI test exceeded 20 seconds.");
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
+    // Mô phỏng thao tác bấm nút trong ca kiểm thử giao diện.
     private static void Click(Control button) => typeof(Control).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(button, [EventArgs.Empty]);
+    // Mô phỏng nhập từ khóa và phát sự kiện tìm kiếm trên hộp chọn.
     private static void Type(SearchableLookupComboBox box, string text)
     {
         box.Text = text;
         typeof(SearchableLookupComboBox).GetMethod("OnTextUpdate", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(box, [EventArgs.Empty]);
     }
+    // Tạo bộ service cùng context bộ nhớ cho ca kiểm thử giao diện.
     private static UiServices SyntheticServices()
     {
         var session = new UserSession(); session.SignIn(new(1, "SYNTHETIC_ADMIN", "Synthetic Admin", null, RoleNames.Admin));
         return new(session, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, () => { }, null!, null!, null!, null!);
     }
+    // Tạo hộp chọn kho với danh sách dữ liệu minh họa phục vụ kiểm thử.
     private static SearchableLookupComboBox Picker() => new()
     {
         BindingContext = new BindingContext(), DisplayMember = "Name", ValueMember = "Id",
         DataSource = new List<LookupItemDto> { new(0, "", "All warehouses"), new(1, "HCM01", "Central Warehouse"), new(2, "HN02", "Northern Warehouse") }
     };
 
+    // Kiểm tra tìm kho theo mã và tên ngay trên dữ liệu đã tải.
     [TestMethod]
     public void WarehouseSearchFindsCodeAndNameWithoutDatabaseCalls() => Sta(() =>
     {
@@ -110,6 +119,7 @@ public sealed class TesterReportRegressionTests
         picker.SelectedIndex = 0; Assert.AreEqual(2, picker.SelectedValue);
     });
 
+    // Kiểm tra gõ tìm kho không truy vấn theo lựa chọn và xóa tìm kiếm khôi phục toàn bộ mục.
     [TestMethod]
     public void WarehouseSearchDoesNotTriggerSelectionQueriesAndResetRestoresAll() => Sta(() =>
     {
@@ -119,6 +129,7 @@ public sealed class TesterReportRegressionTests
         picker.ResetSearch(); Assert.AreEqual(3, picker.Items.Count); Assert.AreEqual(0, picker.SelectedValue); Assert.AreEqual(1, changes);
     });
 
+    // Kiểm tra TextBox mật khẩu có thể hiện ký tự và che lại khi bị vô hiệu hóa.
     [TestMethod]
     public void TextBoxPasswordCanBeShownAndRemasksWhenDisabled() => Sta(() =>
     {
@@ -129,6 +140,7 @@ public sealed class TesterReportRegressionTests
         input.Enabled = false; Assert.IsTrue(input.UseSystemPasswordChar); Assert.IsFalse(eye.Enabled);
     });
 
+    // Kiểm tra ô mật khẩu AntdUI đổi hiện, ẩn mà không thay đổi nội dung.
     [TestMethod]
     public void AntdPasswordCanBeShownAndHiddenWithoutChangingValue() => Sta(() =>
     {
@@ -139,6 +151,7 @@ public sealed class TesterReportRegressionTests
         Assert.AreEqual("Synthetic-only-value", input.Text);
     });
 
+    // Kiểm tra lỗi trùng mã kho giải thích cả trường hợp mã thuộc kho đã ngừng hoạt động.
     [TestMethod]
     public void DuplicateWarehouseCodeExplainsInactiveCodeReservation()
     {
@@ -146,6 +159,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsFalse(LiveUi.Error(new InvalidOperationException("Mã kho đã tồn tại.")).Contains("Chưa thực hiện"));
     }
 
+    // Kiểm tra tải lại sau đổi trạng thái vẫn chọn đúng kho khi thứ tự danh sách thay đổi.
     [TestMethod]
     public void WarehouseStatusRefreshKeepsSameRowAfterSortChanges() => Sta(() =>
     {
@@ -162,6 +176,7 @@ public sealed class TesterReportRegressionTests
         Assert.AreEqual(2, selected.WarehouseId); Assert.IsFalse(selected.IsActive); Assert.AreEqual(2, grid.Rows.Count);
     });
 
+    // Kiểm tra xóa bộ lọc đặt lại trạng thái bổ sung và chỉ tải dữ liệu một lần.
     [TestMethod]
     public void ClearFiltersResetsAdditionalStateAndQueriesOnlyOnce() => Sta(() =>
     {
@@ -173,6 +188,7 @@ public sealed class TesterReportRegressionTests
         var reset = page.Controls.Find("btn1", true).Single();
         Click(reset); Assert.AreEqual(0, state.SelectedIndex); Assert.AreEqual(1, queries);
     });
+    // Kiểm tra thông báo lỗi giữ hướng dẫn cần thiết và ẩn tên tham số kỹ thuật.
     [TestMethod]
     public void ValidationKeepsUsefulMessageAndHidesParameterNames()
     {
@@ -181,6 +197,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsFalse(LiveUi.Error(new ArgumentException("SQL connection failed")).Contains("SQL"));
     }
 
+    // Kiểm tra thông báo bảo vệ vai trò và ADMIN sử dụng tên dễ hiểu với người dùng.
     [TestMethod]
     public void RoleAndAdminProtectionMessagesUseUserFacingNames()
     {
@@ -194,6 +211,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsFalse(AccountFieldErrors.SafeMessage(new InvalidOperationException("Hệ thống phải còn ít nhất một ADMIN đang hoạt động.")).Contains("ADMIN"));
     }
 
+    // Kiểm tra đổi trạng thái điều chỉnh bộ lọc hoạt động để kho vừa sửa vẫn hiển thị.
     [TestMethod]
     public void StateChangeExpandsActiveFilterAndKeepsWarehouseVisible() => Sta(() =>
     {
@@ -215,6 +233,7 @@ public sealed class TesterReportRegressionTests
         Assert.AreEqual(7, warehouse.WarehouseId); Assert.IsFalse(warehouse.IsActive);
     });
 
+    // Kiểm tra các form chỉnh sửa con không có nút thu nhỏ.
     [TestMethod]
     public void ChildEditorsDoNotOfferMinimize() => Sta(() =>
     {
@@ -223,6 +242,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsFalse(warehouse.MinimizeBox); Assert.IsFalse(user.MinimizeBox);
     });
 
+    // Gắn dữ liệu kho vào hộp chọn của trang danh sách để kiểm thử bộ lọc.
     private static SearchableLookupComboBox BindCore(DataListPage<WarehouseDto> page)
     {
         page.BindingContext = new BindingContext(); page.CreateControl();
@@ -232,6 +252,7 @@ public sealed class TesterReportRegressionTests
         return picker;
     }
 
+    // Kiểm tra đặt lại hộp chọn kho khôi phục danh sách sau khi tìm không có kết quả.
     [TestMethod]
     public void CoreWarehouseResetRestoresChoicesAfterNoMatch() => Sta(() =>
     {
@@ -246,6 +267,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsFalse(picker.IsSearchPending); Assert.AreEqual(before + 1, queries);
     });
 
+    // Kiểm tra gõ kho khác xóa dữ liệu cũ và chặn xuất đến khi chọn kho hợp lệ.
     [TestMethod]
     public void TypingDifferentWarehouseClearsDataAndBlocksExportUntilSelection() => Sta(() =>
     {
@@ -261,6 +283,7 @@ public sealed class TesterReportRegressionTests
         Assert.IsFalse(picker.IsSearchPending); Assert.AreEqual(2, page.CurrentRows.Single().WarehouseId); Assert.IsTrue(export.Enabled);
     });
 
+    // Kiểm tra đặt lại bộ lọc giữ kho làm việc hiện tại của nhân viên.
     [TestMethod]
     public void CoreResetRetainsStaffCurrentWarehouse() => Sta(() =>
     {
@@ -272,6 +295,7 @@ public sealed class TesterReportRegressionTests
         Click(page.Controls.Find("btn1", true).Single()); Assert.AreEqual(2, picker.SelectedValue);
     });
 
+    // Kiểm tra cảnh báo phụ thuộc danh mục giải thích rõ lý do thao tác bị chặn.
     [TestMethod]
     public void CategoryDependencyWarningExplainsWhyActionIsBlocked()
     {

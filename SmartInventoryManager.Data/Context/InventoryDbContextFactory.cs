@@ -6,6 +6,7 @@ namespace SmartInventoryManager.Data.Context
     public sealed class InventoryDbContextFactory
         : IDesignTimeDbContextFactory<InventoryDbContext>
     {
+        // Tạo DbContext với cấu hình phục vụ công cụ thiết kế và migrations.
         public InventoryDbContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<InventoryDbContext>();

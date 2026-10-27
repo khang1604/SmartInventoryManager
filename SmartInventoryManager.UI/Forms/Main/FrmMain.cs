@@ -11,6 +11,7 @@ public partial class FrmMain : Form
     private readonly UserSession? _session;
     private readonly UiServices? _services;
     public bool LogoutRequested { get; private set; }
+    // Yêu cầu đóng phiên hiện tại và quay lại bước đăng nhập.
     internal void RequestSignInAgain()
     {
         LogoutRequested = true;
@@ -36,12 +37,14 @@ public partial class FrmMain : Form
     private readonly Label _breadcrumb = new();
     private Label _warehouseStatus = null!;
 
+    // Khởi tạo cửa sổ chính cùng menu điều hướng và vùng nội dung.
     public FrmMain()
     {
         InitializeComponent();
         BuildLayout();
     }
 
+    // Khởi tạo cửa sổ chính cùng menu điều hướng và vùng nội dung.
     public FrmMain(AuthenticatedUserDto user, AuthorizationService authorization, UserSession session, UiServices? services = null)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -67,6 +70,7 @@ public partial class FrmMain : Form
 
     private readonly Label _account = new();
 
+    // Tạo và sắp xếp các vùng giao diện của màn hình.
     private void BuildLayout()
     {
         ScrollbarAppearance.Apply(this);
@@ -131,6 +135,7 @@ public partial class FrmMain : Form
         ResumeLayout(true);
     }
 
+    // Tạo menu điều hướng bên trái theo các nhóm chức năng.
     private Control BuildSidebar()
     {
         var sidebar = CreateLayout(1, 3);
@@ -262,6 +267,7 @@ public partial class FrmMain : Form
         return sidebar;
     }
 
+    // Mở form cài đặt hiển thị và áp dụng thay đổi sau khi lưu.
     private async void OpenApplicationSettings()
     {
         using var dialog = new SmartInventoryManager.UI.Forms.Settings.FrmApplicationSettings();
@@ -273,6 +279,7 @@ public partial class FrmMain : Form
                 await product.ApplyPreferencesAsync();
     }
 
+    // Duyệt đệ quy các điều khiển con trong cây giao diện.
     private static IEnumerable<Control> Descendants(Control root)
     {
         yield return root;
@@ -280,6 +287,7 @@ public partial class FrmMain : Form
             foreach (var nested in Descendants(child)) yield return nested;
     }
 
+    // Áp dụng cỡ chữ đã lưu cho các điều khiển trên giao diện.
     private void ApplyFontPreferences()
     {
         var controls = Descendants(this).Concat(_pages.Values.SelectMany(Descendants)).Distinct().Where(c => !c.IsDisposed).ToArray();
@@ -301,6 +309,7 @@ public partial class FrmMain : Form
         }
     }
 
+    // Điều chỉnh độ rộng và bố cục menu theo không gian hiển thị.
     private void ResizeMenu()
     {
         if (_resizingMenu) return;
@@ -316,6 +325,7 @@ public partial class FrmMain : Form
         finally { _resizingMenu = false; }
     }
 
+    // Tạo thanh tiêu đề và các thao tác tài khoản trên màn hình chính.
     private Control BuildHeader()
     {
         var header = CreateLayout(4, 1);
@@ -374,6 +384,7 @@ public partial class FrmMain : Form
         return header;
     }
 
+    // Hiển thị trang chức năng được chọn sau khi kiểm tra quyền truy cập.
     private void ShowPage(string title)
     {
         _heading.UseMnemonic = false;
@@ -410,6 +421,7 @@ public partial class FrmMain : Form
         ApplyFontPreferences();
     }
 
+    // Kiểm tra phiên đăng nhập có quyền mở trang chức năng yêu cầu.
     private bool CanOpenPage(string title)
     {
         // Constructor không tham số phục vụ Designer, không mở phiên nghiệp vụ.
@@ -419,6 +431,7 @@ public partial class FrmMain : Form
             : _authorization.CanView(_session);
     }
 
+    // Tạo form hoặc thành phần giao diện cho mục menu được chọn.
     private Control CreatePage(string title) => title switch
     {
         "Phân tích" when _services is not null => PrepareForm(new AnalyticsPage(_services), title),
@@ -465,6 +478,7 @@ public partial class FrmMain : Form
         _ => throw new ArgumentOutOfRangeException(nameof(title))
     };
 
+    // Chuẩn bị form để hiển thị trong vùng nội dung của cửa sổ chính.
     private Form PrepareForm(Form form, string title, Control? content = null)
     {
         form.TopLevel = false;
@@ -483,6 +497,7 @@ public partial class FrmMain : Form
         return form;
     }
 
+    // Tạo giao diện nhiều tab từ các trang nội dung được cung cấp.
     private Control CreateTabs(params (string Title, Form Form)[] pages)
     {
         var tabs = new TabControl { Dock = DockStyle.Fill };
@@ -495,6 +510,7 @@ public partial class FrmMain : Form
         return tabs;
     }
 
+    // Tạo vùng hiển thị thông báo khi trang chưa có nội dung.
     private static Control EmptyPanel(string title, string message, string icon)
     {
         var panel = CreateLayout(1, 3);
@@ -523,6 +539,7 @@ public partial class FrmMain : Form
         return panel;
     }
 
+    // Tạo điều khiển lọc dữ liệu cho vùng công cụ.
     private static ComboBox Filter(string value, string accessibleName)
     {
         var filter = new ComboBox
@@ -538,6 +555,7 @@ public partial class FrmMain : Form
         return filter;
     }
 
+    // Tạo nút thao tác theo nội dung và cách hiển thị được yêu cầu.
     private static AntdUI.Button ActionButton(string text, string icon)
     {
         return new AntdUI.Button
@@ -565,6 +583,7 @@ public partial class FrmMain : Form
         };
     }
 
+    // Tạo bố cục bảng dùng để sắp xếp các vùng giao diện.
     private static TableLayoutPanel CreateLayout(int columns, int rows) => new()
     {
         Dock = DockStyle.Fill,
@@ -574,6 +593,7 @@ public partial class FrmMain : Form
         GrowStyle = TableLayoutPanelGrowStyle.FixedSize
     };
 
+    // Tạo nhãn văn bản theo định dạng dùng chung của màn hình chính.
     private static Label TextLabel(string text, float size, bool bold = false, int width = 0, bool center = false)
     {
         var label = new Label

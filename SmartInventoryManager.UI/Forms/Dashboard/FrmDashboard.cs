@@ -21,10 +21,12 @@ public partial class FrmDashboard : Form
     private readonly ChartControl _distribution = new() { ChartTitle = "Phân bố trạng thái tồn hiện tại" };
     private readonly Label _note;
 
+    // Khởi tạo màn hình tổng quan và các yêu cầu làm mới dữ liệu.
     public FrmDashboard() : this(null)
     {
     }
 
+    // Khởi tạo màn hình tổng quan và các yêu cầu làm mới dữ liệu.
     public FrmDashboard(UiServices? services)
     {
         _services = services;
@@ -112,6 +114,7 @@ public partial class FrmDashboard : Form
         else Disposed += (_, _) => _refreshDelay.Dispose();
     }
 
+    // Xóa dữ liệu tổng quan cũ trước khi đổi phạm vi hoặc tải lại.
     private void ClearData(string message)
     {
         foreach (var card in _cards) { card.MetricValue = "—"; card.MetricNote = "Chưa chọn kho"; }
@@ -120,8 +123,10 @@ public partial class FrmDashboard : Form
         _note.Text = message;
     }
 
+    // Xếp yêu cầu làm mới để tránh tải dữ liệu tổng quan chồng chéo.
     private void QueueRefresh() { if (_loading || IsDisposed || _services is null || LiveUi.HasPendingSearch(_warehouse)) return; _refreshDelay.Stop(); _refreshDelay.Start(); }
 
+    // Tải dữ liệu phục vụ form và cập nhật các điều khiển hiển thị.
     private async Task LoadDataAsync()
     {
         if (_services is null || _loading) return;

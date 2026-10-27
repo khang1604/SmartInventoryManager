@@ -4,6 +4,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class PreviewFormUi
 {
+    // Tạo bố cục gốc cho form với vùng nội dung và thao tác.
     public static TableLayoutPanel Root(Form form, string title, Size size)
     {
         WorkflowUi.StyleForm(form);
@@ -62,6 +63,7 @@ internal static class PreviewFormUi
         return root;
     }
 
+    // Tạo bố cục dạng bảng để sắp xếp các trường nhập liệu.
     public static TableLayoutPanel Fields(int rows)
     {
         var fields = ProductUi.Layout(2, rows * 2);
@@ -78,6 +80,7 @@ internal static class PreviewFormUi
         return fields;
     }
 
+    // Tạo ô nhập liệu theo kích thước và thông tin mô tả.
     public static AntdUI.Input Field(TableLayoutPanel fields, int col, int row, string name, string caption,
         int maxLength = 0, string? placeholder = null, bool unavailable = false)
     {
@@ -96,6 +99,7 @@ internal static class PreviewFormUi
         return input;
     }
 
+    // Thêm trường TextBox và nhãn tương ứng vào bố cục form.
     public static TextBox TextBoxField(TableLayoutPanel fields, int col, int row, string name, string caption,
         int maxLength = 0, bool password = false)
     {

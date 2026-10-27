@@ -2,6 +2,7 @@ namespace SmartInventoryManager.Business.Events;
 
 public sealed class InventoryChangedEvent : EventArgs
 {
+    // Khởi tạo dữ liệu sự kiện biến động tồn kho.
     public InventoryChangedEvent(
         int productId,
         int warehouseId,

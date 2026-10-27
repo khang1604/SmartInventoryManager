@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Forms.Products;
 
 public partial class FrmProductList : Form
 {
+    // Khởi tạo màn hình danh sách sản phẩm.
     public FrmProductList(UiServices services)
     {
         InitializeComponent();
@@ -13,8 +14,10 @@ public partial class FrmProductList : Form
     }
     private readonly bool _canManageProducts;
 
+    // Khởi tạo màn hình danh sách sản phẩm.
     public FrmProductList() : this(false) { }
 
+    // Khởi tạo màn hình danh sách sản phẩm.
     public FrmProductList(bool canManageProducts)
     {
         _canManageProducts = canManageProducts;
@@ -22,6 +25,7 @@ public partial class FrmProductList : Form
         BuildLayout();
     }
 
+    // Tạo và sắp xếp các vùng giao diện của màn hình.
     private void BuildLayout()
     {
         Text = "Sản phẩm";
@@ -170,12 +174,14 @@ public partial class FrmProductList : Form
         Controls.Add(root);
     }
 
+    // Mở form xem trước giao diện chi tiết của đối tượng.
     private void OpenPreview()
     {
         using var preview = new FrmProductDetail();
         preview.ShowDialog(this);
     }
 
+    // Tạo điều khiển lọc dữ liệu cho vùng công cụ.
     private static AntdUI.Input Filter(string name, string text, int tabIndex)
     {
         var filter = ProductUi.Input(name);
@@ -188,6 +194,7 @@ public partial class FrmProductList : Form
         return filter;
     }
 
+    // Thông báo chức năng chưa được kết nối trong chế độ xem trước giao diện.
     private static AntdUI.Button Unavailable(string name, string caption, string icon)
     {
         var button = ProductUi.Button(name, caption, icon);
@@ -196,6 +203,7 @@ public partial class FrmProductList : Form
         return button;
     }
 
+    // Tạo cột dữ liệu với tên, tiêu đề và cách hiển thị phù hợp.
     private static DataGridViewTextBoxColumn Column(string name, string caption, int minWidth, string? format = null)
     {
         var column = new DataGridViewTextBoxColumn

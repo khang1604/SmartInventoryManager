@@ -2,6 +2,7 @@ namespace SmartInventoryManager.Business.Inventory;
 
 public static class StockStatusCalculator
 {
+    // Kiểm tra ngưỡng đặt hàng dương và nhỏ hơn mức tồn tối đa.
     public static IReadOnlyList<string> ValidateThresholds(int reorderPoint, int maximumStock)
     {
         var errors = new List<string>();
@@ -24,11 +25,13 @@ public static class StockStatusCalculator
         return errors.AsReadOnly();
     }
 
+    // Cho biết cặp ngưỡng đặt hàng và tồn tối đa có hợp lệ hay không.
     public static bool HasValidThresholds(int reorderPoint, int maximumStock)
     {
         return ValidateThresholds(reorderPoint, maximumStock).Count == 0;
     }
 
+    // Phân loại trạng thái tồn dựa trên số lượng hiện tại và các ngưỡng.
     public static StockStatus Calculate(int quantity, int reorderPoint, int maximumStock)
     {
         if (quantity < 0)

@@ -3,6 +3,7 @@ namespace SmartInventoryManager.Controls
     /// <summary>Skeleton UserControl for the AlertCard component.</summary>
     public partial class AlertCard : UserControl
     {
+        // Hiển thị các cảnh báo tồn kho trên thẻ thông tin.
         public void ShowAlerts(IReadOnlyList<(SmartInventoryManager.Business.DTOs.StockAlertDto Alert, string Warehouse)> rows)
         {
             foreach(Control old in Controls.Cast<Control>().ToArray()) { Controls.Remove(old); old.Dispose(); }
@@ -15,6 +16,7 @@ namespace SmartInventoryManager.Controls
             body.Controls.Add(list,0,1); Controls.Add(body);
         }
 
+        // Khởi tạo thẻ hiển thị thông tin cảnh báo tồn kho.
         public AlertCard()
         {
             InitializeComponent();

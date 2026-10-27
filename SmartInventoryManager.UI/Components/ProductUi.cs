@@ -4,12 +4,14 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ProductUi
 {
+    // Tạo TableLayoutPanel với số hàng và cột được yêu cầu.
     public static TableLayoutPanel Layout(int columns, int rows) => new()
     {
         Dock = DockStyle.Fill, ColumnCount = columns, RowCount = rows,
         Margin = Padding.Empty, GrowStyle = TableLayoutPanelGrowStyle.FixedSize
     };
 
+    // Tạo nhãn hiển thị với phông chữ và định dạng dùng chung.
     public static Label Label(string text, float size = 10, bool bold = false) => new()
     {
         Text = text, Dock = DockStyle.Fill, AutoEllipsis = true, Margin = Padding.Empty,
@@ -19,6 +21,7 @@ internal static class ProductUi
         ForeColor = AppColors.Text
     };
 
+    // Tạo điều khiển nhập liệu cho trường thông tin trên form.
     public static AntdUI.Input Input(string name, string placeholder = "") => new()
     {
         Name = name, PlaceholderText = placeholder, Dock = DockStyle.Fill,
@@ -31,6 +34,7 @@ internal static class ProductUi
         BorderHover = AppColors.Lavender
     };
 
+    // Tạo nút thao tác với nội dung và kiểu hiển thị dùng chung.
     public static AntdUI.Button Button(string name, string text, string? icon = null, bool primary = false)
     {
         return new AntdUI.Button

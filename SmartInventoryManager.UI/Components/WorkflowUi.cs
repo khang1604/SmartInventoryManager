@@ -5,6 +5,7 @@ namespace SmartInventoryManager.UI.Components;
 // Bố cục chung cho các màn hình nghiệp vụ đang chờ hợp đồng Service/DTO.
 internal static class WorkflowUi
 {
+    // Tạo giao diện danh sách minh họa với bộ lọc, bảng và các nút thao tác.
     public static Control List(string name, (string Caption, string Value)[] filters,
         string[] columns, string icon, string? previewCaption = null, Func<Form>? preview = null,
         string[]? pendingActions = null, bool report = false)
@@ -101,6 +102,7 @@ internal static class WorkflowUi
         return scroll;
     }
 
+    // Tạo bảng dữ liệu với các cột và định dạng dùng chung.
     public static DataGridView Grid(string name, string[] columns)
     {
         var grid = new ScrollableGrid
@@ -138,6 +140,7 @@ internal static class WorkflowUi
         return grid;
     }
 
+    // Tạo vùng bảng kèm thông báo khi danh sách không có dữ liệu.
     public static Control TableWithEmpty(string name, string[] columns, string icon)
     {
         var area = ProductUi.Layout(1, 2);
@@ -151,6 +154,7 @@ internal static class WorkflowUi
         return LiveUi.TableFrame(area);
     }
 
+    // Tạo thông báo trạng thái chưa có dữ liệu cho giao diện.
     public static Control Empty(string title, string description, string icon)
     {
         var empty = ProductUi.Layout(1, 5);
@@ -182,6 +186,7 @@ internal static class WorkflowUi
         return empty;
     }
 
+    // Tạo thông báo chức năng đang chờ kết nối với dữ liệu hoặc nghiệp vụ.
     public static AntdUI.Button Pending(string name, string caption, string icon)
     {
         var button = ProductUi.Button(name, caption, icon);
@@ -191,6 +196,7 @@ internal static class WorkflowUi
         return button;
     }
 
+    // Áp dụng phông chữ, màu nền và kiểu cửa sổ thống nhất cho form.
     public static void StyleForm(Form form)
     {
         VietnameseUiLocalization.Apply();
@@ -203,6 +209,7 @@ internal static class WorkflowUi
         form.ForeColor = AppColors.Text;
     }
 
+    // Giới hạn kích thước và vị trí form trong vùng làm việc của màn hình.
     internal static void FitToWorkingArea(Form form)
     {
         if (!form.TopLevel || form.WindowState != FormWindowState.Normal) return;

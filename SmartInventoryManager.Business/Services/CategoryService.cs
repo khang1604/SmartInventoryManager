@@ -11,12 +11,14 @@ public sealed class CategoryService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
+    // Khởi tạo service xử lý danh mục cùng các thành phần phụ thuộc.
     public CategoryService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
+    // Lấy danh mục theo điều kiện tra cứu và phạm vi truy cập.
     public async Task<IReadOnlyList<CategoryDto>> GetAsync(UserSession session, bool includeInactive = true, CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated(session);
@@ -27,6 +29,7 @@ public sealed class CategoryService
             .ToListAsync(cancellationToken);
     }
 
+    // Lấy danh sách danh mục đang hoạt động trong phạm vi cho phép.
     public async Task<IReadOnlyList<LookupItemDto>> GetActiveAsync(UserSession session, string? search = null, CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated(session);
@@ -41,6 +44,7 @@ public sealed class CategoryService
             .ToListAsync(cancellationToken);
     }
 
+    // Kiểm tra dữ liệu rồi tạo mới danh mục.
     public async Task<int> CreateAsync(UserSession session, CategoryRequestDto request, CancellationToken cancellationToken = default)
     {
         EnsureCanManage(session);
@@ -54,6 +58,7 @@ public sealed class CategoryService
         return entity.CategoryId;
     }
 
+    // Kiểm tra dữ liệu rồi cập nhật thông tin danh mục.
     public async Task UpdateAsync(UserSession session, int categoryId, CategoryRequestDto request, CancellationToken cancellationToken = default)
     {
         ValidateId(categoryId, nameof(categoryId));
@@ -72,6 +77,7 @@ public sealed class CategoryService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Đổi trạng thái hoạt động của danh mục sau khi kiểm tra điều kiện liên quan.
     public async Task SetActiveAsync(UserSession session, int categoryId, bool isActive, CancellationToken cancellationToken = default)
     {
         ValidateId(categoryId, nameof(categoryId));
@@ -85,16 +91,19 @@ public sealed class CategoryService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Yêu cầu người dùng có quyền quản lý danh mục.
     private void EnsureCanManage(UserSession session)
     {
         if (!_authorization.CanManageCategory(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý danh mục.");
     }
 
+    // Yêu cầu người dùng đã đăng nhập trước khi thực hiện nghiệp vụ.
     private static void EnsureAuthenticated(UserSession session)
     {
         if (session is null || !session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập.");
     }
 
+    // Kiểm tra các trường thông tin danh mục theo ràng buộc nghiệp vụ.
     private static void Validate(CategoryRequestDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -104,6 +113,7 @@ public sealed class CategoryService
             throw new ArgumentException("Mô tả danh mục không quá 255 ký tự.", nameof(request));
     }
 
+    // Kiểm tra mã định danh của danh mục là số dương.
     private static void ValidateId(int id, string parameterName)
     {
         if (id <= 0) throw new ArgumentOutOfRangeException(parameterName);

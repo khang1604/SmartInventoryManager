@@ -9,6 +9,7 @@ namespace SmartInventoryManager.Tests;
 
 internal static class SqlReceiptFixture
 {
+    // Kiểm tra hoàn tất phiếu trên các context mới và chặn ghi nhận tồn lặp.
     public static async Task RunAsync(DbContextOptions<InventoryDbContext> options, UserSession session)
     {
         await using var setup = new InventoryDbContext(options);
@@ -113,6 +114,7 @@ internal static class SqlReceiptFixture
         }
     }
 
+    // Hoàn tất phiếu xuất bằng context mới và trả trạng thái để đối chiếu.
     private static async Task<string> CompleteExportAsync(DbContextOptions<InventoryDbContext> options, UserSession session, int id)
     {
         await using var db = new InventoryDbContext(options);
@@ -122,5 +124,6 @@ internal static class SqlReceiptFixture
         catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 1205 }) { return "deadlock-conflict"; }
         catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 1205) { return "deadlock-conflict"; }
     }
+    // Báo lỗi kiểm thử khi điều kiện nghiệp vụ không đúng.
     private static void Assert(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); Console.WriteLine("PASS: " + name); }
 }

@@ -9,11 +9,13 @@ public sealed class ProductService
 {
     private readonly InventoryDbContext _dbContext;
 
+    // Khởi tạo service xử lý sản phẩm cùng các thành phần phụ thuộc.
     public ProductService(InventoryDbContext dbContext)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
+    // Lấy danh sách sản phẩm đang hoạt động trong phạm vi cho phép.
     public async Task<IReadOnlyList<ProductLookupDto>> GetActiveAsync(
         UserSession session,
         string? search = null,

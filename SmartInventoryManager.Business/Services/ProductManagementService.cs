@@ -17,6 +17,7 @@ public sealed class ProductManagementService : IProductService
     private readonly ProductValidator _validator = new();
     private readonly StockEventPublisher _publisher;
 
+    // Khởi tạo service xử lý sản phẩm cùng các thành phần phụ thuộc.
     public ProductManagementService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
@@ -24,6 +25,7 @@ public sealed class ProductManagementService : IProductService
         _publisher = publisher ?? new StockEventPublisher();
     }
 
+    // Tìm kiếm và phân trang sản phẩm theo các điều kiện được cung cấp.
     public async Task<PagedResultDto<ProductDto>> SearchAsync(
         UserSession session,
         ProductSearchDto search,
@@ -58,6 +60,7 @@ public sealed class ProductManagementService : IProductService
         return new PagedResultDto<ProductDto>(items, page.PageNumber, page.PageSize, totalCount);
     }
 
+    // Lấy thông tin chi tiết sản phẩm theo mã định danh.
     public async Task<ProductDto?> GetByIdAsync(
         UserSession session,
         int productId,
@@ -72,6 +75,7 @@ public sealed class ProductManagementService : IProductService
         return product is null ? null : ToDto(product);
     }
 
+    // Kiểm tra dữ liệu rồi tạo mới sản phẩm.
     public async Task<int> CreateAsync(
         UserSession session,
         ProductRequestDto request,
@@ -99,6 +103,7 @@ public sealed class ProductManagementService : IProductService
         return product.ProductId;
     }
 
+    // Kiểm tra dữ liệu rồi cập nhật thông tin sản phẩm.
     public async Task UpdateAsync(
         UserSession session,
         int productId,
@@ -134,6 +139,7 @@ public sealed class ProductManagementService : IProductService
         await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "UPDATE_PRODUCT", "Product", productId, _publisher, () => { }, cancellationToken);
     }
 
+    // Đổi trạng thái hoạt động của sản phẩm sau khi kiểm tra điều kiện liên quan.
     public async Task SetActiveAsync(
         UserSession session,
         int productId,
@@ -165,6 +171,7 @@ public sealed class ProductManagementService : IProductService
         await StockWorkflowEffects.CommitAsync(_dbContext, transaction, session, "SET_PRODUCT_ACTIVE", "Product", productId, _publisher, () => { }, cancellationToken);
     }
 
+    // Cập nhật cảnh báo của sản phẩm sau khi thông tin hoặc ngưỡng thay đổi.
     private async Task RefreshProductAlertsAsync(int productId, CancellationToken cancellationToken)
     {
         var warehouseIds = await _dbContext.Inventories
@@ -187,6 +194,7 @@ public sealed class ProductManagementService : IProductService
         }
     }
 
+    // Kiểm tra danh mục tham chiếu và tính duy nhất của mã sản phẩm.
     private async Task EnsureReferencesAndCodeAsync(ProductRequestDto request, int? productId, CancellationToken cancellationToken)
     {
         var categoryExists = await _dbContext.Categories.AnyAsync(
@@ -206,6 +214,7 @@ public sealed class ProductManagementService : IProductService
         }
     }
 
+    // Yêu cầu người dùng có quyền quản lý sản phẩm.
     private void EnsureCanManage(UserSession session)
     {
         if (!_authorization.CanManageProduct(session))
@@ -214,6 +223,7 @@ public sealed class ProductManagementService : IProductService
         }
     }
 
+    // Yêu cầu người dùng đã đăng nhập trước khi thực hiện nghiệp vụ.
     private static void EnsureAuthenticated(UserSession session)
     {
         if (session is null || !session.IsAuthenticated)
@@ -222,6 +232,7 @@ public sealed class ProductManagementService : IProductService
         }
     }
 
+    // Kiểm tra dữ liệu yêu cầu xử lý sản phẩm trước khi lưu.
     private void ValidateRequest(ProductRequestDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -239,6 +250,7 @@ public sealed class ProductManagementService : IProductService
         }
     }
 
+    // Chuẩn hóa số trang và kích thước trang trong yêu cầu tìm kiếm.
     private static (int PageNumber, int PageSize) NormalizePage(int pageNumber, int pageSize)
     {
         if (pageNumber < 1)
@@ -252,6 +264,7 @@ public sealed class ProductManagementService : IProductService
         return (pageNumber, pageSize);
     }
 
+    // Chuyển dữ liệu sản phẩm thành DTO trả về cho giao diện.
     private static ProductDto ToDto(Product product)
     {
         ArgumentNullException.ThrowIfNull(product);

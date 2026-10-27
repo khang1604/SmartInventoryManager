@@ -26,6 +26,7 @@ namespace SmartInventoryManager.UI.Forms.Login
         private readonly PictureBox _logoPictureBox = new();
 
 
+        // Khởi tạo màn hình đăng nhập và các sự kiện xác thực.
         public FrmLogin(AuthService authService)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -46,8 +47,10 @@ namespace SmartInventoryManager.UI.Forms.Login
 
         public AuthenticatedUserDto? AuthenticatedUser { get; private set; }
 
+        // Sắp xếp các thành phần đăng nhập theo kích thước cửa sổ.
         private void ArrangeLoginLayout(PictureBox logo)
         {
+            // Quy đổi kích thước bố cục theo tỷ lệ hiển thị của màn hình.
             int Scale(int value) => (int)Math.Round(value * DeviceDpi / 96F);
             int center = pnlLeft.ClientSize.Width / 2;
             int textWidth = Math.Max(label5.PreferredSize.Width,
@@ -75,6 +78,7 @@ namespace SmartInventoryManager.UI.Forms.Login
                 Math.Max(pnlLeft.ClientSize.Height, Scale(600)) - label7.Height - Scale(8));
         }
 
+        // Thiết lập bố cục, màu sắc và hành vi của giao diện đăng nhập.
         private void SetupUI()
         {
             UiBrand.ApplyIcon(this);
@@ -130,18 +134,21 @@ namespace SmartInventoryManager.UI.Forms.Login
             // FormBorderStyle = None + tự vẽ title bar với icon cube + text
         }
 
+        // Đổi kiểu hiển thị nút đăng nhập khi con trỏ đi vào.
         private void BtnLogin_MouseEnter(object? sender, EventArgs e)
         {
             btnLogin.BackColor = _btnLoginHoverColor;
             btnLogin.Cursor = Cursors.Hand;
         }
 
+        // Khôi phục kiểu hiển thị nút đăng nhập khi con trỏ rời đi.
         private void BtnLogin_MouseLeave(object? sender, EventArgs e)
         {
             btnLogin.BackColor = _btnLoginOriginalColor;
             btnLogin.Cursor = Cursors.Default;
         }
 
+        // Chuyển bước nhập hoặc đăng nhập khi người dùng nhấn phím ở ô tài khoản.
         private void TxtUsername_KeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
@@ -151,6 +158,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             }
         }
 
+        // Gửi yêu cầu đăng nhập khi nhấn Enter tại ô mật khẩu.
         private async void TxtPassword_KeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
@@ -160,6 +168,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             }
         }
 
+        // Hiển thị hướng dẫn liên hệ để được đặt lại mật khẩu.
         private void LnkForgotPassword_Click(object? sender, EventArgs e)
         {
             MessageBox.Show(
@@ -170,11 +179,13 @@ namespace SmartInventoryManager.UI.Forms.Login
             );
         }
 
+        // Tiếp nhận thao tác bấm nút và bắt đầu xác thực đăng nhập.
         private async void btnLogin_Click(object sender, EventArgs e)
         {
             await PerformLoginAsync();
         }
 
+        // Kiểm tra thông tin nhập, xác thực tài khoản và trả kết quả đăng nhập.
         private async Task PerformLoginAsync()
         {
             if (_isSigningIn)
@@ -230,6 +241,7 @@ namespace SmartInventoryManager.UI.Forms.Login
             }
         }
 
+        // Đổi trạng thái hiện hoặc che ký tự trong ô mật khẩu.
         private void btnShowPassword_Click(object sender, EventArgs e)
         {
             // Explicit toggle mapping:

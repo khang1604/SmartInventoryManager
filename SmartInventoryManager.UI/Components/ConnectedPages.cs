@@ -5,8 +5,10 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ConnectedPages
 {
+    // Tạo trang danh sách sản phẩm đã kết nối với các service.
     public static Control Products(UiServices services) => new ProductManagementPage(services);
 
+    // Tạo trang nhà cung cấp đã kết nối với các service.
     public static Control Suppliers(UiServices services)
     {
         var page = new DataListPage<SupplierDto>(services,
@@ -51,8 +53,10 @@ internal static class ConnectedPages
         return page;
     }
 
+    // Tạo trang kho đã kết nối với các service.
     public static Control Warehouses(UiServices services) => new SmartInventoryManager.Forms.Warehouses.FrmWarehouse(services);
 
+    // Tạo trang tồn kho và các thao tác điều chỉnh, chuyển kho.
     public static Control Inventory(UiServices services)
     {
         var page = new DataListPage<InventoryDto>(services,
@@ -84,6 +88,7 @@ internal static class ConnectedPages
         return page;
     }
 
+    // Tạo trang báo cáo tồn kho có bộ lọc và thao tác xuất dữ liệu.
     public static Control InventoryReport(UiServices services)
     {
         DataListPage<InventoryReportRowDto>? page = null;
@@ -104,6 +109,7 @@ internal static class ConnectedPages
         return page;
     }
 
+    // Lấy đầy đủ dữ liệu phù hợp bộ lọc rồi xuất báo cáo tồn kho.
     private static async Task ExportInventoryAsync(DataListPage<InventoryReportRowDto> page, UiServices services, bool pdf)
     {
         var report = await services.RunAsync(() => services.Reports.GetInventoryAsync(services.Session, page.SelectedWarehouseId,
@@ -130,6 +136,7 @@ internal static class ConnectedPages
         }
     }
 
+    // Tạo trang báo cáo nhập xuất có bộ lọc và thao tác xuất dữ liệu.
     public static Control ImportExportReport(UiServices services)
     {
         DataListPage<ImportExportReportRowDto>? page = null;
@@ -154,6 +161,7 @@ internal static class ConnectedPages
         return page;
     }
 
+    // Lấy đầy đủ dữ liệu phù hợp bộ lọc rồi xuất báo cáo nhập xuất.
     private static async Task ExportImportExportAsync(DataListPage<ImportExportReportRowDto> page, UiServices services, bool pdf)
     {
         var report = await services.RunAsync(() => services.Reports.GetImportExportAsync(services.Session,
@@ -180,12 +188,15 @@ internal static class ConnectedPages
         }
     }
 
+    // Tạo bộ lọc loại phiếu nhập hoặc xuất cho trang báo cáo.
     private static string? ReceiptTypeFilter(DataListPage<ImportExportReportRowDto>? page) => page?.SelectedType switch
     { 1 => "IMPORT", 2 => "EXPORT", _ => null };
 
+    // Tạo bộ lọc trạng thái tồn kho cho trang dữ liệu.
     private static string? InventoryStatusFilter(DataListPage<InventoryReportRowDto>? page) => page?.SelectedType switch
     { 1 => "OUT_OF_STOCK", 2 => "LOW_STOCK", 3 => "NORMAL", 4 => "OVERSTOCK", _ => null };
 
+    // Tạo trang tra cứu lịch sử biến động tồn kho.
     public static Control History(UiServices services, int? productId = null) => new DataListPage<InventoryHistoryDto>(services,
         "Lịch sử tồn kho",
         [("ProductCode", "Mã sản phẩm"), ("ProductName", "Sản phẩm"), ("TransactionType", "Loại giao dịch"),
@@ -195,6 +206,7 @@ internal static class ConnectedPages
         async (warehouseId, search, from, to) => (await services.Inventory.GetHistoryAsync(services.Session, warehouseId, productId, from, to))
             .Where(row => Match(row.ProductCode, row.ProductName, search)).ToList(), requiresWarehouse: true, history: true);
 
+    // Tạo trang cảnh báo tồn kho và thao tác xác nhận xử lý.
     public static Control Alerts(UiServices services)
     {
         var state = LiveUi.Choice("cboAlertState", "Trạng thái xử lý");
@@ -223,6 +235,7 @@ internal static class ConnectedPages
         return page;
     }
 
+    // Bổ sung cột và thao tác xem thông tin chi tiết cho danh sách.
     private static Control WithDetails(DataListPage<LookupItemDto> page, bool canManage, bool insetButton = false)
     {
         page.AddDetailsColumn(insetButton);
@@ -238,6 +251,7 @@ internal static class ConnectedPages
         return page;
     }
 
+    // Đối chiếu từ khóa với dữ liệu dùng trong bộ lọc.
     private static bool Match(string code, string name, string search) => string.IsNullOrWhiteSpace(search)
         || code.Contains(search, StringComparison.CurrentCultureIgnoreCase)
         || name.Contains(search, StringComparison.CurrentCultureIgnoreCase);

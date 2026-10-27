@@ -11,6 +11,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public sealed class WarehouseDirectoryRegressionTests
 {
+    // Tạo DbContext và dữ liệu minh họa chung cho nhóm ca kiểm thử.
     private static InventoryDbContext Fixture()
     {
         var db = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
@@ -30,11 +31,13 @@ public sealed class WarehouseDirectoryRegressionTests
         foreach (var id in new[] { 5, 6, 8 }) db.UserWarehouses.Add(new UserWarehouse { UserId = 3, WarehouseId = id, IsActive = true });
         db.SaveChanges(); return db;
     }
+    // Tạo phiên đăng nhập giả lập theo người dùng và vai trò của ca kiểm thử.
     private static UserSession Session(int id, string role)
     {
         var s = new UserSession(); s.SignIn(new(id, "SYNTHETIC", "Synthetic", null, role)); return s;
     }
 
+    // Kiểm tra ADMIN tra cứu, kích hoạt lại kho ngừng hoạt động mà không cấp nhầm quyền tồn kho.
     [TestMethod]
     public async Task AdminCanFindInactiveWarehouseAndReactivateWithoutGrantingStockAccess()
     {
@@ -49,6 +52,7 @@ public sealed class WarehouseDirectoryRegressionTests
         Assert.IsTrue((await service.GetActiveAsync(admin)).Any(row => row.Id == 6));
     }
 
+    // Kiểm tra danh mục kho chỉ gồm kho quản lý, còn lựa chọn vận hành chỉ dùng kho hoạt động.
     [TestMethod]
     public async Task ManagerDirectoryIncludesOnlyOwnWarehousesWhileOperationalLookupStaysActive()
     {
@@ -59,6 +63,7 @@ public sealed class WarehouseDirectoryRegressionTests
         Assert.IsFalse(await auth.CanViewWarehouseAsync(manager, 8));
     }
 
+    // Kiểm tra danh sách kho của nhân viên vẫn cần phân công, kho hiện tại và tài khoản còn hiệu lực.
     [TestMethod]
     public async Task StaffDirectoryStillRequiresActiveAssignedCurrentWarehouseAndActiveActor()
     {
@@ -72,6 +77,7 @@ public sealed class WarehouseDirectoryRegressionTests
         Assert.AreEqual(0, (await service.GetAllAsync(admin)).Count);
     }
 
+    // Kiểm tra cả hai cách cập nhật đều chặn ngừng danh mục còn sản phẩm hoạt động.
     [TestMethod]
     public async Task CategoryWithActiveProductCannotBeDeactivatedThroughEitherWritePath()
     {

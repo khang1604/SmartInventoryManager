@@ -8,6 +8,7 @@ internal static class ScrollbarAppearance
 {
     private static readonly ConditionalWeakTable<Control, Subscription> Subscriptions = new();
 
+    // Áp dụng cấu hình hiển thị cho thành phần giao diện.
     public static void Apply(Control root)
     {
         Subscriptions.GetValue(root, control => new Subscription(control));
@@ -17,6 +18,7 @@ internal static class ScrollbarAppearance
     private sealed class Subscription
     {
         private readonly ScrollWindow? _window;
+        // Khởi tạo bộ theo dõi thông điệp Windows để điều chỉnh thanh cuộn.
         public Subscription(Control control)
         {
             control.ControlAdded += (_, e) => { if (e.Control is not null) Apply(e.Control); };
@@ -32,6 +34,7 @@ internal static class ScrollbarAppearance
     private sealed class ScrollWindow : NativeWindow
     {
         private bool _hiding;
+        // Ẩn thanh cuộn gốc theo cấu hình hiển thị của điều khiển.
         public void HideBars()
         {
             if (Handle == IntPtr.Zero || _hiding || (GetWindowLong(Handle, -16) & 0x00300000) == 0) return;
@@ -39,13 +42,16 @@ internal static class ScrollbarAppearance
             try { ShowScrollBar(Handle, 3, false); }
             finally { _hiding = false; }
         }
+        // Xử lý thông điệp Windows để đồng bộ hành vi thanh cuộn.
         protected override void WndProc(ref Message m)
         {
             base.WndProc(ref m);
             if (m.Msg is 0x0005 or 0x0085 or 0x0114 or 0x0115 or 0x020A or 0x020E) HideBars();
         }
+        // Đọc giá trị kiểu cửa sổ qua hàm Windows được nhập từ thư viện hệ thống.
         [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
         private static extern int GetWindowLong(IntPtr handle, int index);
+        // Gọi hàm Windows để bật hoặc ẩn thanh cuộn của cửa sổ.
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool ShowScrollBar(IntPtr handle, int bar, [MarshalAs(UnmanagedType.Bool)] bool show);
@@ -54,8 +60,10 @@ internal static class ScrollbarAppearance
 
 internal sealed class ScrollableGrid : DataGridView
 {
+    // Khởi tạo bảng dữ liệu hỗ trợ cuộn theo thiết lập giao diện.
     public ScrollableGrid() => ScrollBars = ScrollBars.None;
 
+    // Xử lý thông điệp Windows để đồng bộ hành vi thanh cuộn.
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == 0x020E)
@@ -67,6 +75,7 @@ internal sealed class ScrollableGrid : DataGridView
         base.WndProc(ref m);
     }
 
+    // Xử lý lăn chuột để cuộn nội dung bảng dữ liệu.
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         if (e.Delta == 0 || RowCount == 0) return;

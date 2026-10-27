@@ -18,6 +18,7 @@ public sealed class ExportService : IExportService
     private readonly StockEventPublisher _publisher;
     private readonly ExportValidator _validator = new();
 
+    // Khởi tạo service xử lý phiếu xuất cùng các thành phần phụ thuộc.
     public ExportService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
@@ -28,6 +29,7 @@ public sealed class ExportService : IExportService
 
     public event EventHandler<ReceiptCompletedEvent>? ReceiptCompleted;
 
+    // Tạo phiếu xuất nháp, tính tổng tiền và cấp mã khi cần.
     public async Task<int> CreateDraftAsync(
         UserSession session,
         ExportReceiptDto request,
@@ -77,6 +79,7 @@ public sealed class ExportService : IExportService
         return receipt.ExportReceiptId;
     }
 
+    // Lấy danh sách phiếu xuất theo quyền và điều kiện lọc.
     public async Task<IReadOnlyList<ExportReceiptListItemDto>> GetListAsync(
         UserSession session, int? warehouseId = null, string? status = null, DateTime? from = null,
         DateTime? to = null, string? search = null, CancellationToken cancellationToken = default)
@@ -85,6 +88,7 @@ public sealed class ExportService : IExportService
         return await query.ToListAsync(cancellationToken);
     }
 
+    // Lấy một trang phiếu xuất theo bộ lọc và phạm vi truy cập.
     public async Task<PagedResultDto<ExportReceiptListItemDto>> GetPageAsync(
         UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default)
     {
@@ -93,6 +97,7 @@ public sealed class ExportService : IExportService
         return await QueryPaging.ReadAsync(query, search.PageNumber, search.PageSize, cancellationToken);
     }
 
+    // Tạo truy vấn phiếu xuất với các điều kiện lọc và giới hạn quyền.
     private async Task<IQueryable<ExportReceiptListItemDto>> QueryListAsync(
         UserSession session, int? warehouseId, string? status, DateTime? from, DateTime? to,
         string? search, CancellationToken cancellationToken)
@@ -144,6 +149,7 @@ public sealed class ExportService : IExportService
                 receipt.Status));
     }
 
+    // Lấy thông tin chi tiết phiếu xuất theo mã định danh.
     public async Task<ExportReceiptDetailsDto?> GetByIdAsync(
         UserSession session,
         int exportReceiptId,
@@ -198,6 +204,7 @@ public sealed class ExportService : IExportService
             };
     }
 
+    // Kiểm tra dữ liệu rồi chuyển phiếu nháp sang trạng thái chờ duyệt.
     public async Task SubmitAsync(
         UserSession session,
         int exportReceiptId,
@@ -229,6 +236,7 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Xóa phiếu nháp khi quyền, trạng thái và lịch sử cho phép.
     public async Task DeleteDraftAsync(
         UserSession session,
         int exportReceiptId,
@@ -258,6 +266,7 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Duyệt phiếu đang chờ xử lý và ghi lịch sử chuyển trạng thái.
     public async Task ApproveAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
@@ -284,6 +293,7 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Từ chối phiếu và lưu lý do cùng lịch sử xử lý.
     public async Task RejectAsync(UserSession session, int exportReceiptId, string reason, CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
@@ -324,6 +334,7 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Đưa phiếu bị từ chối về trạng thái cho phép sửa và gửi lại.
     public async Task ResubmitAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
         ValidateSession(session);
@@ -350,6 +361,7 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Hoàn tất phiếu với cơ chế thử lại khi gặp deadlock trước lúc commit.
     public Task CompleteAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
     {
         var committed = false;
@@ -357,6 +369,7 @@ public sealed class ExportService : IExportService
             () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
     }
 
+    // Kiểm tra phiếu và ghi nhận tồn, trạng thái, lịch sử trong cùng giao dịch.
     private async Task CompleteCoreAsync(
         UserSession session,
         int exportReceiptId,
@@ -427,6 +440,7 @@ public sealed class ExportService : IExportService
             receipt.Details.Select(detail => detail.ProductId).Distinct().ToArray()));
     }
 
+    // Cập nhật thông tin và các dòng hàng của phiếu được phép chỉnh sửa.
     public async Task UpdateDraftAsync(
         UserSession session,
         int exportReceiptId,
@@ -484,9 +498,11 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Chuyển yêu cầu hủy phiếu nháp sang hàm xử lý hủy chung.
     public Task CancelDraftAsync(UserSession session, int exportReceiptId, CancellationToken cancellationToken = default)
         => CancelAsync(session, exportReceiptId, string.Empty, cancellationToken);
 
+    // Hủy phiếu hợp lệ và lưu người thực hiện, thời điểm cùng lý do.
     public async Task CancelAsync(
         UserSession session,
         int exportReceiptId,
@@ -520,6 +536,7 @@ public sealed class ExportService : IExportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Thông báo phiếu đã hoàn tất cho từng bên nhận sự kiện.
     private void PublishReceiptCompleted(ReceiptCompletedEvent value)
     {
         if (ReceiptCompleted is null) return;
@@ -528,6 +545,7 @@ public sealed class ExportService : IExportService
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Receipt subscriber failed: {ex.GetType().Name}"); }
     }
 
+    // Kiểm tra dữ liệu tham chiếu và các dòng hàng đã lưu của phiếu.
     private async Task ValidateStoredReceiptAsync(ExportReceipt receipt, CancellationToken cancellationToken)
     {
         if (receipt.Details.Count == 0)
@@ -548,6 +566,7 @@ public sealed class ExportService : IExportService
         }
     }
 
+    // Kiểm tra phiên đăng nhập hợp lệ trước khi xử lý yêu cầu.
     private static void ValidateSession(UserSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -557,6 +576,7 @@ public sealed class ExportService : IExportService
         }
     }
 
+    // Kiểm tra mã định danh phiếu là số dương.
     private static void ValidateReceiptId(int receiptId)
     {
         if (receiptId <= 0)
@@ -565,6 +585,7 @@ public sealed class ExportService : IExportService
         }
     }
 
+    // Kiểm tra độ dài ghi chú của phiếu theo giới hạn cho phép.
     private static void ValidateNote(string? note)
     {
         if (note?.Trim().Length > 500)
@@ -573,6 +594,7 @@ public sealed class ExportService : IExportService
         }
     }
 
+    // Kiểm tra dữ liệu yêu cầu xử lý phiếu xuất trước khi lưu.
     private void ValidateRequest(ExportReceiptDto request, bool requireDetails)
     {
         if ((requireDetails && request.Details.Count == 0) ||
@@ -589,5 +611,6 @@ public sealed class ExportService : IExportService
         }
     }
 
+    // Sinh mã phiếu khi người dùng chưa cung cấp mã.
     private static string GenerateReceiptCode() => $"PX{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..38];
 }

@@ -4,6 +4,7 @@ namespace SmartInventoryManager.Forms.Reports;
 
 public partial class FrmInventoryReport : Form
 {
+    // Khởi tạo màn hình báo cáo tồn kho.
     public FrmInventoryReport(UiServices services)
     {
         InitializeComponent();
@@ -11,6 +12,7 @@ public partial class FrmInventoryReport : Form
         Controls.Add(ConnectedPages.InventoryReport(services));
     }
 
+    // Khởi tạo màn hình báo cáo tồn kho.
     public FrmInventoryReport()
     {
         InitializeComponent();

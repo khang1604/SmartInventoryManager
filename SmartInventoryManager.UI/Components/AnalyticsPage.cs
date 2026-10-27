@@ -17,6 +17,7 @@ internal sealed class AnalyticsPage : Form
     private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
     private bool _busy;
 
+    // Khởi tạo trang phân tích tồn kho cùng bộ lọc và thao tác xuất Excel.
     public AnalyticsPage(UiServices services)
     {
         _services = services; WorkflowUi.StyleForm(this);
@@ -48,6 +49,7 @@ internal sealed class AnalyticsPage : Form
         _b.ValueChanged += (_, _) => InvalidateData();
     }
 
+    // Chuyển trạng thái phân tích thành nội dung hiển thị cho người dùng.
     internal static string AnalyticsStatus(string value) => value switch
     {
         "DEAD_STOCK" => "Không luân chuyển",
@@ -58,6 +60,7 @@ internal sealed class AnalyticsPage : Form
         _ => value
     };
 
+    // Tải dữ liệu phân tích theo kho và bộ lọc rồi cập nhật các tab kết quả.
     private async Task LoadAsync()
     {
         if (_busy) return;
@@ -82,6 +85,7 @@ internal sealed class AnalyticsPage : Form
         finally { _busy = false; if (!IsDisposed) Enabled = true; }
     }
 
+    // Xóa dữ liệu cũ và vô hiệu hóa thao tác khi điều kiện lọc đang thay đổi.
     private void InvalidateData()
     {
         if (_busy) return;
@@ -89,6 +93,7 @@ internal sealed class AnalyticsPage : Form
         _message.Text = "Bộ lọc đã đổi. Nhấn Làm mới trước khi xem hoặc xuất dữ liệu.";
     }
 
+    // Cập nhật các chỉ số tổng hợp trên giao diện phân tích.
     private void UpdateSummary()
     {
         if (_data is null) return;
@@ -97,6 +102,7 @@ internal sealed class AnalyticsPage : Form
         _message.Text = $"Ước tính: {_data.EstimatedInventoryValue.ToString("N2", LiveUi.Culture)} đ • ABC: {_data.AbcFrom:dd/MM/yyyy}–{_data.AsOf:dd/MM/yyyy} • {empty}\nLuân chuyển từ {_data.DeadStockFrom:dd/MM/yyyy}; đề xuất tham khảo, không tự tạo phiếu. Không phải giá vốn kế toán.";
     }
 
+    // Xuất kết quả phân tích hiện tại ra tệp Excel do người dùng chọn.
     private void Export()
     {
         if (_busy || _data is null || LiveUi.HasPendingSearch(_warehouse)) { _message.Text = "Làm mới dữ liệu trước khi xuất."; return; }

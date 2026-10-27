@@ -7,6 +7,7 @@ internal sealed class AccountFieldErrors
     private readonly Dictionary<Control, Label> _labels = new();
     private Control? _first;
 
+    // Bọc trường nhập liệu cùng nhãn hiển thị lỗi tương ứng.
     public Control Wrap(Control input, bool password = false)
     {
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, Height = 60, ColumnCount = 1, RowCount = 2, Margin = input.Margin };
@@ -24,18 +25,21 @@ internal sealed class AccountFieldErrors
         return panel;
     }
 
+    // Xóa thông báo lỗi đã gắn cho các trường nhập liệu.
     public void Clear()
     {
         _first = null;
         foreach (var label in _labels.Values) label.Text = "";
     }
 
+    // Gắn lỗi kiểm tra dữ liệu vào các trường nhập tương ứng.
     public void Set(Control input, string message)
     {
         _labels[input].Text = message;
         _first ??= input;
     }
 
+    // Chuyển con trỏ đến trường đầu tiên đang có lỗi nhập liệu.
     public bool FocusInvalid()
     {
         if (_first is null) return false;
@@ -43,6 +47,7 @@ internal sealed class AccountFieldErrors
         return true;
     }
 
+    // Lọc nội dung lỗi thành thông báo phù hợp để hiển thị cho người dùng.
     public static string SafeMessage(Exception exception)
     {
         Debug.WriteLine(exception);

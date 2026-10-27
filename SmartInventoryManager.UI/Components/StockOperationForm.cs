@@ -21,6 +21,7 @@ internal sealed class StockOperationForm : Form
     private string _sourceName = "";
     private readonly AntdUI.Button _refresh = ProductUi.Button("btnRefreshStock", "Tải lại tồn", "arrow-clockwise");
 
+    // Khởi tạo form điều chỉnh tồn hoặc chuyển hàng giữa hai kho.
     public StockOperationForm(UiServices services, InventoryDto inventory, bool transfer)
     {
         _services = services; _inventory = inventory; _transfer = transfer;
@@ -85,6 +86,7 @@ internal sealed class StockOperationForm : Form
         };
     }
 
+    // Tải lại sản phẩm, kho và số tồn cho thao tác điều chỉnh hoặc chuyển kho.
     private async Task RefreshContextAsync()
     {
         if (_busy) return;
@@ -126,6 +128,7 @@ internal sealed class StockOperationForm : Form
         }
     }
 
+    // Kiểm tra thông tin và gửi yêu cầu điều chỉnh tồn hoặc chuyển kho.
     private async Task SaveAsync()
     {
         if (_busy || _submitted || _committed || (_transfer && LiveUi.HasPendingSearch(_destination))) return;
@@ -178,6 +181,7 @@ internal sealed class StockOperationForm : Form
         }
     }
 
+    // Giải phóng các tài nguyên và thành phần do đối tượng quản lý.
     protected override void Dispose(bool disposing)
     {
         if (disposing) _errors.Dispose();

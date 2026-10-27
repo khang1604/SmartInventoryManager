@@ -5,12 +5,14 @@ namespace SmartInventoryManager.UI.Forms.Settings;
 
 internal sealed class FrmApplicationSettings : Form
 {
+    // Khởi tạo màn hình cài đặt hiển thị của ứng dụng.
     public FrmApplicationSettings()
     {
         var (_, body, footer) = SettingsUi.Root(this, "Cài đặt ứng dụng", "Tùy chỉnh cách hiển thị trên máy này", new Size(690, 690));
         var font = LiveUi.Choice("cboFontSize", "Cỡ chữ"); font.Items.AddRange(["Nhỏ", "Tiêu chuẩn", "Lớn", "Rất lớn"]);
         font.SelectedIndex = (int)UiPreferences.Current.FontSize - 9;
         var menu = new FlowLayoutPanel { Height = 36, WrapContents = false, Margin = Padding.Empty };
+        // Tạo lựa chọn trang mở đầu trong cài đặt giao diện.
         RadioButton MenuOption(string caption) => new()
         {
             Text = caption, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat,

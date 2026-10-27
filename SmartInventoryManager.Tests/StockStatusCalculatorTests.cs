@@ -6,6 +6,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class StockStatusCalculatorTests
 {
+    // Kiểm tra phân loại tồn tuân theo các điều kiện biên đã chốt.
     [DataTestMethod]
     [DataRow(0, 10, 100, StockStatus.OutOfStock)]
     [DataRow(10, 10, 100, StockStatus.LowStock)]
@@ -21,6 +22,7 @@ public class StockStatusCalculatorTests
         Assert.AreEqual(expected, StockStatusCalculator.Calculate(quantity, reorderPoint, maximumStock));
     }
 
+    // Kiểm tra cấu hình ngưỡng tồn không hợp lệ bị từ chối.
     [DataTestMethod]
     [DataRow(-1, 10)]
     [DataRow(10, 9)]
@@ -35,12 +37,14 @@ public class StockStatusCalculatorTests
         Assert.IsFalse(StockStatusCalculator.HasValidThresholds(reorderPoint, maximumStock));
     }
 
+    // Kiểm tra tính trạng thái tồn từ chối số lượng âm.
     [TestMethod]
     public void Calculate_RejectsNegativeQuantity()
     {
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => StockStatusCalculator.Calculate(-1, 10, 100));
     }
 
+    // Kiểm tra tính trạng thái tồn từ chối cặp ngưỡng bằng nhau.
     [DataTestMethod]
     [DataRow(0, 0)]
     [DataRow(10, 10)]
@@ -49,6 +53,7 @@ public class StockStatusCalculatorTests
         Assert.ThrowsException<ArgumentException>(() => StockStatusCalculator.Calculate(0, reorderPoint, maximumStock));
     }
 
+    // Kiểm tra ngưỡng đặt hàng bằng 0 bị từ chối với mọi số lượng tồn.
     [DataTestMethod]
     [DataRow(0)]
     [DataRow(1)]

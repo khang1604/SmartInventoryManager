@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Tests;
 
 internal static class SqlTeamDecisionFixture
 {
+    // Chạy các kịch bản chuyển kho, xuất đồng thời, tranh chấp hủy và rollback khi có lỗi.
     public static async Task RunAsync(DbContextOptions<InventoryDbContext> options, UserSession actor)
     {
         await using var db = new InventoryDbContext(options);
@@ -25,6 +26,7 @@ internal static class SqlTeamDecisionFixture
         {
             db.Products.Add(product); await db.SaveChangesAsync();
             db.Inventories.AddRange(new Inventory { ProductId = product.ProductId, WarehouseId = a.WarehouseId, Quantity = 10 }, new Inventory { ProductId = product.ProductId, WarehouseId = b.WarehouseId, Quantity = 10 }); await db.SaveChangesAsync();
+            // Thực hiện chuyển hàng giữa hai kho trong kịch bản kiểm thử đồng thời.
             async Task Transfer(int source, int destination)
             {
                 await using var ctx = new InventoryDbContext(options);
@@ -42,6 +44,7 @@ internal static class SqlTeamDecisionFixture
             }
             Assert.IsTrue(await db.Inventories.Where(x => x.ProductId == product.ProductId).AllAsync(x => x.Quantity == 10));
 
+            // Tạo phiếu xuất minh họa và chuyển đến trạng thái đã duyệt.
             async Task<int> ApprovedExport(string suffix, int quantity)
             {
                 await using var ctx = new InventoryDbContext(options); var service = new ExportService(ctx, new AuthorizationService(ctx));
@@ -49,6 +52,7 @@ internal static class SqlTeamDecisionFixture
                 await service.SubmitAsync(actor, id); await service.ApproveAsync(actor, id); return id;
             }
             var first = await ApprovedExport("E1", 7); var second = await ApprovedExport("E2", 7);
+            // Thử hoàn tất phiếu xuất bằng context riêng và ghi nhận kết quả tranh chấp.
             async Task<bool> Complete(int id)
             {
                 await using var ctx = new InventoryDbContext(options);
@@ -61,6 +65,7 @@ internal static class SqlTeamDecisionFixture
             Assert.AreEqual(9m, analytics.EstimatedInventoryValue); Assert.AreEqual(35m, analytics.Abc.Single().ExportValue);
 
             var raced = await ApprovedExport("RACE", 1);
+            // Thử hủy phiếu bằng context riêng và ghi nhận kết quả tranh chấp.
             async Task<bool> Cancel()
             {
                 await using var ctx = new InventoryDbContext(options);
@@ -111,6 +116,7 @@ internal static class SqlTeamDecisionFixture
 
     private sealed class FailLogWrite : DbCommandInterceptor
     {
+        // Chèn lỗi truy vấn có chủ đích để kiểm tra rollback trong nghiệp vụ chuyển kho.
         public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
             if (command.CommandText.Contains("INSERT INTO [SystemLogs]", StringComparison.Ordinal)) throw new InvalidOperationException("Injected failure before log insert");

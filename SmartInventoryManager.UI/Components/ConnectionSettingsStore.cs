@@ -8,6 +8,7 @@ internal sealed class ConnectionSettingsStore(string? filePath = null)
     private readonly string _filePath = filePath ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VioWare", "connection.dat");
 
+    // Đọc và giải mã cấu hình kết nối đã lưu trên máy.
     public string? Load(out bool unreadable)
     {
         unreadable = false;
@@ -26,6 +27,7 @@ internal sealed class ConnectionSettingsStore(string? filePath = null)
         }
     }
 
+    // Mã hóa và lưu cấu hình kết nối trên máy người dùng.
     public void Save(string connectionString)
     {
         var plain = Encoding.UTF8.GetBytes(connectionString);
