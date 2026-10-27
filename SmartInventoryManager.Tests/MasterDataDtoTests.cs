@@ -6,6 +6,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public sealed class MasterDataDtoTests
 {
+    // Kiểm tra yêu cầu tạo danh mục mặc định ở trạng thái hoạt động.
     [TestMethod]
     public void CategoryRequest_DefaultsToActive()
     {
@@ -15,6 +16,7 @@ public sealed class MasterDataDtoTests
         Assert.AreEqual("Đồ uống", request.CategoryName);
     }
 
+    // Kiểm tra DTO nhà cung cấp giữ nguyên các trường liên hệ không bắt buộc.
     [TestMethod]
     public void SupplierRequest_PreservesOptionalContactFields()
     {
@@ -30,6 +32,7 @@ public sealed class MasterDataDtoTests
         Assert.AreEqual("supplier@example.com", request.Email);
     }
 
+    // Kiểm tra DTO vị trí có dữ liệu xác định kho chứa vị trí.
     [TestMethod]
     public void LocationRequest_RequiresWarehouseShape()
     {

@@ -13,8 +13,10 @@ public partial class FrmCategory : Form
     private bool _loading;
     private readonly ComboBox _status = LiveUi.Choice("cboStatus", "Trạng thái danh mục");
 
+    // Khởi tạo màn hình danh sách danh mục.
     public FrmCategory() : this(false) { }
 
+    // Khởi tạo màn hình danh sách danh mục.
     public FrmCategory(bool canManageCategories)
     {
         _canManageCategories = canManageCategories;
@@ -22,6 +24,7 @@ public partial class FrmCategory : Form
         BuildLayout();
     }
 
+    // Khởi tạo màn hình danh sách danh mục.
     public FrmCategory(UiServices services) : this(services.Authorization.CanManageCategory(services.Session))
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
@@ -36,6 +39,7 @@ public partial class FrmCategory : Form
         Shown += async (_, _) => await LoadCategoriesAsync();
     }
 
+    // Tạo và sắp xếp các vùng giao diện của màn hình.
     private void BuildLayout()
     {
         UiBrand.ApplyIcon(this);
@@ -187,6 +191,7 @@ public partial class FrmCategory : Form
         Controls.Add(root);
     }
 
+    // Tải danh sách danh mục theo bộ lọc và cập nhật bảng hiển thị.
     private async Task LoadCategoriesAsync()
     {
         if (_services is null || _grid is null || _loading) return;
@@ -211,17 +216,20 @@ public partial class FrmCategory : Form
         finally { _loading=false; if(_refresh is not null && !IsDisposed) _refresh.Enabled=true; }
     }
 
+    // Định dạng trạng thái hoạt động thành nội dung dễ đọc trong bảng.
     private void FormatStatus(object? sender, DataGridViewCellFormattingEventArgs e)
     {
         if (_grid is not null && _grid.Columns[e.ColumnIndex].Name == "Status" && e.Value is bool active) e.Value = active ? "Đang hoạt động" : "Ngừng hoạt động";
     }
 
+    // Cập nhật khả năng thao tác theo dòng đang chọn và quyền người dùng.
     private void UpdateActions()
     {
         var selected = _grid?.CurrentRow?.DataBoundItem is CategoryDto;
         foreach (Control control in Controls.Find("btnEdit", true).Concat(Controls.Find("btnDeactivate", true)).Concat(Controls.Find("btnPreview",true))) control.Enabled = selected;
     }
 
+    // Mở form sửa đối tượng đang chọn và tải lại dữ liệu sau khi lưu.
     private async Task EditSelectedAsync()
     {
         if (_services is null || _grid?.CurrentRow?.DataBoundItem is not CategoryDto category) return;
@@ -229,6 +237,7 @@ public partial class FrmCategory : Form
         if (detail.ShowDialog(this) == DialogResult.OK) await LoadCategoriesAsync();
     }
 
+    // Đổi trạng thái hoạt động của đối tượng đang chọn rồi tải lại danh sách.
     private async Task ToggleSelectedAsync()
     {
         if (_services is null || _grid?.CurrentRow?.DataBoundItem is not CategoryDto category) return;
@@ -237,6 +246,7 @@ public partial class FrmCategory : Form
         catch(Exception ex) { MessageBox.Show(this,LiveUi.Error(ex),"Không thể thay đổi trạng thái",MessageBoxButtons.OK,MessageBoxIcon.Warning); }
     }
 
+    // Thông báo chức năng chưa được kết nối trong chế độ xem trước giao diện.
     private static AntdUI.Button Unavailable(string name, string text, string icon)
     {
         var button = ProductUi.Button(name, text, icon);
@@ -245,6 +255,7 @@ public partial class FrmCategory : Form
         return button;
     }
 
+    // Tạo cột dữ liệu với tên, tiêu đề và cách hiển thị phù hợp.
     private static DataGridViewTextBoxColumn Column(string name, string caption, float weight) => new()
     {
         Name = name, HeaderText = caption, FillWeight = weight, MinimumWidth = 120,

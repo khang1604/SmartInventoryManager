@@ -8,6 +8,7 @@ namespace SmartInventoryManager.Tests;
 
 internal static class SqlDeadlockFixture
 {
+    // Dàn dựng hai giao dịch tranh chấp để kiểm tra thử lại sau deadlock và số lần ghi hiệu ứng.
     internal static async Task RunAsync(DbContextOptions<InventoryDbContext> options)
     {
         await using var db = new InventoryDbContext(options);
@@ -27,9 +28,11 @@ internal static class SqlDeadlockFixture
             var counts = new int[2];
             var method = typeof(ImportService).Assembly.GetType("SmartInventoryManager.Business.Services.DeadlockRetry")!
                 .GetMethod("RunAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
+            // Chạy một nhánh giao dịch tranh chấp qua cơ chế thử lại deadlock.
             async Task Run(int operation)
             {
                 var committed = false;
+                // Thực hiện một lần giao dịch thử nghiệm theo thứ tự khóa gây tranh chấp.
                 async Task Attempt()
                 {
                     var attempt = Interlocked.Increment(ref counts[operation]);

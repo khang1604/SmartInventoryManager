@@ -2,6 +2,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class PasswordVisibility
 {
+    // Bọc ô mật khẩu cùng nút chuyển trạng thái hiện hoặc che ký tự.
     public static Control Wrap(Control input)
     {
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
@@ -11,6 +12,7 @@ internal static class PasswordVisibility
         var eye = new Button { Name = "btnShow" + input.Name, Text = "◉", Dock = DockStyle.Fill,
             Margin = Padding.Empty, AccessibleName = "Hiện " + input.AccessibleName, TabStop = true };
         var visible = false;
+        // Bật hoặc tắt che ký tự của ô nhập mật khẩu.
         void Mask()
         {
             visible = false;

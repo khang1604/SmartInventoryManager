@@ -34,12 +34,14 @@ internal sealed class DataListPage<T> : UserControl where T : class
     private readonly List<Control> _extraFilters = new();
     private bool _actionRunning;
     private string _summary = "";
+    // Hiển thị thông tin tổng hợp cho danh sách dữ liệu.
     public void SetSummary(string summary) => _summary = summary;
     private bool _initialized;
     private bool _hiddenAfterLoad;
     private readonly bool _history;
     private readonly List<(AntdUI.Button Button, Func<T, int, Task<bool>>? Permission)> _selectedActions = new();
 
+    // Khởi tạo trang danh sách dùng chung với bộ lọc, thao tác và phân trang.
     public DataListPage(UiServices services, string scope,
         (string Property, string Caption)[] columns,
         Func<int, string, DateTime?, DateTime?, Task<IReadOnlyList<T>>> query,
@@ -130,6 +132,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         };
         _actions.WrapContents = true;
         _actions.AutoScroll = false;
+        // Điều chỉnh chiều cao vùng thao tác theo số nút và cách xuống dòng.
         void FitActions()
         {
             var rows = 1; var used = 0; var rowHeight = 44; var width = Math.Max(160, _actions.ClientSize.Width);
@@ -161,15 +164,18 @@ internal sealed class DataListPage<T> : UserControl where T : class
         };
     }
 
+    // Thêm cột mở thông tin chi tiết vào bảng danh sách.
     public void AddDetailsColumn(bool insetButton = false) => UiDetails.AddColumn(_grid, insetButton);
 
     public IReadOnlyList<T> CurrentRows => _grid.DataSource is IEnumerable<T> rows ? rows.ToList() : [];
+    // Thêm điều khiển lọc và đăng ký sự kiện tải lại dữ liệu.
     public void AddFilter(string caption, Control control)
     {
         _extraFilters.Add(control);
         if (control is ComboBox lookup) WatchLookup(lookup);
         _filters.Controls.Add(LiveUi.Field(caption, control));
     }
+    // Theo dõi việc tìm hoặc đổi lựa chọn để tránh thao tác trên dữ liệu cũ.
     private void WatchLookup(ComboBox lookup)
     {
         LiveUi.OnLookupSearch(lookup, InvalidateLookupData);
@@ -182,6 +188,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
             }
         };
     }
+    // Xóa dữ liệu phụ thuộc khi lựa chọn tra cứu chưa được xác nhận.
     private void InvalidateLookupData()
     {
         _lookupVersion++;
@@ -191,12 +198,14 @@ internal sealed class DataListPage<T> : UserControl where T : class
         foreach (Control button in _actions.Controls.Cast<Control>().Skip(2))
             if (button.Enabled) { _lookupDisabledActions.Add(button); button.Enabled = false; }
     }
+    // Khôi phục trạng thái nút thao tác sau khi lựa chọn tra cứu hợp lệ.
     private void RestoreLookupActions()
     {
         if (HasPendingSearch) return;
         foreach (var button in _lookupDisabledActions) if (!button.IsDisposed) button.Enabled = true;
         _lookupDisabledActions.Clear();
     }
+    // Lưu cách nhận diện dòng để giữ lựa chọn sau khi tải lại danh sách.
     public DataListPage<T> PreserveSelection(Func<T, object> key) { _selectionKey = key; return this; }
     public IReadOnlyList<T> DisplayedRows => _grid.Rows.Cast<DataGridViewRow>().Select(row => row.DataBoundItem).OfType<T>().ToList();
     public string SearchText => _search.Text.Trim();
@@ -205,6 +214,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
     public DateTime? SelectedFrom => _history && _from.Checked ? _from.Value.Date : null;
     public DateTime? SelectedTo => _history && _to.Checked ? _to.Value.Date : null;
 
+    // Thêm nút và xử lý thao tác chung cho trang danh sách.
     public AntdUI.Button Action(string caption, Func<Task> action, string? icon = null)
     {
         var button = ProductUi.Button("btn" + _actions.Controls.Count, caption, icon);
@@ -222,6 +232,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         return button;
     }
 
+    // Thêm thao tác chỉ thực hiện khi có dòng được chọn.
     public void SelectedAction(string caption, Func<T, int, Task> action, string? icon = null,
         Func<T, int, Task<bool>>? permission = null)
     {
@@ -246,6 +257,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         _selectedActions.Add((button, permission));
     }
 
+    // Cập nhật quyền và trạng thái các nút thao tác trên dòng đang chọn.
     private async Task UpdateSelectedActionsAsync()
     {
         foreach (var action in _selectedActions)
@@ -268,6 +280,7 @@ internal sealed class DataListPage<T> : UserControl where T : class
         }
     }
 
+    // Cấu hình tải dữ liệu và điều khiển chuyển trang cho danh sách.
     public DataListPage<T> UsePagination(Func<int, string, DateTime?, DateTime?, int, int, Task<PagedResultDto<T>>> query)
     {
         _pageQuery = query;
@@ -276,9 +289,12 @@ internal sealed class DataListPage<T> : UserControl where T : class
         return this;
     }
 
+    // Tải lại danh sách với bộ lọc hiện tại và cập nhật phân trang.
     public Task RefreshAsync() => LoadPageAsync(true);
+    // Tải lại trang hiện tại và cập nhật lựa chọn cùng trạng thái thao tác.
     public Task RefreshCurrentPageAsync() => LoadPageAsync(false);
 
+    // Tải một trang dữ liệu theo bộ lọc và cập nhật thông tin phân trang.
     private async Task LoadPageAsync(bool resetPage)
     {
         if (_busy || _resettingFilters || IsDisposed) return;

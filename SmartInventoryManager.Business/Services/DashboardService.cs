@@ -11,12 +11,14 @@ public sealed class DashboardService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
+    // Khởi tạo service xử lý các chỉ số tổng quan kho cùng các thành phần phụ thuộc.
     public DashboardService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
+    // Lấy các chỉ số tổng quan kho theo điều kiện tra cứu và phạm vi truy cập.
     public async Task<DashboardDto> GetAsync(UserSession session, int? warehouseId = null, DateTime? from = null,
         DateTime? to = null, CancellationToken cancellationToken = default)
     {

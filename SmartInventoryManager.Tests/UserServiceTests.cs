@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class UserServiceTests
 {
+    // Kiểm tra ADMIN ngừng tài khoản khác nhưng giữ dữ liệu lịch sử.
     [TestMethod]
     public async Task DeactivateAsync_AdminDeactivatesOtherUserWithoutDeletingHistory()
     {
@@ -34,6 +35,7 @@ public class UserServiceTests
         Assert.IsTrue(await context.Users.AnyAsync(user => user.UserId == staff.UserId));
     }
 
+    // Kiểm tra không cho quản trị viên tự ngừng hoạt động tài khoản của mình.
     [TestMethod]
     public async Task DeactivateAsync_RejectsSelfDeactivation()
     {
@@ -49,6 +51,7 @@ public class UserServiceTests
         await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.DeactivateAsync(session, 1));
     }
 
+    // Kiểm tra ADMIN cập nhật đúng hồ sơ, vai trò và trạng thái người dùng.
     [TestMethod]
     public async Task UpdateUserAsync_AdminUpdatesProfileRoleAndStatus()
     {
@@ -74,6 +77,7 @@ public class UserServiceTests
         Assert.IsFalse(stored.IsActive);
     }
 
+    // Kiểm tra đặt lại mật khẩu thay chuỗi băm cũ bằng mật khẩu mới.
     [TestMethod]
     public async Task ResetPasswordAsync_ReplacesOldPasswordHash()
     {
@@ -109,6 +113,7 @@ public class UserServiceTests
         Assert.IsFalse(log.Description.Contains(stored.PasswordHash, StringComparison.Ordinal));
     }
 
+    // Kiểm tra đổi mật khẩu cập nhật chuỗi băm của người dùng hiện tại.
     [TestMethod]
     public async Task ChangePasswordAsync_UpdatesPasswordHashForCurrentUser()
     {
@@ -138,6 +143,7 @@ public class UserServiceTests
         Assert.IsFalse(hasher.VerifyPassword("OldPassword1", stored.PasswordHash));
     }
 
+    // Kiểm tra đổi mật khẩu từ chối khi mật khẩu hiện tại không đúng.
     [TestMethod]
     public async Task ChangePasswordAsync_RejectsWrongCurrentPassword()
     {
@@ -165,6 +171,7 @@ public class UserServiceTests
         Assert.AreEqual(0, await context.SystemLogs.CountAsync());
     }
 
+    // Tạo DbContext bộ nhớ riêng cho ca kiểm thử.
     private static InventoryDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>()

@@ -20,6 +20,7 @@ public sealed class ImportService : IImportService
     private readonly StockEventPublisher _publisher;
     private readonly ImportValidator _validator = new();
 
+    // Khởi tạo service xử lý phiếu nhập cùng các thành phần phụ thuộc.
     public ImportService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
@@ -30,6 +31,7 @@ public sealed class ImportService : IImportService
 
     public event EventHandler<ReceiptCompletedEvent>? ReceiptCompleted;
 
+    // Tạo phiếu nhập nháp, tính tổng tiền và cấp mã khi cần.
     public async Task<int> CreateDraftAsync(
         UserSession session,
         ImportReceiptDto request,
@@ -94,6 +96,7 @@ public sealed class ImportService : IImportService
         return receipt.ImportReceiptId;
     }
 
+    // Lấy danh sách phiếu nhập theo quyền và điều kiện lọc.
     public async Task<IReadOnlyList<ImportReceiptListItemDto>> GetListAsync(
         UserSession session, int? warehouseId = null, string? status = null, DateTime? from = null,
         DateTime? to = null, string? search = null, CancellationToken cancellationToken = default)
@@ -102,6 +105,7 @@ public sealed class ImportService : IImportService
         return await query.ToListAsync(cancellationToken);
     }
 
+    // Lấy một trang phiếu nhập theo bộ lọc và phạm vi truy cập.
     public async Task<PagedResultDto<ImportReceiptListItemDto>> GetPageAsync(
         UserSession session, ReceiptSearchDto search, CancellationToken cancellationToken = default)
     {
@@ -110,6 +114,7 @@ public sealed class ImportService : IImportService
         return await QueryPaging.ReadAsync(query, search.PageNumber, search.PageSize, cancellationToken);
     }
 
+    // Tạo truy vấn phiếu nhập với các điều kiện lọc và giới hạn quyền.
     private async Task<IQueryable<ImportReceiptListItemDto>> QueryListAsync(
         UserSession session, int? warehouseId, string? status, DateTime? from, DateTime? to,
         string? search, CancellationToken cancellationToken)
@@ -166,6 +171,7 @@ public sealed class ImportService : IImportService
                 receipt.Status));
     }
 
+    // Lấy thông tin chi tiết phiếu nhập theo mã định danh.
     public async Task<ImportReceiptDetailsDto?> GetByIdAsync(
         UserSession session,
         int importReceiptId,
@@ -223,6 +229,7 @@ public sealed class ImportService : IImportService
             };
     }
 
+    // Kiểm tra dữ liệu rồi chuyển phiếu nháp sang trạng thái chờ duyệt.
     public async Task SubmitAsync(
         UserSession session,
         int importReceiptId,
@@ -255,6 +262,7 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Xóa phiếu nháp khi quyền, trạng thái và lịch sử cho phép.
     public async Task DeleteDraftAsync(
         UserSession session,
         int importReceiptId,
@@ -284,6 +292,7 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Duyệt phiếu đang chờ xử lý và ghi lịch sử chuyển trạng thái.
     public async Task ApproveAsync(
         UserSession session,
         int importReceiptId,
@@ -311,6 +320,7 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Từ chối phiếu và lưu lý do cùng lịch sử xử lý.
     public async Task RejectAsync(
         UserSession session,
         int importReceiptId,
@@ -356,6 +366,7 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Đưa phiếu bị từ chối về trạng thái cho phép sửa và gửi lại.
     public async Task ResubmitAsync(
         UserSession session,
         int importReceiptId,
@@ -383,6 +394,7 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Hoàn tất phiếu với cơ chế thử lại khi gặp deadlock trước lúc commit.
     public Task CompleteAsync(UserSession session, int importReceiptId, CancellationToken cancellationToken = default)
     {
         var committed = false;
@@ -390,6 +402,7 @@ public sealed class ImportService : IImportService
             () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
     }
 
+    // Kiểm tra phiếu và ghi nhận tồn, trạng thái, lịch sử trong cùng giao dịch.
     private async Task CompleteCoreAsync(
         UserSession session,
         int importReceiptId,
@@ -447,6 +460,7 @@ public sealed class ImportService : IImportService
             receipt.Details.Select(detail => detail.ProductId).Distinct().ToArray()));
     }
 
+    // Cập nhật thông tin và các dòng hàng của phiếu được phép chỉnh sửa.
     public async Task UpdateDraftAsync(
         UserSession session,
         int importReceiptId,
@@ -506,9 +520,11 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Chuyển yêu cầu hủy phiếu nháp sang hàm xử lý hủy chung.
     public Task CancelDraftAsync(UserSession session, int importReceiptId, CancellationToken cancellationToken = default)
         => CancelAsync(session, importReceiptId, string.Empty, cancellationToken);
 
+    // Hủy phiếu hợp lệ và lưu người thực hiện, thời điểm cùng lý do.
     public async Task CancelAsync(
         UserSession session,
         int importReceiptId,
@@ -542,6 +558,7 @@ public sealed class ImportService : IImportService
             await transaction.CommitAsync(cancellationToken);
     }
 
+    // Thông báo phiếu đã hoàn tất cho từng bên nhận sự kiện.
     private void PublishReceiptCompleted(ReceiptCompletedEvent value)
     {
         if (ReceiptCompleted is null) return;
@@ -550,6 +567,7 @@ public sealed class ImportService : IImportService
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Receipt subscriber failed: {ex.GetType().Name}"); }
     }
 
+    // Kiểm tra dữ liệu tham chiếu và các dòng hàng đã lưu của phiếu.
     private async Task ValidateStoredReceiptAsync(ImportReceipt receipt, CancellationToken cancellationToken)
     {
         if (receipt.Details.Count == 0)
@@ -573,6 +591,7 @@ public sealed class ImportService : IImportService
         }
     }
 
+    // Kiểm tra dữ liệu yêu cầu xử lý phiếu nhập trước khi lưu.
     private void ValidateRequest(ImportReceiptDto request, bool requireDetails)
     {
         if ((requireDetails && request.Details.Count == 0) ||
@@ -589,8 +608,10 @@ public sealed class ImportService : IImportService
         }
     }
 
+    // Sinh mã phiếu khi người dùng chưa cung cấp mã.
     private static string GenerateReceiptCode() => $"PN{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..38];
 
+    // Kiểm tra mã định danh phiếu là số dương.
     private static void ValidateReceiptId(int receiptId)
     {
         if (receiptId <= 0)
@@ -599,6 +620,7 @@ public sealed class ImportService : IImportService
         }
     }
 
+    // Kiểm tra độ dài ghi chú của phiếu theo giới hạn cho phép.
     private static void ValidateNote(string? note)
     {
         if (note?.Trim().Length > MaxReceiptNoteLength)
@@ -607,6 +629,7 @@ public sealed class ImportService : IImportService
         }
     }
 
+    // Kiểm tra phiên đăng nhập hợp lệ trước khi xử lý yêu cầu.
     private static void ValidateSession(UserSession session)
     {
         ArgumentNullException.ThrowIfNull(session);

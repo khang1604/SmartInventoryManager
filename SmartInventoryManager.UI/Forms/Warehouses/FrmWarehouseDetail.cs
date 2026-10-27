@@ -10,11 +10,15 @@ public sealed class FrmWarehouseDetail : Form
     private readonly bool _location;
     private readonly int? _id;
 
+    // Khởi tạo màn hình chi tiết kho hoặc vị trí lưu trữ.
     public FrmWarehouseDetail(bool location = false) : this(null, location, null, null) { }
 
+    // Khởi tạo màn hình chi tiết kho hoặc vị trí lưu trữ.
     public FrmWarehouseDetail(UiServices services, bool location, WarehouseDto? warehouse = null) : this(services, location, warehouse, null) { }
+    // Khởi tạo màn hình chi tiết kho hoặc vị trí lưu trữ.
     public FrmWarehouseDetail(UiServices services, bool location, LocationDto? locationDto) : this(services, location, null, locationDto) { }
 
+    // Khởi tạo màn hình chi tiết kho hoặc vị trí lưu trữ.
     private FrmWarehouseDetail(UiServices? services, bool location, WarehouseDto? warehouse, LocationDto? locationDto)
     {
         _services = services; _location = location; _id = warehouse?.WarehouseId ?? locationDto?.LocationId;
@@ -150,12 +154,17 @@ public sealed class FrmWarehouseDetail : Form
         if(location && services is not null) Shown+=async(_,_)=> { try { var choices=await services.RunAsync(()=>services.Warehouses.GetActiveAsync(services.Session)); if (IsDisposed || Disposing) return; var picker=Controls.Find("cboWarehouse",true).OfType<ComboBox>().Single(); picker.DisplayMember="Name"; picker.ValueMember="Id"; picker.DataSource=new[]{new LookupItemDto(0,"","Chọn kho")}.Concat(choices).ToList(); picker.SelectedValue=locationDto?.WarehouseId ?? 0; } catch(Exception ex) { if (!IsDisposed && !Disposing) MessageBox.Show(this,LiveUi.LoadError(ex),"Kho",MessageBoxButtons.OK,MessageBoxIcon.Warning); } };
     }
 
+    // Đưa thông tin kho lên các trường chỉnh sửa.
     private void LoadWarehouse(WarehouseDto value) { Input("txtWarehouseCode").Text = value.WarehouseCode; Input("txtWarehouseName").Text = value.WarehouseName; Input("txtAddress").Text = value.Location ?? string.Empty; Check().Checked = value.IsActive; }
+    // Đưa thông tin vị trí lưu trữ lên các trường chỉnh sửa.
     private void LoadLocation(LocationDto value) { Input("txtLocationCode").Text = value.LocationCode; Input("txtLocationName").Text = value.LocationName ?? string.Empty;  Check().Checked = value.IsActive; }
+    // Tạo điều khiển nhập liệu cho trường thông tin trên form.
     private AntdUI.Input Input(string name) => Controls.Find(name, true).OfType<AntdUI.Input>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
+    // Tạo điều khiển lựa chọn trạng thái hoạt động cho form.
     private CheckBox Check() => Controls.Find("chkIsActive", true).OfType<CheckBox>().FirstOrDefault() ?? throw new InvalidOperationException("Không tìm thấy trạng thái.");
     private bool _saving;
 
+    // Kiểm tra các trường nhập rồi tạo hoặc cập nhật kho hay vị trí.
     private async Task SaveAsync()
     {
         if (_services is null || _saving) return;
@@ -180,6 +189,7 @@ public sealed class FrmWarehouseDetail : Form
         finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
+    // Tạo điều khiển nhập liệu cho trường thông tin trên form.
     private static AntdUI.Input Input(string name, string placeholder = "", int maxLength = 0, bool dropdown = false)
     {
         var input = ProductUi.Input(name, placeholder);
@@ -193,6 +203,7 @@ public sealed class FrmWarehouseDetail : Form
         return input;
     }
 
+    // Tạo ô nhập liệu theo kích thước và thông tin mô tả.
     private static void Field(TableLayoutPanel fields, int row, string caption, Control input, int height = 54)
     {
         fields.RowStyles.Add(new RowStyle(SizeType.Absolute, height));

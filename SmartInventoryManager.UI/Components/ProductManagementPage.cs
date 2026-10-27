@@ -17,6 +17,7 @@ internal sealed class ProductManagementPage : UserControl
     private int PageSize => UiPreferences.Current.PageSize;
     private bool _busy;
 
+    // Khởi tạo trang quản lý sản phẩm kết nối với các service.
     public ProductManagementPage(UiServices services)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
@@ -143,12 +144,14 @@ internal sealed class ProductManagementPage : UserControl
         Load += async (_, _) => await RefreshAsync();
     }
 
+    // Áp dụng cỡ chữ, kích thước trang và tải lại danh sách theo cài đặt.
     public async Task ApplyPreferencesAsync()
     {
         _pageNumber = 1;
         await RefreshAsync();
     }
 
+    // Tải lại danh mục tra cứu và danh sách sản phẩm theo bộ lọc hiện tại.
     private async Task RefreshAsync()
     {
         if (_busy || IsDisposed) return;
@@ -187,6 +190,7 @@ internal sealed class ProductManagementPage : UserControl
         }
     }
 
+    // Mở form thêm hoặc sửa sản phẩm rồi tải lại danh sách khi lưu thành công.
     private async Task OpenEditorAsync(int? productId)
     {
         if (_busy) return;

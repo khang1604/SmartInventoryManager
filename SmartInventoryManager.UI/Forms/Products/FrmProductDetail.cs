@@ -9,12 +9,14 @@ public partial class FrmProductDetail : Form
     private readonly UiServices? _services;
     private readonly int? _productId;
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa sản phẩm.
     public FrmProductDetail()
     {
         InitializeComponent();
         BuildLayout();
     }
 
+    // Khởi tạo màn hình thêm hoặc chỉnh sửa sản phẩm.
     public FrmProductDetail(UiServices services, int? productId = null) : this()
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
@@ -25,6 +27,7 @@ public partial class FrmProductDetail : Form
         Shown += async (_, _) => await LoadDataAsync();
     }
 
+    // Tạo và sắp xếp các vùng giao diện của màn hình.
     private void BuildLayout()
     {
         Text = "VioWare - Thông tin sản phẩm";
@@ -118,6 +121,7 @@ public partial class FrmProductDetail : Form
         Controls.Add(root);
     }
 
+    // Tải dữ liệu phục vụ form và cập nhật các điều khiển hiển thị.
     private async Task LoadDataAsync()
     {
         if (_services is null) return;
@@ -144,6 +148,7 @@ public partial class FrmProductDetail : Form
 
     private bool _saving;
 
+    // Kiểm tra các trường nhập rồi tạo hoặc cập nhật sản phẩm.
     private async Task SaveAsync()
     {
         if (_services is null || _saving) return;
@@ -177,11 +182,13 @@ public partial class FrmProductDetail : Form
         finally { _saving = false; if (!IsDisposed) save.Enabled = true; }
     }
 
+    // Tìm điều khiển theo tên trong cây thành phần của form.
     private T FindControl<T>(string name) where T : Control
     {
         return Controls.Find(name, true).OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"Không tìm thấy control {name}.");
     }
 
+    // Tạo vùng tiêu đề để phân nhóm các trường thông tin trên form.
     private static TableLayoutPanel Section(string caption)
     {
         var section = ProductUi.Layout(1, 2);
@@ -207,6 +214,7 @@ public partial class FrmProductDetail : Form
         return fields;
     }
 
+    // Tạo ô nhập số với giới hạn và định dạng phù hợp.
     private static AntdUI.InputNumber Number(string name, int decimals) => new()
     {
         Name = name, DecimalPlaces = decimals, ThousandsSeparator = true,
@@ -218,6 +226,7 @@ public partial class FrmProductDetail : Form
         BackColor = AppColors.Surface, ForeColor = AppColors.Text
     };
 
+    // Thêm nhãn và điều khiển nhập liệu vào bố cục form.
     private static void AddField(TableLayoutPanel table, int column, int row, string caption, Control input, int tabIndex)
     {
         table.Controls.Add(ProductUi.Label(caption, 10, true), column, row * 2);

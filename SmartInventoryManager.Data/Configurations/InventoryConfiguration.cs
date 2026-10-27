@@ -7,6 +7,7 @@ namespace SmartInventoryManager.Data.Configurations
     public class InventoryConfiguration
         : IEntityTypeConfiguration<Inventory>
     {
+        // Cấu hình ánh xạ, quan hệ và ràng buộc dữ liệu của tồn kho.
         public void Configure(EntityTypeBuilder<Inventory> builder)
         {
             builder.ToTable("Inventory");

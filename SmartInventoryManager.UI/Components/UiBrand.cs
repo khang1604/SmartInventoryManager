@@ -4,6 +4,7 @@ internal static class UiBrand
 {
     public const string ApplicationName = "VioWare";
     public const string ProjectName = "Smart Inventory Manager";
+    // Gắn biểu tượng ứng dụng vào cửa sổ.
     public static void ApplyIcon(Form form)
     {
         using var stream = typeof(UiBrand).Assembly.GetManifestResourceStream("SmartInventoryManager.UI.ApplicationIcon")
@@ -14,6 +15,7 @@ internal static class UiBrand
         form.Disposed += (_, _) => icon.Dispose();
     }
 
+    // Tạo hình logo dùng trong giao diện ứng dụng.
     public static PictureBox CreateLogo()
     {
         using var stream = typeof(UiBrand).Assembly.GetManifestResourceStream("SmartInventoryManager.UI.ProjectLogo")

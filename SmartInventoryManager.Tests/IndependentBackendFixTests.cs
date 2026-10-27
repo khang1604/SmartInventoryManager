@@ -11,6 +11,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class IndependentBackendFixTests
 {
+    // Kiểm tra gửi duyệt tải đúng các dòng phiếu đã lưu sau khi xóa theo dõi entity.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -53,6 +54,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(0, await db.InventoryTransactions.CountAsync());
     }
 
+    // Kiểm tra không được ngừng danh mục còn sản phẩm hoạt động.
     [TestMethod]
     public async Task CategoryUpdate_CannotDeactivateCategoryWithActiveProducts()
     {
@@ -67,6 +69,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual("Office", category.CategoryName);
     }
 
+    // Kiểm tra người phụ trách kho phải có tài khoản và vai trò quản lý còn hoạt động.
     [DataTestMethod]
     [DataRow(1, false)]
     [DataRow(2, true)]
@@ -94,6 +97,7 @@ public class IndependentBackendFixTests
         }
     }
 
+    // Kiểm tra cảnh báo dùng số tồn đang thay đổi và đóng loại cảnh báo không còn phù hợp.
     [DataTestMethod]
     [DataRow(10, "NORMAL")]
     [DataRow(0, "OUT_OF_STOCK")]
@@ -130,6 +134,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(2, await db.Inventories.AsNoTracking().Select(i => i.Quantity).SingleAsync());
     }
 
+    // Kiểm tra làm mới cảnh báo xét cả bản ghi tồn mới trước lần lưu đầu tiên.
     [TestMethod]
     public async Task AlertRefresh_IncludesNewInventoryBeforeFirstSave()
     {
@@ -142,6 +147,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(0, await db.Inventories.AsNoTracking().CountAsync());
     }
 
+    // Kiểm tra duyệt phiếu đọc lại trạng thái đã hủy thay vì dùng trạng thái theo dõi cũ.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -189,9 +195,11 @@ public class IndependentBackendFixTests
         Assert.AreEqual("CANCELLED", status);
     }
 
+    // Tạo DbContext bộ nhớ riêng cho ca kiểm thử.
     private static InventoryDbContext CreateContext() => new(new DbContextOptionsBuilder<InventoryDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
+    // Kiểm tra thay đổi dữ liệu bị chặn khi tài khoản bị ngừng hoặc đã đổi vai trò.
     [DataTestMethod]
     [DataRow("category", false)]
     [DataRow("supplier", false)]
@@ -243,6 +251,7 @@ public class IndependentBackendFixTests
         Assert.IsTrue(await db.Users.Where(u => u.UserId == 2).Select(u => u.IsActive).SingleAsync());
     }
 
+    // Kiểm tra tổng báo cáo tồn tính cả các dòng ngoài giới hạn hiển thị.
     [TestMethod]
     public async Task InventoryReport_TotalIncludesRowsBeyondDisplayLimit()
     {
@@ -270,6 +279,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(5001, report.Rows.Count);
     }
 
+    // Kiểm tra tổng báo cáo phiếu không bị cắt theo số dòng hiển thị và không tính phiếu nháp.
     [TestMethod]
     public async Task ReceiptReport_TotalsIncludeRowsBeyondLimitAndExcludeDrafts()
     {
@@ -315,6 +325,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(5001, report.Exports.Count);
     }
 
+    // Kiểm tra thu hồi phân công giữ lịch sử, chặn quyền và cho phép phục hồi khi kích hoạt lại.
     [TestMethod]
     public async Task Assignment_DeactivationRetainsRowAndRevokesCurrentScope_ReactivationRestoresScope()
     {
@@ -339,6 +350,7 @@ public class IndependentBackendFixTests
         await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.SetActiveAsync(Admin(), 1, 1, true));
     }
 
+    // Kiểm tra lọc từ khóa và loại phiếu trước khi tính tổng, lấy các dòng báo cáo.
     [TestMethod]
     public async Task Reports_ApplySearchAndTypeBeforeTotalsAndRows()
     {
@@ -366,6 +378,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(0, low.Rows.Count);
     }
 
+    // Kiểm tra tổng quan dùng cửa sổ 30 ngày và phân bố trạng thái tồn hiện tại.
     [TestMethod]
     public async Task Dashboard_UsesThirtyDaysAndCurrentStockDistribution()
     {
@@ -388,6 +401,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual("Admin", result.RecentTransactions.First().ActorName);
     }
 
+    // Kiểm tra lỗi ở một bên nhận sự kiện không chặn các bên nhận còn lại.
     [TestMethod]
     public void PostCommitPublisher_SubscriberFailureDoesNotPreventOtherConsumers()
     {
@@ -399,6 +413,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(1, count);
     }
 
+    // Tạo phiên quản trị viên giả lập cho ca kiểm thử.
     private static UserSession Admin()
     {
         var session = new UserSession();
@@ -406,6 +421,7 @@ public class IndependentBackendFixTests
         return session;
     }
 
+    // Kiểm tra danh sách kho, vị trí có tên hiển thị và chỉ cho chọn quản lý còn hoạt động.
     [TestMethod]
     public async Task WarehouseAndLocationLists_IncludeDisplayNamesAndOnlyActiveManagers()
     {
@@ -425,6 +441,7 @@ public class IndependentBackendFixTests
         Assert.AreEqual(2, managers.Single().Id);
     }
 
+    // Thêm dữ liệu minh họa ban đầu vào DbContext phục vụ kiểm thử.
     private static void Seed(InventoryDbContext db)
     {
         db.Users.AddRange(

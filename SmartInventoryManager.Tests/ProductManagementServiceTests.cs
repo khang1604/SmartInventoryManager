@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class ProductManagementServiceTests
 {
+    // Kiểm tra dữ liệu danh mục được nạp đúng sau các thao tác tạo, sửa và ngừng sản phẩm.
     [TestMethod]
     public async Task ProductLifecycle_LoadsCategoryAfterCreateUpdateAndDeactivation()
     {
@@ -56,6 +57,7 @@ public class ProductManagementServiceTests
         Assert.IsNull(await service.GetByIdAsync(session, int.MaxValue));
     }
 
+    // Kiểm tra tạo, sửa sản phẩm từ chối danh mục thiếu hoặc ngừng hoạt động mà không lưu dở dang.
     [TestMethod]
     public async Task CreateAndUpdate_RejectMissingOrInactiveCategoryWithoutSavingChanges()
     {
@@ -80,6 +82,7 @@ public class ProductManagementServiceTests
         Assert.AreEqual(1, (await service.GetByIdAsync(session, id))!.CategoryId);
     }
 
+    // Kiểm tra xem sản phẩm hiện có vẫn nạp được danh mục đã ngừng hoạt động.
     [TestMethod]
     public async Task Reads_LoadInactiveCategoryForExistingProduct()
     {
@@ -93,6 +96,7 @@ public class ProductManagementServiceTests
         Assert.AreEqual("Inactive", (await service.GetByIdAsync(CreateSession(), 1))!.CategoryName);
     }
 
+    // Kiểm tra chuyển DTO báo lỗi rõ ràng khi quan hệ danh mục chưa được tải.
     [TestMethod]
     public void ToDto_RejectsUnloadedCategoryWithDiagnosticError()
     {
@@ -104,6 +108,7 @@ public class ProductManagementServiceTests
         StringAssert.Contains(exception.InnerException.Message, "99");
     }
 
+    // Kiểm tra quan hệ sản phẩm với danh mục là bắt buộc và hạn chế xóa dữ liệu tham chiếu.
     [TestMethod]
     public void ProductCategoryRelationship_IsRequiredAndRestrictsDeletion()
     {
@@ -115,6 +120,7 @@ public class ProductManagementServiceTests
         Assert.AreEqual(DeleteBehavior.Restrict, relationship.DeleteBehavior);
     }
 
+    // Kiểm tra đổi trạng thái sản phẩm từ chối mã định danh không hợp lệ.
     [TestMethod]
     public async Task SetActive_RejectsInvalidProductId()
     {
@@ -125,6 +131,7 @@ public class ProductManagementServiceTests
             service.SetActiveAsync(CreateSession(), 0, false));
     }
 
+    // Tạo DbContext bộ nhớ để kiểm thử mà không cần SQL Server.
     private static InventoryDbContext CreateDbContext()
     {
         var db = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>()
@@ -143,8 +150,10 @@ public class ProductManagementServiceTests
         return db;
     }
 
+    // Tạo service quản lý sản phẩm với các thành phần phụ thuộc phục vụ kiểm thử.
     private static ProductManagementService CreateService(InventoryDbContext db) => new(db, new AuthorizationService(db));
 
+    // Tạo phiên đăng nhập giả lập phục vụ kiểm tra quyền và nghiệp vụ.
     private static UserSession CreateSession()
     {
         var session = new UserSession();
@@ -152,6 +161,7 @@ public class ProductManagementServiceTests
         return session;
     }
 
+    // Tạo yêu cầu sản phẩm hợp lệ gắn với danh mục của ca kiểm thử.
     private static ProductRequestDto Request(int categoryId) => new()
     {
         ProductCode = "P001", ProductName = "Product", CategoryId = categoryId,

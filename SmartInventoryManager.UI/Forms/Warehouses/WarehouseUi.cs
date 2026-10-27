@@ -6,6 +6,7 @@ namespace SmartInventoryManager.Forms.Warehouses;
 
 internal static class WarehouseUi
 {
+    // Tạo trang danh sách kho hoặc vị trí với bộ lọc và các thao tác.
     public static void BuildList(Form form, bool location, bool canManage, UiServices? services = null)
     {
         if (services is not null) { BuildConnected(form, location, canManage, services); return; }
@@ -150,6 +151,7 @@ internal static class WarehouseUi
         root.Controls.Add(note, 0, 3);
         form.Controls.Add(root);
 
+        // Tải danh sách kho hoặc vị trí theo các bộ lọc trên giao diện.
         async Task LoadAsync()
         {
             if (services is null) return;
@@ -173,6 +175,7 @@ internal static class WarehouseUi
             catch (Exception ex) { MessageBox.Show(form, LiveUi.Error(ex), "Không thể tải dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         }
 
+        // Cập nhật khả năng thao tác theo dòng đang chọn và quyền người dùng.
         void UpdateActions()
         {
             var selected = grid?.CurrentRow?.DataBoundItem is WarehouseDto or LocationDto;
@@ -180,6 +183,7 @@ internal static class WarehouseUi
             if (form.Controls.Find("btnDeactivate", true).FirstOrDefault() is Control deactivate) deactivate.Enabled = selected && canManage;
         }
 
+        // Mở form chỉnh sửa kho hoặc vị trí rồi tải lại danh sách.
         async Task EditAsync()
         {
             if (services is null) return;
@@ -195,6 +199,7 @@ internal static class WarehouseUi
             }
         }
 
+        // Đổi trạng thái kho hoặc vị trí sau khi kiểm tra điều kiện thao tác.
         async Task ToggleAsync()
         {
             if (services is null) return;
@@ -205,11 +210,13 @@ internal static class WarehouseUi
         if (services is not null) form.Shown += async (_, _) => await LoadAsync();
     }
 
+    // Tạo trang kho hoặc vị trí được kết nối với các service nghiệp vụ.
     private static void BuildConnected(Form form, bool location, bool canManage, UiServices services)
     {
         UiBrand.ApplyIcon(form);
         var state=LiveUi.Choice("cboStatus","Trạng thái");
         state.Items.AddRange(["Tất cả trạng thái","Đang hoạt động","Ngừng hoạt động"]); state.SelectedIndex=0;
+        // Kiểm tra từ khóa có khớp thông tin dùng để tìm kiếm trên giao diện.
         bool Matches(string code,string name,string search,bool active) => (string.IsNullOrEmpty(search) || code.Contains(search,StringComparison.CurrentCultureIgnoreCase) || name.Contains(search,StringComparison.CurrentCultureIgnoreCase)) && (state.SelectedIndex==0 || active==(state.SelectedIndex==1));
         if(location)
         {
@@ -252,6 +259,7 @@ internal static class WarehouseUi
         }
     }
 
+    // Thông báo chức năng chưa được kết nối trong chế độ xem trước giao diện.
     private static AntdUI.Button Unavailable(string name, string text, string icon, int width)
     {
         var button = ProductUi.Button(name, text, icon);

@@ -20,6 +20,7 @@ internal sealed class MainNavigationButton : Button
     [System.ComponentModel.DefaultValue(false)]
     public bool Selected { get; set; }
 
+    // Khởi tạo nút điều hướng có biểu tượng và trạng thái lựa chọn.
     public MainNavigationButton(string title, string icon)
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
@@ -36,11 +37,16 @@ internal sealed class MainNavigationButton : Button
             ?? throw new InvalidOperationException($"Cannot render icon: {icon}");
     }
 
+    // Cập nhật trạng thái hiển thị khi con trỏ đi vào nút điều hướng.
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+    // Khôi phục trạng thái hiển thị khi con trỏ rời nút điều hướng.
     protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
+    // Cập nhật hiển thị khi nút điều hướng nhận tiêu điểm bàn phím.
     protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    // Cập nhật hiển thị khi nút điều hướng mất tiêu điểm bàn phím.
     protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
+    // Nạp và thay biểu tượng hiển thị của nút điều hướng.
     public void SetIcon(string name)
     {
         var replacement = AntdUI.SvgExtend.SvgToBmp(MainIcons.Get(name), 28, 28, AppColors.Text)
@@ -50,6 +56,7 @@ internal sealed class MainNavigationButton : Button
         Invalidate();
     }
 
+    // Vẽ nền, biểu tượng và trạng thái của nút điều hướng.
     protected override void OnPaint(PaintEventArgs e)
     {
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -96,6 +103,7 @@ internal sealed class MainNavigationButton : Button
         }
     }
 
+    // Giải phóng các tài nguyên và thành phần do đối tượng quản lý.
     protected override void Dispose(bool disposing)
     {
         if (disposing) _icon.Dispose();

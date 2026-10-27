@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Data.Context
 {
     public class InventoryDbContext : DbContext
     {
+        // Khởi tạo DbContext từ các tùy chọn kết nối và mô hình EF Core.
         public InventoryDbContext(DbContextOptions<InventoryDbContext> options)
             : base(options)
         {
@@ -53,6 +54,7 @@ namespace SmartInventoryManager.Data.Context
 
 
 
+        // Cấu hình ánh xạ entity, quan hệ và các ràng buộc trong mô hình EF Core.
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

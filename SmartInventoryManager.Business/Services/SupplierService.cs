@@ -12,12 +12,14 @@ public sealed class SupplierService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
+    // Khởi tạo service xử lý nhà cung cấp cùng các thành phần phụ thuộc.
     public SupplierService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
+    // Lấy danh sách nhà cung cấp đang hoạt động trong phạm vi cho phép.
     public async Task<IReadOnlyList<LookupItemDto>> GetActiveAsync(
         UserSession session,
         string? search = null,
@@ -40,6 +42,7 @@ public sealed class SupplierService
             .ToListAsync(cancellationToken);
     }
 
+    // Lấy nhà cung cấp theo điều kiện tra cứu và phạm vi truy cập.
     public async Task<IReadOnlyList<SupplierDto>> GetAsync(UserSession session, bool includeInactive = true, CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated(session);
@@ -50,6 +53,7 @@ public sealed class SupplierService
             .ToListAsync(cancellationToken);
     }
 
+    // Kiểm tra dữ liệu rồi tạo mới nhà cung cấp.
     public async Task<int> CreateAsync(UserSession session, SupplierRequestDto request, CancellationToken cancellationToken = default)
     {
         EnsureCanManage(session);
@@ -63,6 +67,7 @@ public sealed class SupplierService
         return entity.SupplierId;
     }
 
+    // Kiểm tra dữ liệu rồi cập nhật thông tin nhà cung cấp.
     public async Task UpdateAsync(UserSession session, int supplierId, SupplierRequestDto request, CancellationToken cancellationToken = default)
     {
         ValidateId(supplierId, nameof(supplierId));
@@ -76,6 +81,7 @@ public sealed class SupplierService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Đổi trạng thái hoạt động của nhà cung cấp sau khi kiểm tra điều kiện liên quan.
     public async Task SetActiveAsync(UserSession session, int supplierId, bool isActive, CancellationToken cancellationToken = default)
     {
         ValidateId(supplierId, nameof(supplierId));
@@ -86,8 +92,11 @@ public sealed class SupplierService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Yêu cầu người dùng có quyền quản lý nhà cung cấp.
     private void EnsureCanManage(UserSession session) { if (!_authorization.CanManageSupplier(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý nhà cung cấp."); }
+    // Yêu cầu người dùng đã đăng nhập trước khi thực hiện nghiệp vụ.
     private static void EnsureAuthenticated(UserSession session) { if (session is null || !session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập."); }
+    // Kiểm tra các trường thông tin nhà cung cấp theo ràng buộc nghiệp vụ.
     private static void Validate(SupplierRequestDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -106,6 +115,7 @@ public sealed class SupplierService
             throw new ArgumentException("Mã số thuế không quá 50 ký tự.", nameof(request));
     }
 
+    // Kiểm tra mã định danh của nhà cung cấp là số dương.
     private static void ValidateId(int id, string parameterName)
     {
         if (id <= 0) throw new ArgumentOutOfRangeException(parameterName);

@@ -5,8 +5,10 @@ namespace SmartInventoryManager.UI.Components;
 internal sealed record ConnectionProfile(string Server, int Port, string Database, string Username,
     string Password, bool WindowsAuthentication = false, bool TrustServerCertificate = false)
 {
+    // Tạo tên hiển thị mô tả máy chủ và cơ sở dữ liệu trong cấu hình.
     public override string ToString() => $"{Server}:{Port}/{Database}";
 
+    // Kiểm tra cấu hình và tạo chuỗi kết nối SQL Server bằng builder.
     public string BuildConnectionString()
     {
         if (string.IsNullOrWhiteSpace(Server) || Server.IndexOfAny([';', '\r', '\n', ',', '\\']) >= 0
@@ -24,6 +26,7 @@ internal sealed record ConnectionProfile(string Server, int Port, string Databas
         return builder.ConnectionString;
     }
 
+    // Phân tích chuỗi kết nối thành cấu hình phục vụ giao diện thiết lập.
     public static ConnectionProfile FromConnectionString(string value)
     {
         var builder = new SqlConnectionStringBuilder(value);

@@ -10,6 +10,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class AuthServiceTests
 {
+    // Kiểm tra đăng nhập chấp nhận tên tài khoản hoặc email.
     [TestMethod]
     public void ValidateLoginCredentials_AcceptsUsernameOrEmailIdentifier()
     {
@@ -22,6 +23,7 @@ public class AuthServiceTests
         Assert.AreEqual(0, emailErrors.Count);
     }
 
+    // Kiểm tra yêu cầu đăng nhập bị từ chối khi thiếu mật khẩu.
     [TestMethod]
     public void ValidateLoginCredentials_RejectsMissingPassword()
     {
@@ -30,6 +32,7 @@ public class AuthServiceTests
         CollectionAssert.Contains(errors.ToList(), "Vui lòng nhập mật khẩu.");
     }
 
+    // Kiểm tra hàm đối chiếu vai trò bỏ khoảng trắng và không phân biệt hoa thường.
     [TestMethod]
     public void RoleHelpers_AreCaseInsensitiveAndTrimmed()
     {
@@ -41,6 +44,7 @@ public class AuthServiceTests
         Assert.IsFalse(service.IsKnownRole("UNKNOWN"));
     }
 
+    // Kiểm tra chuỗi băm tạo ra có thể xác thực lại đúng mật khẩu.
     [TestMethod]
     public void PasswordHasher_CanVerifyGeneratedHash()
     {
@@ -51,6 +55,7 @@ public class AuthServiceTests
         Assert.IsFalse(hasher.VerifyPassword("wrong-password", hash));
     }
 
+    // Kiểm tra chuỗi băm sai định dạng không được xác thực thành công.
     [TestMethod]
     public void PasswordHasher_RejectsMalformedHash()
     {
@@ -60,6 +65,7 @@ public class AuthServiceTests
         Assert.IsFalse(hasher.VerifyPassword(null, null));
     }
 
+    // Tạo service xác thực trên DbContext phục vụ kiểm thử.
     private static AuthService CreateAuthService()
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>().Options;

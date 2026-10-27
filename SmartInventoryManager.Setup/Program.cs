@@ -40,6 +40,7 @@ catch (Exception)
     Console.Error.WriteLine("Không hoàn tất bootstrap. Kiểm tra connection, migration và quyền DB; không tự chạy lại khi chưa kiểm tra kết quả."); Environment.ExitCode = 1;
 }
 
+// Đọc mật khẩu từ bàn phím với ký tự nhập được che trên màn hình.
 static string ReadPassword(string prompt)
 {
     Console.Write(prompt); var text = new StringBuilder();

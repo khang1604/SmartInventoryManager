@@ -4,12 +4,14 @@ namespace SmartInventoryManager.Forms.Imports;
 
 public partial class FrmImportList : Form
 {
+    // Khởi tạo màn hình danh sách phiếu nhập.
     public FrmImportList(UiServices services)
     {
         InitializeComponent();
         WorkflowUi.StyleForm(this);
         Controls.Add(new ReceiptListView(services, true));
     }
+    // Khởi tạo màn hình danh sách phiếu nhập.
     public FrmImportList()
     {
         InitializeComponent();

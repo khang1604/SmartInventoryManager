@@ -8,6 +8,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ReportExportService
 {
+    // Xuất các kết quả phân tích kho thành các trang trong tệp Excel.
     public static void ExportAnalyticsExcel(string path, AnalyticsDto report, decimal aThreshold = .80m, decimal bThreshold = .95m)
     {
         using var book = new XLWorkbook();
@@ -37,6 +38,7 @@ internal static class ReportExportService
         book.SaveAs(path);
     }
 
+    // Tạo tệp PDF phiếu nhập hoặc xuất theo mẫu A4.
     public static void ExportReceiptPdf(string path, string title, string code, DateTime date, string status,
         string warehouse, string creator, string? supplier, string? note, IReadOnlyList<ReceiptDetailViewDto> details, decimal total, ReceiptAuditDto? audit = null)
     {
@@ -88,6 +90,7 @@ internal static class ReportExportService
         })).GeneratePdf(path);
     }
 
+    // Xuất dữ liệu báo cáo tồn kho ra tệp Excel.
     public static void ExportInventoryExcel(string filePath, InventoryReportDto report)
     {
         using var workbook = new XLWorkbook();
@@ -117,6 +120,7 @@ internal static class ReportExportService
         workbook.SaveAs(filePath);
     }
 
+    // Xuất dữ liệu báo cáo tồn kho ra tệp PDF.
     public static void ExportInventoryPdf(string filePath, InventoryReportDto report)
     {
         QuestPDF.Settings.License = LicenseType.Community;
@@ -153,6 +157,7 @@ internal static class ReportExportService
         })).GeneratePdf(filePath);
     }
 
+    // Xuất dữ liệu báo cáo nhập xuất ra tệp Excel.
     public static void ExportImportExportExcel(string filePath, ImportExportReportDto report)
     {
         using var workbook = new XLWorkbook();
@@ -179,6 +184,7 @@ internal static class ReportExportService
         workbook.SaveAs(filePath);
     }
 
+    // Xuất dữ liệu báo cáo nhập xuất ra tệp PDF.
     public static void ExportImportExportPdf(string filePath, ImportExportReportDto report)
     {
         QuestPDF.Settings.License = LicenseType.Community;

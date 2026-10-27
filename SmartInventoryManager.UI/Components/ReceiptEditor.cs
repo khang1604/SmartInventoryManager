@@ -35,6 +35,7 @@ internal sealed class ReceiptEditor : UserControl
     private IReadOnlyList<ProductLookupDto> _products = Array.Empty<ProductLookupDto>();
     private IReadOnlyDictionary<int, int>? _stock;
 
+    // Khởi tạo bộ chỉnh sửa thông tin và các dòng hàng của phiếu.
     public ReceiptEditor(Form owner, UiServices services, bool import, int? id, bool edit)
     {
         _owner = owner; _services = services; _import = import; _id = id; _requestedEdit = edit;
@@ -165,6 +166,7 @@ internal sealed class ReceiptEditor : UserControl
         Load += async (_, _) => await LoadAsync();
     }
 
+    // Bật hoặc khóa các điều khiển trong lúc thao tác đang xử lý.
     private void SetBusy(bool busy)
     {
         _busy = busy;
@@ -175,12 +177,15 @@ internal sealed class ReceiptEditor : UserControl
         _add.Enabled = _remove.Enabled = _save.Enabled = !busy && _editable;
     }
 
+    // Hiển thị người xử lý, thời điểm và lịch sử nghiệp vụ của phiếu.
     private void ShowAudit(ReceiptAuditDto audit)
     {
+        // Định dạng thông tin người thực hiện và thời điểm xử lý phiếu.
         static string Stamp(string? name, DateTime? at) => $"{name ?? "Chưa có dữ liệu"} • {at?.ToString("dd/MM/yyyy HH:mm:ss") ?? "—"}";
         _audit.Text = $"Gửi duyệt gần nhất: {Stamp(audit.SubmittedByName, audit.SubmittedAt)}\r\nDuyệt gần nhất: {Stamp(audit.ApprovedByName, audit.ApprovedAt)}\r\nHoàn tất: {Stamp(audit.CompletedByName, audit.CompletedAt)}\r\nHủy: {Stamp(audit.CancelledByName, audit.CancelledAt)}\r\nLý do từ chối gần nhất: {audit.RejectReason ?? "—"}\r\nLý do hủy: {audit.CancelReason ?? "—"}";
     }
 
+    // Tải kho, sản phẩm và chi tiết phiếu để hiển thị hoặc chỉnh sửa.
     private async Task LoadAsync()
     {
         SetBusy(true);
@@ -243,6 +248,7 @@ internal sealed class ReceiptEditor : UserControl
         finally { _binding = false; SetBusy(false); }
     }
 
+    // Gắn danh sách lựa chọn vào hộp chọn và khôi phục giá trị cần chọn.
     private static void BindLookup(ComboBox control, IReadOnlyList<LookupItemDto> items, int id, string name, string placeholder)
     {
         var options = new List<LookupItemDto> { new(0, "", placeholder) };
@@ -254,6 +260,7 @@ internal sealed class ReceiptEditor : UserControl
         control.SelectedValue = id;
     }
 
+    // Tải số tồn theo sản phẩm và kho để hỗ trợ nhập dòng phiếu.
     private async Task LoadStockAsync()
     {
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
@@ -267,6 +274,7 @@ internal sealed class ReceiptEditor : UserControl
             if (row.Cells["ProductId"].Value is int productId) row.Cells["CurrentStock"].Value = _stock.GetValueOrDefault(productId);
     }
 
+    // Cập nhật khả năng chỉnh sửa phiếu theo quyền và trạng thái hiện tại.
     private async Task UpdatePermissionAsync()
     {
         var warehouseId = (_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0;
@@ -289,6 +297,7 @@ internal sealed class ReceiptEditor : UserControl
         if (!_busy && _loaded) _message.Text = PermissionHint();
     }
 
+    // Tạo lời giải thích về quyền thao tác trên phiếu.
     private string PermissionHint()
     {
         if (_requestedEdit && !_id.HasValue && ((_warehouse.SelectedItem as LookupItemDto)?.Id ?? 0) == 0)
@@ -299,6 +308,7 @@ internal sealed class ReceiptEditor : UserControl
         return "Chưa có quyền sửa phiếu tại kho đã chọn.";
     }
 
+    // Đọc và kiểm tra các dòng sản phẩm từ bảng chỉnh sửa phiếu.
     private bool TryReadLines(out IReadOnlyList<ReceiptDetailDto> details, bool showErrors, bool requireLine)
     {
         var result = new List<ReceiptDetailDto>();
@@ -327,6 +337,7 @@ internal sealed class ReceiptEditor : UserControl
         return valid && (!requireLine || result.Count > 0);
     }
 
+    // Tính lại thành tiền các dòng và tổng tiền phiếu trên giao diện.
     private void UpdateTotal()
     {
         decimal total = 0;
@@ -348,6 +359,7 @@ internal sealed class ReceiptEditor : UserControl
         finally { _binding = false; }
     }
 
+    // Đọc dữ liệu form rồi tạo hoặc cập nhật phiếu theo chế độ làm việc.
     private async Task SaveAsync()
     {
         if (_busy || !_editable || LiveUi.HasPendingSearch(_warehouse)) return;
@@ -400,6 +412,7 @@ internal sealed class ReceiptEditor : UserControl
         finally { SetBusy(false); }
     }
 
+    // Giải phóng các tài nguyên và thành phần do đối tượng quản lý.
     protected override void Dispose(bool disposing)
     {
         if (disposing) _errors.Dispose();

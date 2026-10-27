@@ -3,6 +3,7 @@ namespace SmartInventoryManager.Controls
     /// <summary>Skeleton UserControl for the StatisticCard component.</summary>
     public partial class StatisticCard : UserControl
     {
+        // Khởi tạo thẻ hiển thị chỉ số thống kê trên trang tổng quan.
         public StatisticCard()
         {
             InitializeComponent();

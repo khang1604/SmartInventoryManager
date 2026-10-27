@@ -15,6 +15,7 @@ public sealed class FrmWarehouseAssignments : Form
     private bool _busy;
     private bool _loaded;
 
+    // Khởi tạo màn hình phân công nhiều kho cho nhân viên.
     public FrmWarehouseAssignments(UiServices services, UserListItemDto user)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -68,6 +69,7 @@ public sealed class FrmWarehouseAssignments : Form
         FormClosing += (_, e) => { if (_busy) e.Cancel = true; };
     }
 
+    // Tải lại phân công kho sau khi thao tác lưu hoàn tất.
     private async Task RefreshAssignmentsAsync()
     {
         var data = await _services.RunAsync(async () => (
@@ -85,6 +87,7 @@ public sealed class FrmWarehouseAssignments : Form
         _loaded = true;
     }
 
+    // Tải các kho và các phân công hiện có của nhân viên.
     private async Task LoadAsync()
     {
         _busy = true;
@@ -100,6 +103,7 @@ public sealed class FrmWarehouseAssignments : Form
         finally { _busy = false; _save.Enabled = _warehouse.Enabled = _loaded; }
     }
 
+    // Lưu các kho được chọn và thu hồi những phân công đã bỏ chọn.
     private async Task SaveAsync()
     {
         if (_busy || !_loaded) return;

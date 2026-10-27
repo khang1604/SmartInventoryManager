@@ -11,8 +11,10 @@ namespace SmartInventoryManager.Business.Services;
 // Explicit setup operation; never registered in the desktop UI or run at application startup.
 public sealed class BootstrapAdminService(InventoryDbContext db)
 {
+    // Kiểm tra hệ thống đã có tài khoản quản trị đang hoạt động.
     public Task<bool> HasActiveAdminAsync(CancellationToken ct = default) => db.Users.AnyAsync(user => user.IsActive && user.Role.RoleName == RoleNames.Admin, ct);
 
+    // Tạo các vai trò và quản trị viên đầu tiên mà không ghi đè tài khoản sẵn có.
     public async Task<bool> CreateFirstAdminAsync(CreateUserRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);

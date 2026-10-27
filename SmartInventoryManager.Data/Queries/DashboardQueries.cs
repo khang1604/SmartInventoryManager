@@ -11,6 +11,7 @@ public sealed record DailyMovementQuantity(DateTime Date, long ImportQuantity, l
 
 public sealed class DashboardQueries(InventoryDbContext db)
 {
+    // Truy vấn tổng số lượng nhập xuất theo ngày trong phạm vi kho cho phép.
     public async Task<IReadOnlyList<DailyMovementQuantity>> GetDailyAsync(int[] warehouseIds, DateTime from, DateTime toExclusive, CancellationToken ct)
     {
         if (!db.Database.IsRelational())

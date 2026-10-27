@@ -21,6 +21,7 @@ internal sealed class FrmConnectionSettings : Form
     private string? _testedConnection;
     public string? ConnectionString { get; private set; }
 
+    // Khởi tạo màn hình cấu hình và kiểm tra kết nối máy chủ.
     public FrmConnectionSettings(ConnectionSettingsStore store, Func<string, CancellationToken, Task> probe)
     {
         _store = store; _probe = probe;
@@ -83,15 +84,18 @@ internal sealed class FrmConnectionSettings : Form
         ScrollbarAppearance.Apply(this);
     }
 
+    // Đọc các trường trên form thành cấu hình kết nối để kiểm tra hoặc lưu.
     private ConnectionProfile Profile() => new(_server.Text, (int)_port.Value, _database.Text,
         _username.Text, _password.Text, _windows.Checked, _trust.Checked);
 
+    // Hủy kết quả kiểm tra kết nối khi thông tin cấu hình thay đổi.
     private void InvalidateTest()
     {
         if (_testedConnection is not null) _status.Text = "Thông tin đã thay đổi. Kiểm tra lại kết nối trước khi lưu.";
         _testedConnection = null; _save.Enabled = false;
     }
 
+    // Kiểm tra kết nối máy chủ theo cấu hình người dùng vừa nhập.
     private async Task TestAsync()
     {
         if (_request is not null) return;
@@ -120,6 +124,7 @@ internal sealed class FrmConnectionSettings : Form
         finally { _request = null; if (!IsDisposed) _test.Enabled = true; }
     }
 
+    // Lưu cấu hình kết nối đã vượt qua bước kiểm tra.
     private void Save()
     {
         try

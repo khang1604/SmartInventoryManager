@@ -4,6 +4,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class ReceiptUi
 {
+    // Tạo bố cục giao diện xem hoặc nhập thông tin phiếu.
     public static void Build(Form form, bool import)
     {
         var root = PreviewFormUi.Root(form, import ? "Phiếu nhập kho" : "Phiếu xuất kho", new Size(960, 700));

@@ -29,6 +29,7 @@ internal sealed class ReceiptListView : UserControl
     private readonly AntdUI.Button _previous = ProductUi.Button("btnPreviousPage", "Trang trước", "chevron-left");
     private readonly AntdUI.Button _next = ProductUi.Button("btnNextPage", "Trang sau", "chevron-right");
 
+    // Khởi tạo danh sách phiếu cùng bộ lọc và các thao tác theo quyền.
     public ReceiptListView(UiServices services, bool import)
     {
         _services = services;
@@ -137,6 +138,7 @@ internal sealed class ReceiptListView : UserControl
         };
     }
 
+    // Xóa dữ liệu và khóa thao tác khi kho đang được tìm hoặc thay đổi.
     private void InvalidateWarehouse()
     {
         _lookupVersion++; _actionsVersion++;
@@ -146,6 +148,7 @@ internal sealed class ReceiptListView : UserControl
         _message.Text = "Chọn một kho trong danh sách để xem phiếu.";
     }
 
+    // Tạo nút thao tác và gắn xử lý tương ứng vào giao diện.
     private AntdUI.Button AddAction(string text, Func<Task> action, string? icon = null)
     {
         var button = ProductUi.Button("btn" + _actions.Controls.Count, text, icon);
@@ -154,6 +157,7 @@ internal sealed class ReceiptListView : UserControl
         return button;
     }
 
+    // Lấy mã định danh của phiếu đang được chọn trong danh sách.
     private int? SelectedId() => _grid.CurrentRow?.DataBoundItem switch
     {
         ImportReceiptListItemDto item => item.ImportReceiptId,
@@ -161,6 +165,7 @@ internal sealed class ReceiptListView : UserControl
         _ => null
     };
 
+    // Lấy trạng thái của phiếu đang được chọn trong danh sách.
     private string? SelectedStatus() => _grid.CurrentRow?.DataBoundItem switch
     {
         ImportReceiptListItemDto item => item.Status,
@@ -168,6 +173,7 @@ internal sealed class ReceiptListView : UserControl
         _ => null
     };
 
+    // Cập nhật trạng thái đang xử lý và khóa các thao tác chưa thể thực hiện.
     private void Busy(bool value)
     {
         _busy = value;
@@ -175,6 +181,7 @@ internal sealed class ReceiptListView : UserControl
         _previous.Parent!.Enabled = !value;
     }
 
+    // Tải danh sách phiếu theo kho, trạng thái, khoảng ngày và trang hiện tại.
     private async Task LoadAsync()
     {
         if (_busy || _resettingFilters) return;
@@ -230,6 +237,7 @@ internal sealed class ReceiptListView : UserControl
         if (!IsDisposed) await UpdateActionsAsync();
     }
 
+    // Cập nhật các thao tác được phép theo dòng đang chọn và quyền hiện tại.
     private async Task UpdateActionsAsync()
     {
         var version = ++_actionsVersion;
@@ -271,6 +279,7 @@ internal sealed class ReceiptListView : UserControl
         catch (Exception ex) { if (!IsDisposed) _message.Text = LiveUi.Error(ex); }
     }
 
+    // Lấy chi tiết phiếu và xuất ra tệp PDF theo nơi lưu được chọn.
     private async Task ExportReceiptAsync()
     {
         var id = SelectedId();
@@ -298,6 +307,7 @@ internal sealed class ReceiptListView : UserControl
         finally { _busy = false; await UpdateActionsAsync(); }
     }
 
+    // Bật hoặc tắt nút thao tác tương ứng trên danh sách phiếu.
     private void EnableAction(string text, bool enabled)
     {
         foreach (Control button in _actions.Controls)
@@ -309,6 +319,7 @@ internal sealed class ReceiptListView : UserControl
         }
     }
 
+    // Mở form xem, lập hoặc chỉnh sửa phiếu rồi tải lại danh sách khi cần.
     private async Task OpenAsync(int? id, bool edit)
     {
         if (!id.HasValue && !edit) { _message.Text = "Chọn phiếu cần xem."; return; }
@@ -319,6 +330,7 @@ internal sealed class ReceiptListView : UserControl
         await LoadAsync();
     }
 
+    // Thực hiện chuyển trạng thái phiếu và cập nhật lại dữ liệu hiển thị.
     private async Task TransitionAsync(string transition)
     {
         if (_busy) return;
@@ -364,6 +376,7 @@ internal sealed class ReceiptListView : UserControl
         if (updated && !IsDisposed) { await LoadAsync(); if (!IsDisposed) _message.Text = "Đã cập nhật trạng thái phiếu. " + _message.Text; }
     }
 
+    // Gửi yêu cầu hoàn tất phiếu rồi tải lại dữ liệu và quyền thao tác.
     private async Task PostAsync(bool cancel)
     {
         var id = SelectedId();
@@ -416,6 +429,7 @@ internal sealed class ReceiptListView : UserControl
         if (!IsDisposed) _message.Text = $"Phiếu đã {(cancel ? "hủy" : "hoàn tất")}. " + _message.Text;
     }
 
+    // Xóa phiếu nháp khi quyền, trạng thái và lịch sử cho phép.
     private async Task DeleteDraftAsync()
     {
         var id = SelectedId();

@@ -11,6 +11,7 @@ public sealed class ConnectionSettingsTests
     private string _directory = null!;
     private string FilePath => Path.Combine(_directory, "connection.dat");
 
+    // Chuẩn bị thư mục tạm riêng cho mỗi ca kiểm thử cấu hình kết nối.
     [TestInitialize]
     public void Initialize()
     {
@@ -21,6 +22,7 @@ public sealed class ConnectionSettingsTests
         Directory.CreateDirectory(_directory);
     }
 
+    // Dọn tài nguyên tạm được tạo bởi ca kiểm thử cấu hình kết nối.
     [TestCleanup]
     public void Cleanup()
     {
@@ -30,6 +32,7 @@ public sealed class ConnectionSettingsTests
         Directory.Delete(_directory);
     }
 
+    // Kiểm tra dấu phân cách trong mật khẩu không thể đổi máy chủ hoặc cơ sở dữ liệu đích.
     [TestMethod]
     public void PasswordWithDelimitersCannotChangeConnectionTarget()
     {
@@ -43,6 +46,7 @@ public sealed class ConnectionSettingsTests
         Assert.IsFalse(profile.ToString().Contains(password));
     }
 
+    // Kiểm tra cấu hình kết nối thiếu thông tin bắt buộc hoặc máy chủ sai bị từ chối.
     [TestMethod]
     public void InvalidServerOrMissingCredentialsAreRejected()
     {
@@ -51,6 +55,7 @@ public sealed class ConnectionSettingsTests
         Assert.ThrowsException<ArgumentException>(() => new ConnectionProfile("host", 14330, "DB", "user", "").BuildConnectionString());
     }
 
+    // Kiểm tra xác thực Windows không giữ lại mật khẩu SQL trong cấu hình kết nối.
     [TestMethod]
     public void WindowsAuthenticationDoesNotKeepSqlPassword()
     {
@@ -60,6 +65,7 @@ public sealed class ConnectionSettingsTests
         Assert.AreEqual(string.Empty, builder.UserID);
     }
 
+    // Kiểm tra cấu hình mã hóa DPAPI có thể đọc lại, thay thế và không lưu bí mật dạng rõ.
     [TestMethod]
     public void DpapiProfileReloadsWithoutPlaintextSecretAndSupportsReplacement()
     {
@@ -75,6 +81,7 @@ public sealed class ConnectionSettingsTests
         Assert.IsFalse(File.Exists(FilePath + ".tmp"));
     }
 
+    // Kiểm tra cấu hình mất hoặc bị sửa dẫn về thiết lập thay vì phát sinh lỗi không xử lý.
     [TestMethod]
     public void MissingOrTamperedProfileReturnsSetupInsteadOfThrowing()
     {

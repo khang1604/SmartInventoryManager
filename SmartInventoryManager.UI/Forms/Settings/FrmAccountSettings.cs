@@ -6,6 +6,7 @@ namespace SmartInventoryManager.UI.Forms.Settings;
 
 internal sealed class FrmAccountSettings : Form
 {
+    // Khởi tạo màn hình cài đặt thông tin cá nhân và đổi mật khẩu.
     public FrmAccountSettings(AuthenticatedUserDto? user, string role, UiServices? services = null)
     {
         var (_, body, footer) = SettingsUi.Root(this, "Cài đặt tài khoản", "Thông tin nhân viên", new Size(820, 780));
@@ -62,6 +63,7 @@ internal sealed class FrmAccountSettings : Form
         bool busy = false;
         saveProfile.Enabled = savePassword.Enabled = toggle.Enabled = available;
 
+        // Bật hoặc khóa các điều khiển trong lúc thao tác đang xử lý.
         void SetBusy(bool value)
         {
             busy = value;
@@ -69,6 +71,7 @@ internal sealed class FrmAccountSettings : Form
             close.Enabled = cancelPassword.Enabled = !value;
             fullName.ReadOnly = email.ReadOnly = currentPassword.ReadOnly = newPassword.ReadOnly = confirmPassword.ReadOnly = value;
         }
+        // Hiện hoặc thu gọn phần đổi mật khẩu trên form tài khoản.
         void ExpandPassword(bool expanded)
         {
             passwordFields.Visible = expanded;
@@ -137,13 +140,16 @@ internal sealed class FrmAccountSettings : Form
         };
     }
 
+    // Tạo vùng chứa các nút thao tác của form tài khoản.
     private static FlowLayoutPanel Actions(params Control[] controls)
     {
         var panel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Margin = Padding.Empty };
         panel.Controls.AddRange(controls);
         return panel;
     }
+    // Tạo vùng thông báo kết quả hoặc lỗi nhập liệu trên form.
     private static Label Notice(string caption) => new() { Dock = DockStyle.Fill, AccessibleName = caption, Padding = new Padding(8), AutoSize = false };
+    // Hiển thị thông báo với nội dung và trạng thái phù hợp.
     private static void ShowNotice(Label label, string message, bool error)
     {
         label.Text = message;

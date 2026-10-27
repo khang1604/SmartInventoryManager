@@ -3,6 +3,7 @@ namespace SmartInventoryManager.Controls
     public partial class ChartControl : UserControl
     {
         private readonly Panel _plotHost;
+        // Khởi tạo khung biểu đồ với tiêu đề và vùng vẽ dữ liệu.
         public ChartControl()
         {
             InitializeComponent();
@@ -24,6 +25,7 @@ namespace SmartInventoryManager.Controls
         [System.ComponentModel.DefaultValue("Nhập / xuất theo thời gian")]
         public string ChartTitle { get => _title.Text; set => _title.Text = value; }
 
+        // Hiển thị biểu đồ một dãy giá trị theo các nhãn tương ứng.
         public void ShowSeries(IReadOnlyList<string> labels, IReadOnlyList<double> values)
         {
             ArgumentNullException.ThrowIfNull(labels);
@@ -39,18 +41,21 @@ namespace SmartInventoryManager.Controls
             _plotHost.Controls.Add(new BarChartSurface(labels, values));
         }
 
+        // Hiển thị biểu đồ so sánh số lượng nhập và xuất theo từng nhãn.
         public void ShowComparison(IReadOnlyList<string> labels, IReadOnlyList<double> imports, IReadOnlyList<double> exports)
         {
             if (labels.Count != imports.Count || labels.Count != exports.Count) throw new ArgumentException("Dữ liệu biểu đồ không khớp.");
             ReplacePlot(new ComparisonSurface(labels.ToArray(), imports.ToArray(), exports.ToArray()));
         }
 
+        // Hiển thị biểu đồ thanh ngang cho các nhãn và giá trị.
         public void ShowHorizontal(IReadOnlyList<string> labels, IReadOnlyList<double> values)
         {
             if (labels.Count != values.Count) throw new ArgumentException("Dữ liệu biểu đồ không khớp.");
             ReplacePlot(new HorizontalSurface(labels.ToArray(), values.ToArray()));
         }
 
+        // Thay nội dung biểu đồ và giải phóng điều khiển biểu đồ cũ.
         private void ReplacePlot(Control plot)
         {
             foreach (Control old in _plotHost.Controls.Cast<Control>().ToArray()) { _plotHost.Controls.Remove(old); old.Dispose(); }
@@ -60,6 +65,7 @@ namespace SmartInventoryManager.Controls
 
         private sealed class ComparisonSurface(string[] labels, double[] imports, double[] exports) : Control
         {
+            // Vẽ biểu đồ, nhãn và các giá trị theo kích thước vùng hiển thị.
             protected override void OnPaint(PaintEventArgs e)
             {
                 base.OnPaint(e);
@@ -91,6 +97,7 @@ namespace SmartInventoryManager.Controls
 
         private sealed class HorizontalSurface(string[] labels, double[] values) : Control
         {
+            // Vẽ biểu đồ, nhãn và các giá trị theo kích thước vùng hiển thị.
             protected override void OnPaint(PaintEventArgs e)
             {
                 base.OnPaint(e);
@@ -118,6 +125,7 @@ namespace SmartInventoryManager.Controls
             private readonly string[] _labels;
             private readonly double[] _values;
 
+            // Khởi tạo vùng vẽ biểu đồ thanh từ danh sách nhãn và giá trị.
             public BarChartSurface(IReadOnlyList<string> labels, IReadOnlyList<double> values)
             {
                 _labels = labels.ToArray();
@@ -128,6 +136,7 @@ namespace SmartInventoryManager.Controls
                 SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
             }
 
+            // Vẽ biểu đồ, nhãn và các giá trị theo kích thước vùng hiển thị.
             protected override void OnPaint(PaintEventArgs e)
             {
                 base.OnPaint(e);

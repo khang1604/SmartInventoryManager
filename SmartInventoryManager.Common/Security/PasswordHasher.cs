@@ -14,6 +14,7 @@ public sealed class PasswordHasher
     private const int MaximumAcceptedIterationCount = 1_000_000;
     private const string AlgorithmName = "pbkdf2-sha256";
 
+    // Băm mật khẩu để lưu và sử dụng khi xác thực.
     public string HashPassword(string password)
     {
         ArgumentException.ThrowIfNullOrEmpty(password);
@@ -35,6 +36,7 @@ public sealed class PasswordHasher
         return encodedHash;
     }
 
+    // Đối chiếu mật khẩu nhập vào với chuỗi băm đã lưu.
     public bool VerifyPassword(string? password, string? encodedHash)
     {
         if (string.IsNullOrEmpty(password) || string.IsNullOrEmpty(encodedHash) || encodedHash.Length > MaxStoredHashLength)

@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Forms.Users;
 
 public partial class FrmUserManagement : Form
 {
+    // Khởi tạo màn hình quản lý tài khoản người dùng.
     public FrmUserManagement(UiServices services)
     {
         ArgumentNullException.ThrowIfNull(services);

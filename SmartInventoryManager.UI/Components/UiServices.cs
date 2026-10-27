@@ -32,6 +32,7 @@ public sealed class UiServices : IDisposable
     public AnalyticsService Analytics { get; }
     public ReceiptAuditService ReceiptAudits { get; }
 
+    // Khởi tạo các service dùng chung và cơ chế điều phối lời gọi từ giao diện.
     public UiServices(UserSession session, AuthorizationService authorization,
         IImportService imports, IExportService exports, InventoryService inventory,
         StockAlertService alerts, ProductService products, WarehouseService warehouses,
@@ -62,6 +63,7 @@ public sealed class UiServices : IDisposable
         _resetTracking = resetTracking;
     }
 
+    // Điều phối lời gọi service để tránh dùng đồng thời DbContext và dọn trạng thái theo dõi sau thao tác.
     public async Task<T> RunAsync<T>(Func<Task<T>> operation)
     {
         Interlocked.Increment(ref _pending);
@@ -87,11 +89,13 @@ public sealed class UiServices : IDisposable
         }
     }
 
+    // Điều phối lời gọi service để tránh dùng đồng thời DbContext và dọn trạng thái theo dõi sau thao tác.
     public Task RunAsync(Func<Task> operation) => RunAsync(async () =>
     {
         await operation();
         return true;
     });
 
+    // Giải phóng các tài nguyên và thành phần do đối tượng quản lý.
     public void Dispose() => _gate.Dispose();
 }

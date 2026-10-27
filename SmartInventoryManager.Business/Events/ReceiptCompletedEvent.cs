@@ -2,6 +2,7 @@ namespace SmartInventoryManager.Business.Events;
 
 public sealed class ReceiptCompletedEvent : EventArgs
 {
+    // Khởi tạo dữ liệu sự kiện hoàn tất phiếu.
     public ReceiptCompletedEvent(int receiptId, bool import, int warehouseId, IReadOnlyList<int> productIds)
     {
         ReceiptId = receiptId;

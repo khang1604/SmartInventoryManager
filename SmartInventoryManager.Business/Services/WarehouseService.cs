@@ -11,12 +11,14 @@ public sealed class WarehouseService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
+    // Khởi tạo service xử lý kho cùng các thành phần phụ thuộc.
     public WarehouseService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
+    // Lấy danh sách kho đang hoạt động trong phạm vi cho phép.
     public async Task<IReadOnlyList<LookupItemDto>> GetActiveAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         if (!session.IsAuthenticated)
@@ -32,6 +34,7 @@ public sealed class WarehouseService
             .ToListAsync(cancellationToken);
     }
 
+    // Lấy danh sách kho phục vụ tra cứu theo quyền người dùng.
     public async Task<IReadOnlyList<WarehouseDto>> GetAllAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         if (!session.IsAuthenticated) throw new UnauthorizedAccessException("Bạn cần đăng nhập.");
@@ -45,6 +48,7 @@ public sealed class WarehouseService
             }).ToListAsync(cancellationToken);
     }
 
+    // Lấy các tài khoản quản lý kho đang hoạt động để phân công phụ trách.
     public async Task<IReadOnlyList<LookupItemDto>> GetActiveManagersAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         EnsureCanManage(session);
@@ -56,6 +60,7 @@ public sealed class WarehouseService
             .ToListAsync(cancellationToken);
     }
 
+    // Kiểm tra dữ liệu rồi tạo mới kho.
     public async Task<int> CreateAsync(UserSession session, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
         await using var transaction = _dbContext.Database.IsRelational()
@@ -71,6 +76,7 @@ public sealed class WarehouseService
         return entity.WarehouseId;
     }
 
+    // Kiểm tra dữ liệu rồi cập nhật thông tin kho.
     public async Task UpdateAsync(UserSession session, int warehouseId, WarehouseRequestDto request, CancellationToken cancellationToken = default)
     {
         await using var transaction = _dbContext.Database.IsRelational()
@@ -86,6 +92,7 @@ public sealed class WarehouseService
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
+    // Đổi trạng thái hoạt động của kho sau khi kiểm tra điều kiện liên quan.
     public async Task SetActiveAsync(UserSession session, int warehouseId, bool isActive, CancellationToken cancellationToken = default)
     {
         await using var transaction = _dbContext.Database.IsRelational()
@@ -100,12 +107,15 @@ public sealed class WarehouseService
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
+    // Kiểm tra mã định danh của kho là số dương.
     private static void ValidateId(int id, string parameterName)
     {
         if (id <= 0) throw new ArgumentOutOfRangeException(parameterName);
     }
 
+    // Yêu cầu người dùng có quyền quản lý kho.
     private void EnsureCanManage(UserSession session) { if (!_authorization.CanManageWarehouse(session)) throw new UnauthorizedAccessException("Bạn không có quyền quản lý kho."); }
+    // Kiểm tra các trường thông tin kho theo ràng buộc nghiệp vụ.
     private static void Validate(WarehouseRequestDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -116,6 +126,7 @@ public sealed class WarehouseService
         if (request.Location?.Trim().Length > 255)
             throw new ArgumentException("Địa điểm không quá 255 ký tự.", nameof(request));
     }
+    // Kiểm tra người được gán phụ trách kho còn hoạt động và có vai trò quản lý.
     private async Task ValidateManagerAsync(int? managerId, CancellationToken cancellationToken)
     {
         if (!managerId.HasValue) return;

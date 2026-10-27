@@ -16,6 +16,7 @@ namespace SmartInventoryManager.UI
         /// <summary>
         ///  The main entry point for the application.
         /// </summary>
+        // Khởi động ứng dụng và điều phối cấu hình kết nối cùng phiên làm việc.
         [STAThread]
         static void Main(string[] args)
         {
@@ -45,6 +46,7 @@ namespace SmartInventoryManager.UI
             }
         }
 
+        // Chọn cấu hình kết nối hiện có hoặc mở form thiết lập khi cần.
         private static string? ResolveConnectionString(ConnectionSettingsStore store)
         {
             var connectionString = Environment.GetEnvironmentVariable(
@@ -55,6 +57,7 @@ namespace SmartInventoryManager.UI
             return unreadable ? null : connectionString ?? LoadConnectionStringFromAppConfig();
         }
 
+        // Khởi tạo các service, thực hiện đăng nhập và mở cửa sổ chính.
         private static bool RunApplication(string connectionString)
         {
             var options = new DbContextOptionsBuilder<InventoryDbContext>()
@@ -113,6 +116,7 @@ namespace SmartInventoryManager.UI
             }
         }
 
+        // Đọc cấu hình kết nối tương thích từ tệp cấu hình ứng dụng.
         private static string? LoadConnectionStringFromAppConfig()
         {
             var candidates = new[]

@@ -8,11 +8,13 @@ public sealed class StockMutationService
 {
     private readonly InventoryDbContext _dbContext;
 
+    // Khởi tạo thành phần cập nhật số dư tồn trên DbContext được cung cấp.
     public StockMutationService(InventoryDbContext dbContext)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
+    // Lấy bản ghi tồn theo sản phẩm và kho hoặc tạo bản ghi số dư ban đầu.
     public async Task<StockInventory> GetOrCreateAsync(
         int warehouseId,
         int productId,
@@ -39,6 +41,7 @@ public sealed class StockMutationService
         return inventory;
     }
 
+    // Tăng tồn sau khi kiểm tra sản phẩm, kho và số lượng hợp lệ.
     public async Task<StockInventory> IncreaseAsync(
         int warehouseId,
         int productId,
@@ -52,6 +55,7 @@ public sealed class StockMutationService
         return inventory;
     }
 
+    // Giảm tồn sau khi kiểm tra số lượng và khả năng đáp ứng tồn kho.
     public async Task<StockInventory> DecreaseAsync(
         int warehouseId,
         int productId,
@@ -73,6 +77,7 @@ public sealed class StockMutationService
         return inventory;
     }
 
+    // Kiểm tra số lượng giao dịch đáp ứng điều kiện nghiệp vụ.
     private static void ValidateQuantity(int quantity)
     {
         if (quantity <= 0)

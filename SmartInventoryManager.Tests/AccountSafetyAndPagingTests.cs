@@ -11,6 +11,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public sealed class AccountSafetyAndPagingTests
 {
+    // Tạo DbContext bộ nhớ riêng và chuẩn bị dữ liệu cho ca kiểm thử.
     private static InventoryDbContext Context()
     {
         var db = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
@@ -22,11 +23,13 @@ public sealed class AccountSafetyAndPagingTests
         db.SaveChanges(); return db;
     }
 
+    // Tạo phiên đăng nhập giả lập theo người dùng và vai trò của ca kiểm thử.
     private static UserSession Session(int id = 1, string role = RoleNames.Admin)
     {
         var session = new UserSession(); session.SignIn(new(id, "unit", "Unit User", null, role)); return session;
     }
 
+    // Kiểm tra không cho tên đăng nhập trùng email của tài khoản khác, kể cả khác hoa thường.
     [DataTestMethod]
     [DataRow("STAFF@example.invalid", "new@example.invalid")]
     [DataRow("new-user", "USERNAME@example.invalid")]
@@ -42,6 +45,7 @@ public sealed class AccountSafetyAndPagingTests
         Assert.AreEqual(3, await db.Users.CountAsync()); Assert.AreEqual(0, await db.SystemLogs.CountAsync());
     }
 
+    // Kiểm tra đổi email trùng tên đăng nhập bị từ chối và hồ sơ cũ được giữ nguyên.
     [TestMethod]
     public async Task AccountUpdate_RejectsEmailMatchingAnotherUsernameAndKeepsOldProfile()
     {
@@ -55,6 +59,7 @@ public sealed class AccountSafetyAndPagingTests
         Assert.AreEqual(0, await db.SystemLogs.CountAsync());
     }
 
+    // Kiểm tra định danh mơ hồ từ dữ liệu cũ không được tự chọn một tài khoản để xác thực.
     [TestMethod]
     public async Task Auth_LegacyAmbiguityFailsClearlyWithoutChoosingAnAccount()
     {
@@ -65,6 +70,7 @@ public sealed class AccountSafetyAndPagingTests
         Assert.AreEqual(4, await db.Users.CountAsync());
     }
 
+    // Kiểm tra khởi tạo quản trị từ chối định danh trùng và không tạo thêm tài khoản.
     [TestMethod]
     public async Task Bootstrap_RejectsCrossNamespaceIdentifierWithoutCreatingAnotherAccount()
     {
@@ -73,6 +79,7 @@ public sealed class AccountSafetyAndPagingTests
         Assert.AreEqual(3, await db.Users.CountAsync()); Assert.AreEqual(0, await db.SystemLogs.CountAsync());
     }
 
+    // Kiểm tra chỉ được hạ quyền ADMIN khi còn một quản trị viên hoạt động khác.
     [TestMethod]
     public async Task LastAdmin_CannotDemoteSelfButCanWhenAnotherActiveAdminExists()
     {
@@ -86,6 +93,7 @@ public sealed class AccountSafetyAndPagingTests
         await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.GetListAsync(Session()));
     }
 
+    // Kiểm tra quản lý đang phụ trách kho không được mất quyền trước khi chuyển phân công.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -102,6 +110,7 @@ public sealed class AccountSafetyAndPagingTests
         Assert.AreEqual(2, (await db.Users.SingleAsync(x => x.UserId == 3)).RoleId);
     }
 
+    // Kiểm tra lọc phiếu trước phân trang, truy cập quá 500 dòng và giữ thứ tự ổn định.
     [DataTestMethod]
     [DataRow(true)]
     [DataRow(false)]
@@ -136,6 +145,7 @@ public sealed class AccountSafetyAndPagingTests
         }
     }
 
+    // Kiểm tra danh sách lựa chọn không âm thầm bỏ các mục sau mốc 200.
     [TestMethod]
     public async Task Lookups_DoNotSilentlyHideItemsAfter200()
     {
@@ -154,6 +164,7 @@ public sealed class AccountSafetyAndPagingTests
         Assert.AreEqual(201, (await new CategoryService(db, authorization).GetActiveAsync(Session())).Count);
     }
 
+    // Kiểm tra phân trang người dùng, thông báo và nhật ký vượt 500 dòng vẫn giữ phạm vi quyền.
     [TestMethod]
     public async Task UsersNotificationsAndLogs_PagePast500AndProtectScope()
     {

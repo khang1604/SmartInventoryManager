@@ -10,6 +10,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public sealed class MultipleWarehouseAssignmentTests
 {
+    // Kiểm tra chọn nhiều kho được lưu đồng thời và giữ các phân công đã thu hồi.
     [TestMethod]
     public async Task MultiSelectionSavesTogetherAndRetainsRevokedAssignments()
     {
@@ -29,6 +30,7 @@ public sealed class MultipleWarehouseAssignmentTests
         Assert.AreEqual(2, await db.UserWarehouses.CountAsync(x => x.IsActive));
     }
 
+    // Kiểm tra danh sách kho không hợp lệ không thu hồi một phần phân công đang có.
     [TestMethod]
     public async Task InvalidMultiSelectionDoesNotPartiallyRevokeExistingAssignments()
     {
@@ -43,6 +45,7 @@ public sealed class MultipleWarehouseAssignmentTests
         Assert.AreEqual(2, await db.SystemLogs.CountAsync());
     }
 
+    // Kiểm tra kho ngừng hoạt động chỉ được giữ hoặc thu hồi phân công, không kích hoạt lại phân công.
     [TestMethod]
     public async Task InactiveAssignedWarehouseCanBeRetainedOrRevokedButNotReactivated()
     {
@@ -58,6 +61,7 @@ public sealed class MultipleWarehouseAssignmentTests
         Assert.IsFalse((await db.UserWarehouses.SingleAsync(x => x.WarehouseId == 3)).IsActive);
     }
 
+    // Tạo DbContext và dữ liệu minh họa chung cho nhóm ca kiểm thử.
     private static InventoryDbContext Fixture()
     {
         var db = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>()
@@ -75,6 +79,7 @@ public sealed class MultipleWarehouseAssignmentTests
         return db;
     }
 
+    // Tạo phiên đăng nhập giả lập theo người dùng và vai trò của ca kiểm thử.
     private static UserSession Session(int id, string role)
     {
         var session = new UserSession();
@@ -82,6 +87,7 @@ public sealed class MultipleWarehouseAssignmentTests
         return session;
     }
 
+    // Kiểm tra thêm kho giữ các phạm vi khác và thu hồi chỉ ảnh hưởng kho được chọn.
     [TestMethod]
     public async Task AddingWarehousePreservesOtherScopesAndRevocationOnlyAffectsSelectedWarehouse()
     {
@@ -110,6 +116,7 @@ public sealed class MultipleWarehouseAssignmentTests
         Assert.AreEqual(1, await db.SystemLogs.CountAsync(x => x.Action == "DEACTIVATE_ASSIGNMENT"));
     }
 
+    // Kiểm tra kích hoạt lại phân công không thu hồi kho khác hoặc tạo dòng trùng.
     [TestMethod]
     public async Task ReactivatingExistingWarehouseDoesNotDeactivateOtherAssignmentsOrDuplicateRows()
     {
@@ -123,6 +130,7 @@ public sealed class MultipleWarehouseAssignmentTests
         Assert.AreEqual(2, await db.UserWarehouses.CountAsync(x => x.IsActive));
     }
 
+    // Kiểm tra tài khoản hoặc người thao tác không hợp lệ không xóa được phân công hiện có.
     [TestMethod]
     public async Task InvalidTargetOrActorCannotRemoveExistingAssignment()
     {
@@ -140,6 +148,7 @@ public sealed class MultipleWarehouseAssignmentTests
         Assert.IsTrue((await db.UserWarehouses.SingleAsync()).IsActive);
     }
 
+    // Kiểm tra quản lý vẫn được truy cập nhiều kho mình phụ trách.
     [TestMethod]
     public async Task ManagerStillHasAccessToMultipleManagedWarehouses()
     {

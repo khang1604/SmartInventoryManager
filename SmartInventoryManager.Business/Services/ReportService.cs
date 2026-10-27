@@ -11,12 +11,14 @@ public sealed class ReportService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
+    // Khởi tạo service báo cáo với DbContext và cơ chế giới hạn phạm vi kho.
     public ReportService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
+    // Tổng hợp báo cáo tồn kho theo phạm vi kho và các điều kiện lọc.
     public async Task<InventoryReportDto> GetInventoryAsync(UserSession session, int? warehouseId = null,
         CancellationToken cancellationToken = default, string? search = null, string? stockStatus = null)
     {
@@ -61,6 +63,7 @@ public sealed class ReportService
         return new InventoryReportDto(totalQuantity, openAlertCount, rows) { EstimatedInventoryValue = rows.Sum(row => row.EstimatedValue) };
     }
 
+    // Tổng hợp báo cáo nhập xuất từ phiếu hoàn tất theo điều kiện lọc.
     public async Task<ImportExportReportDto> GetImportExportAsync(UserSession session, int? warehouseId = null,
         DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default,
         string? search = null, string? receiptType = null)
@@ -109,6 +112,7 @@ public sealed class ReportService
             importTotal, exportTotal);
     }
 
+    // Xác định phạm vi kho hợp lệ cho yêu cầu báo cáo.
     private async Task<int[]> GetWarehouseScopeAsync(UserSession session, int? warehouseId, CancellationToken cancellationToken)
     {
         if (!session.IsAuthenticated)

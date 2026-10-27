@@ -4,6 +4,7 @@ namespace SmartInventoryManager.UI.Components;
 
 internal static class UiDetails
 {
+    // Mở cửa sổ hiển thị các thông tin chi tiết được cung cấp.
     public static void Show(Control owner, string title, IEnumerable<(string Caption, string Value)> values, string? note = null)
     {
         using var form = new Form { Text = $"VioWare - {title}", ClientSize = new Size(650, 580),
@@ -43,6 +44,7 @@ internal static class UiDetails
         form.ShowDialog(owner.FindForm());
     }
 
+    // Thêm cột thao tác xem chi tiết vào bảng dữ liệu.
     public static void AddColumn(DataGridView grid, bool insetButton = false)
     {
         grid.Columns.Add(new DataGridViewButtonColumn { Name = "ViewDetails", HeaderText = "Chi tiết",
@@ -69,6 +71,7 @@ internal static class UiDetails
         };
     }
 
+    // Định dạng cột xem chi tiết và gắn hành vi mở thông tin.
     public static void DecorateDetailsColumn(DataGridView grid, bool insetButton = false)
     {
         var eye = AntdUI.SvgExtend.SvgToBmp(MainIcons.Get("eye"), 18, 18, AppColors.Text);

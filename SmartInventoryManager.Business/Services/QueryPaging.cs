@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Business.Services;
 
 internal static class QueryPaging
 {
+    // Đếm kết quả và đọc một trang dữ liệu với thứ tự ổn định.
     internal static async Task<PagedResultDto<T>> ReadAsync<T>(IQueryable<T> query, int pageNumber, int pageSize, CancellationToken ct)
     {
         if (pageNumber < 1 || pageSize < 1 || pageSize > 100 || pageNumber > int.MaxValue / pageSize)

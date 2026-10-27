@@ -11,12 +11,14 @@ namespace SmartInventoryManager.Tests;
 
 internal static class SqlFinalAcceptanceFixture
 {
+    // Chạy kịch bản tích hợp tài khoản, phân kho, tranh chấp định danh và lịch sử phiếu.
     public static async Task RunAsync(DbContextOptions<InventoryDbContext> options)
     {
         await using var db = new InventoryDbContext(options);
         var token = "FINAL_" + Guid.NewGuid().ToString("N")[..8];
         Console.WriteLine("Final acceptance fixture: " + token);
         var roles = await db.Roles.ToDictionaryAsync(x => x.RoleName, x => x.RoleId);
+        // Tạo đối tượng người dùng minh họa với vai trò cho kịch bản tích hợp.
         User User(string suffix, string role) => new()
         {
             Username = token + suffix, FullName = "Final acceptance " + suffix,
@@ -31,11 +33,13 @@ internal static class SqlFinalAcceptanceFixture
         try
         {
             db.AddRange(first, second, manager, category, supplier, warehouse); await db.SaveChangesAsync();
+            // Tạo phiên đăng nhập giả lập theo người dùng và vai trò của ca kiểm thử.
             UserSession Session(User user)
             {
                 var session = new UserSession(); session.SignIn(new(user.UserId, user.Username, user.FullName, user.Email, RoleNames.Admin)); return session;
             }
             var actor = Session(first); var other = Session(second);
+            // Mở context mới và thực hiện thao tác kiểm thử qua UserService.
             async Task Users(Func<UserService, Task> action)
             {
                 await using var ctx = new InventoryDbContext(options); await action(new(ctx, new(ctx)));
@@ -56,6 +60,7 @@ internal static class SqlFinalAcceptanceFixture
             for (var attempt = 0; attempt < 3; attempt++)
             {
                 var identifier = token + attempt + "@example.test";
+                // Thử tạo tài khoản với định danh tranh chấp và trả lỗi để đối chiếu.
                 async Task<Exception?> Create(UserSession session, bool username)
                 {
                     await using var ctx = new InventoryDbContext(options);
@@ -70,6 +75,7 @@ internal static class SqlFinalAcceptanceFixture
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => Users(service => service.DeactivateAsync(actor, manager.UserId)));
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => Users(service => service.UpdateUserAsync(actor, manager.UserId, new("Final Manager", manager.Email, RoleNames.Staff, true))));
             warehouse.ManagerId = null; warehouse.IsActive = true; await db.SaveChangesAsync();
+            // Thực hiện phân công kho bằng context riêng trong kịch bản tích hợp.
             async Task Assign()
             {
                 await using var ctx = new InventoryDbContext(options);
@@ -138,6 +144,7 @@ internal static class SqlFinalAcceptanceFixture
         }
     }
 
+    // Thực hiện thao tác kiểm thử và trả ngoại lệ để đối chiếu kết quả.
     private static async Task<Exception?> Capture(Func<Task> action)
     {
         try { await action(); return null; }

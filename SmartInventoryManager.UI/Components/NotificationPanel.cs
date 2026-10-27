@@ -2,7 +2,9 @@ using SmartInventoryManager.Business.DTOs;
 namespace SmartInventoryManager.UI.Components;
 public class NotificationPanel : Panel
 {
+    // Khởi tạo vùng thông báo và nhật ký theo quyền người dùng.
     public NotificationPanel() { Dock=DockStyle.Fill; Controls.Add(WorkflowUi.Empty("Thông báo", "Đăng nhập để xem thông báo.","bell")); }
+    // Khởi tạo vùng thông báo và nhật ký theo quyền người dùng.
     public NotificationPanel(UiServices services)
     {
         Dock=DockStyle.Fill;

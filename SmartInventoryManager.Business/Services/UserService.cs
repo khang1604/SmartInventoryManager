@@ -14,24 +14,28 @@ public sealed class UserService
     private readonly AuthorizationService _authorization;
     private readonly PasswordHasher _passwordHasher = new();
 
+    // Khởi tạo service xử lý tài khoản người dùng cùng các thành phần phụ thuộc.
     public UserService(InventoryDbContext dbContext, AuthorizationService authorization)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
     }
 
+    // Lấy danh sách tài khoản người dùng theo quyền và điều kiện lọc.
     public async Task<IReadOnlyList<UserListItemDto>> GetListAsync(UserSession session, string? search = null, string? roleName = null, bool? isActive = null, CancellationToken cancellationToken = default)
     {
         var query = await QueryListAsync(session, search, roleName, isActive, cancellationToken);
         return await query.ToListAsync(cancellationToken);
     }
 
+    // Lấy một trang tài khoản người dùng theo bộ lọc và phạm vi truy cập.
     public async Task<PagedResultDto<UserListItemDto>> GetPageAsync(UserSession session, int pageNumber = 1, int pageSize = 50, string? search = null, string? roleName = null, bool? isActive = null, CancellationToken cancellationToken = default)
     {
         var query = await QueryListAsync(session, search, roleName, isActive, cancellationToken);
         return await QueryPaging.ReadAsync(query, pageNumber, pageSize, cancellationToken);
     }
 
+    // Tạo truy vấn tài khoản người dùng với các điều kiện lọc và giới hạn quyền.
     private async Task<IQueryable<UserListItemDto>> QueryListAsync(UserSession session, string? search, string? roleName, bool? isActive, CancellationToken cancellationToken)
     {
         EnsureAdmin(session);
@@ -55,6 +59,7 @@ public sealed class UserService
                 user.Role.RoleName, user.IsActive, user.CreatedAt));
     }
 
+    // Kiểm tra dữ liệu rồi tạo mới tài khoản người dùng.
     public async Task<int> CreateAsync(
         UserSession session,
         CreateUserRequest request,
@@ -91,6 +96,7 @@ public sealed class UserService
         return user.UserId;
     }
 
+    // Ngừng hoạt động tài khoản khi điều kiện bảo vệ tài khoản cho phép.
     public async Task DeactivateAsync(
         UserSession session,
         int userId,
@@ -122,6 +128,7 @@ public sealed class UserService
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
+    // Cập nhật hồ sơ, vai trò và trạng thái tài khoản theo quyền quản trị.
     public async Task UpdateUserAsync(
         UserSession session,
         int userId,
@@ -165,6 +172,7 @@ public sealed class UserService
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
+    // Đặt lại mật khẩu tài khoản theo quyền quản trị viên.
     public async Task ResetPasswordAsync(
         UserSession session,
         int userId,
@@ -188,6 +196,7 @@ public sealed class UserService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Cập nhật thông tin cá nhân của tài khoản đang đăng nhập.
     public async Task UpdateAccountAsync(UserSession session, UpdateAccountRequest request, CancellationToken cancellationToken = default)
     {
         await using var transaction = _dbContext.Database.IsRelational()
@@ -210,6 +219,7 @@ public sealed class UserService
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
     }
 
+    // Kiểm tra mật khẩu hiện tại rồi đổi mật khẩu cho tài khoản đang đăng nhập.
     public async Task ChangePasswordAsync(UserSession session, ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var userId = RequireCurrentUser(session);
@@ -227,6 +237,7 @@ public sealed class UserService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Chặn đổi vai trò hoặc ngừng tài khoản còn phụ trách kho hay là ADMIN cuối cùng.
     private async Task EnsureRoleChangeAllowedAsync(User user, string nextRole, bool nextActive, CancellationToken ct)
     {
         if ((!nextActive || nextRole != RoleNames.WarehouseManager)
@@ -238,6 +249,7 @@ public sealed class UserService
             throw new InvalidOperationException("Hệ thống phải còn ít nhất một ADMIN đang hoạt động.");
     }
 
+    // Thêm nhật ký cho thao tác quản lý tài khoản.
     private void RecordUserAction(UserSession session, string action, int? targetUserId)
     {
         _dbContext.SystemLogs.Add(new SystemLog
@@ -250,12 +262,14 @@ public sealed class UserService
             CreatedAt = DateTime.Now
         });
     }
+    // Yêu cầu phiên đăng nhập có quyền quản trị viên.
     private void EnsureAdmin(UserSession session)
     {
         if (!_authorization.CanManageUser(session))
             throw new UnauthorizedAccessException("Chỉ quản trị viên được quản lý tài khoản.");
     }
 
+    // Kiểm tra dữ liệu yêu cầu xử lý tài khoản người dùng trước khi lưu.
     private static void ValidateRequest(CreateUserRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || request.Username.Trim().Length > 50)
@@ -271,6 +285,7 @@ public sealed class UserService
         _ = NormalizeRole(request.RoleName);
     }
 
+    // Chuẩn hóa tên vai trò về giá trị được hệ thống hỗ trợ.
     private static string NormalizeRole(string roleName)
     {
         var normalized = roleName.Trim().ToUpperInvariant();
@@ -281,6 +296,7 @@ public sealed class UserService
         };
     }
 
+    // Lấy tài khoản hiện tại sau khi kiểm tra phiên đăng nhập.
     private static int RequireCurrentUser(UserSession session) => session.CurrentUser?.UserId
         ?? throw new UnauthorizedAccessException("Bạn cần đăng nhập để cập nhật tài khoản.");
 }

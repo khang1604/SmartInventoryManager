@@ -15,6 +15,7 @@ internal sealed class ReceiptRejectionHistoryForm : Form
     private readonly AntdUI.Button _next = ProductUi.Button("btnNext", "Trang sau");
     private bool _busy;
 
+    // Khởi tạo form hiển thị lịch sử từ chối hoặc chuyển trạng thái phiếu.
     public ReceiptRejectionHistoryForm(UiServices services, bool import, int receiptId, bool statusHistory = false)
     {
         _services = services; _import = import; _receiptId = receiptId;
@@ -40,6 +41,7 @@ internal sealed class ReceiptRejectionHistoryForm : Form
         UiDetails.AddColumn(_grid, true);
         Shown += async (_, _) => await LoadAsync();
     }
+    // Tải lịch sử từ chối hoặc chuyển trạng thái phiếu theo phân trang.
     private async Task LoadAsync()
     {
         _busy = true; _previous.Enabled = _next.Enabled = false;

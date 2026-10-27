@@ -10,24 +10,28 @@ public sealed class NotificationService
     private readonly InventoryDbContext _dbContext;
     private readonly AuthorizationService _authorization;
 
+    // Khởi tạo service xử lý thông báo cùng các thành phần phụ thuộc.
     public NotificationService(InventoryDbContext dbContext)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _authorization = new AuthorizationService(_dbContext);
     }
 
+    // Lấy thông báo theo điều kiện tra cứu và phạm vi truy cập.
     public async Task<IReadOnlyList<NotificationDto>> GetAsync(UserSession session, string? search = null, bool? isRead = null, DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default)
     {
         var query = await QueryListAsync(session, search, isRead, from, to, cancellationToken);
         return await query.ToListAsync(cancellationToken);
     }
 
+    // Lấy một trang thông báo theo bộ lọc và phạm vi truy cập.
     public async Task<PagedResultDto<NotificationDto>> GetPageAsync(UserSession session, int pageNumber = 1, int pageSize = 50, string? search = null, bool? isRead = null, DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default)
     {
         var query = await QueryListAsync(session, search, isRead, from, to, cancellationToken);
         return await QueryPaging.ReadAsync(query, pageNumber, pageSize, cancellationToken);
     }
 
+    // Tạo truy vấn thông báo với các điều kiện lọc và giới hạn quyền.
     private async Task<IQueryable<NotificationDto>> QueryListAsync(UserSession session, string? search, bool? isRead, DateTime? from, DateTime? to, CancellationToken cancellationToken)
     {
         var userId = RequireUserId(session);
@@ -51,6 +55,7 @@ public sealed class NotificationService
             ;
     }
 
+    // Đánh dấu thông báo thuộc tài khoản hiện tại là đã đọc.
     public async Task MarkAsReadAsync(UserSession session, long notificationId, CancellationToken cancellationToken = default)
     {
         if (notificationId <= 0)
@@ -67,6 +72,7 @@ public sealed class NotificationService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Đánh dấu toàn bộ thông báo của tài khoản hiện tại là đã đọc.
     public async Task MarkAllAsReadAsync(UserSession session, CancellationToken cancellationToken = default)
     {
         var userId = RequireUserId(session);
@@ -78,6 +84,7 @@ public sealed class NotificationService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Lấy mã người dùng từ phiên đăng nhập hợp lệ.
     private static int RequireUserId(UserSession session)
     {
         ArgumentNullException.ThrowIfNull(session);

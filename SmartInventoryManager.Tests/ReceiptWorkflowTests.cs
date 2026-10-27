@@ -12,6 +12,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class ReceiptWorkflowTests
 {
+    // Kiểm tra các service phiếu cung cấp đủ phương thức đã thống nhất trong interface.
     [TestMethod]
     public void ReceiptServices_ExposeTheAgreedContracts()
     {
@@ -25,6 +26,7 @@ public class ReceiptWorkflowTests
         Assert.IsNotNull(exportService);
     }
 
+    // Kiểm tra tạo phiếu nhập tự cấp mã và cho lưu nháp chưa có dòng hàng.
     [TestMethod]
     public async Task CreateDraftAsync_ImportGeneratesCodeAndAllowsEmptyDraft()
     {
@@ -49,6 +51,7 @@ public class ReceiptWorkflowTests
         Assert.AreEqual(0m, receipt.TotalAmount);
     }
 
+    // Kiểm tra sửa phiếu nhập bị từ chối đưa phiếu về trạng thái nháp.
     [TestMethod]
     public async Task UpdateDraftAsync_RejectedImportReturnsToDraft()
     {
@@ -79,6 +82,7 @@ public class ReceiptWorkflowTests
         Assert.AreEqual("PN-OLD", receipt.ReceiptCode);
     }
 
+    // Kiểm tra tạo phiếu xuất tự cấp mã và cho lưu nháp chưa có dòng hàng.
     [TestMethod]
     public async Task CreateDraftAsync_ExportGeneratesCodeAndAllowsEmptyDraft()
     {
@@ -94,6 +98,7 @@ public class ReceiptWorkflowTests
         Assert.AreEqual("DRAFT", receipt.Status);
     }
 
+    // Kiểm tra tổng tiền phiếu nháp được tính từ các dòng hàng.
     [TestMethod]
     public async Task CreateDraftAsync_CalculatesTotalFromDetails()
     {
@@ -112,6 +117,7 @@ public class ReceiptWorkflowTests
         Assert.AreEqual(251m, receipt.TotalAmount);
     }
 
+    // Kiểm tra ADMIN được thực hiện các thao tác trong quy trình phiếu nhập.
     [TestMethod]
     public async Task AdminCanUseImportWorkflowActions()
     {
@@ -148,6 +154,7 @@ public class ReceiptWorkflowTests
         Assert.AreEqual("APPROVED", approvedReceipt.Status);
     }
 
+    // Kiểm tra ADMIN được xóa phiếu xuất nháp hợp lệ.
     [TestMethod]
     public async Task AdminCanDeleteExportDraft()
     {
@@ -162,6 +169,7 @@ public class ReceiptWorkflowTests
         Assert.IsFalse(await context.ExportReceipts.AnyAsync(item => item.ExportReceiptId == id));
     }
 
+    // Kiểm tra phiếu bị từ chối không được hủy trực tiếp.
     [TestMethod]
     public async Task RejectedReceiptCannotBeCancelled()
     {
@@ -183,6 +191,7 @@ public class ReceiptWorkflowTests
         Assert.AreEqual("REJECTED", (await context.ImportReceipts.SingleAsync(item => item.ImportReceiptId == id)).Status);
     }
 
+    // Kiểm tra ADMIN được truy cập tất cả kho đang hoạt động.
     [TestMethod]
     public async Task AdminCanAccessAllActiveWarehouses()
     {
@@ -199,6 +208,7 @@ public class ReceiptWorkflowTests
         CollectionAssert.AreEquivalent(new[] { 7, 8 }, warehouses.ToArray());
     }
 
+    // Chuẩn bị người dùng, kho, sản phẩm và dữ liệu nền để kiểm thử phiếu.
     private static void SeedReceiptData(InventoryDbContext context)
     {
         context.Warehouses.Add(new Warehouse { WarehouseId = 7, WarehouseCode = "KHO-07", WarehouseName = "Kho 07", IsActive = true });
@@ -216,6 +226,7 @@ public class ReceiptWorkflowTests
         context.SaveChanges();
     }
 
+    // Tạo phiên quản trị viên giả lập để kiểm thử các thao tác phiếu.
     private static UserSession CreateAdminSession()
     {
         var session = new UserSession();
@@ -223,6 +234,7 @@ public class ReceiptWorkflowTests
         return session;
     }
 
+    // Tạo DbContext bộ nhớ riêng cho ca kiểm thử.
     private static InventoryDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>()

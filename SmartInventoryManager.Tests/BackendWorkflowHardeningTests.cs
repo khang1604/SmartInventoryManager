@@ -13,6 +13,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class BackendWorkflowHardeningTests
 {
+    // Kiểm tra điều chỉnh tồn cập nhật số lượng và ghi lịch sử biến động.
     [TestMethod]
     public async Task AdjustAsync_UpdatesInventoryAndWritesHistory()
     {
@@ -26,6 +27,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual(1, await context.InventoryTransactions.CountAsync(item => item.ProductId == 11));
     }
 
+    // Kiểm tra chuyển kho cập nhật hai số dư và ghi hai dòng lịch sử.
     [TestMethod]
     public async Task TransferAsync_UpdatesBothWarehousesAndWritesBothHistoryRows()
     {
@@ -43,6 +45,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual(2, await context.InventoryTransactions.CountAsync(item => item.ProductId == 11));
     }
 
+    // Kiểm tra điều chỉnh sai quyền hoặc lý do không hợp lệ không làm đổi tồn.
     [TestMethod]
     public async Task AdjustAsync_RejectsStaffAndInvalidReasonWithoutChangingStock()
     {
@@ -56,6 +59,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual(0, await context.Inventories.CountAsync());
     }
 
+    // Kiểm tra làm mới tồn tạo hoặc đóng cảnh báo theo trạng thái thực tế.
     [TestMethod]
     public async Task StockAlert_RefreshCreatesAndResolvesAlert()
     {
@@ -77,6 +81,7 @@ public class BackendWorkflowHardeningTests
         Assert.IsTrue(await context.StockAlerts.Where(item => item.AlertId == alert.AlertId).Select(item => item.IsResolved).SingleAsync());
     }
 
+    // Kiểm tra làm mới hai lần không tạo cảnh báo mở trùng và cập nhật đúng loại.
     [TestMethod]
     public async Task StockAlert_RefreshTwiceKeepsOneOpenAlertAndChangesType()
     {
@@ -100,6 +105,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual(2, await context.StockAlerts.CountAsync());
     }
 
+    // Kiểm tra nhập hoàn tất chỉ phát sự kiện sau commit và không ghi nhận tồn hai lần.
     [TestMethod]
     public async Task ImportComplete_EmitsEventAfterCommitAndRejectsDuplicatePost()
     {
@@ -124,6 +130,7 @@ public class BackendWorkflowHardeningTests
         await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.CompleteAsync(CreateSession(RoleNames.Admin), id));
     }
 
+    // Kiểm tra xuất thiếu tồn không phát sự kiện hoặc ghi lịch sử biến động.
     [TestMethod]
     public async Task ExportComplete_InsufficientStockDoesNotEmitEventOrWriteHistory()
     {
@@ -154,6 +161,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual("APPROVED", await context.ExportReceipts.Select(item => item.Status).SingleAsync());
     }
 
+    // Kiểm tra quyền xử lý cảnh báo cho quản lý và từ chối nhân viên.
     [TestMethod]
     public async Task StockAlert_ResolveAllowsManagerAndRejectsStaff()
     {
@@ -175,6 +183,7 @@ public class BackendWorkflowHardeningTests
         await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.GetResolvedAsync(CreateSession(RoleNames.Staff, 3, 8), 7));
     }
 
+    // Kiểm tra đổi ngưỡng sản phẩm làm cập nhật các cảnh báo liên quan.
     [TestMethod]
     public async Task ProductUpdate_RefreshesAlertsWhenThresholdChanges()
     {
@@ -203,6 +212,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual(10, alert.Threshold);
     }
 
+    // Kiểm tra ngừng sản phẩm sẽ đóng các cảnh báo đang mở.
     [TestMethod]
     public async Task ProductDeactivate_ResolvesOpenAlerts()
     {
@@ -219,6 +229,7 @@ public class BackendWorkflowHardeningTests
         Assert.IsTrue(await context.StockAlerts.Select(item => item.IsResolved).SingleAsync());
     }
 
+    // Kiểm tra lỗi ở dòng xuất sau khôi phục trạng thái các entity đang được theo dõi.
     [TestMethod]
     public async Task ExportComplete_WhenLaterDetailFails_RestoresTrackedState()
     {
@@ -244,6 +255,7 @@ public class BackendWorkflowHardeningTests
         Assert.AreEqual(0, await context.InventoryTransactions.CountAsync());
     }
 
+    // Kiểm tra phiếu hoàn tất không được gửi duyệt hoặc sửa lại.
     [TestMethod]
     public async Task CompletedReceipt_CannotBeSubmittedOrEdited()
     {
@@ -259,6 +271,7 @@ public class BackendWorkflowHardeningTests
         await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => service.UpdateDraftAsync(CreateSession(RoleNames.Admin), 1, request));
     }
 
+    // Kiểm tra nhân viên được lập, gửi phiếu của mình nhưng không được duyệt hay hoàn tất.
     [TestMethod]
     public async Task StaffCanCreateAndSubmitOwnDraft_ButCannotApproveOrComplete()
     {
@@ -275,6 +288,7 @@ public class BackendWorkflowHardeningTests
         await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(() => service.CompleteAsync(staff, id));
     }
 
+    // Kiểm tra tra cứu thông báo từ chối khoảng ngày bị đảo ngược.
     [TestMethod]
     public async Task NotificationService_RejectsReversedDateRange()
     {
@@ -286,6 +300,7 @@ public class BackendWorkflowHardeningTests
             CreateSession(RoleNames.Admin), from: new DateTime(2026, 2, 1), to: new DateTime(2026, 1, 31)));
     }
 
+    // Tạo DbContext bộ nhớ riêng cho ca kiểm thử.
     private static InventoryDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>()
@@ -295,6 +310,7 @@ public class BackendWorkflowHardeningTests
         return new InventoryDbContext(options);
     }
 
+    // Thêm dữ liệu minh họa về kho, sản phẩm và quyền liên quan cho ca kiểm thử.
     private static void SeedWarehouseAndProduct(InventoryDbContext context, int warehouseId, int productId, int? managerId = null, int reorderPoint = 1, int maximumStock = 20)
     {
         context.Users.AddRange(
@@ -307,6 +323,7 @@ public class BackendWorkflowHardeningTests
         context.SaveChanges();
     }
 
+    // Tạo phiên đăng nhập giả lập phục vụ kiểm tra quyền và nghiệp vụ.
     private static UserSession CreateSession(string role, int userId = 1, int? warehouseId = null)
     {
         var session = new UserSession();

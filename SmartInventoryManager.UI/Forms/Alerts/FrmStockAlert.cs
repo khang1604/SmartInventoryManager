@@ -4,12 +4,14 @@ namespace SmartInventoryManager.Forms.Alerts;
 
 public partial class FrmStockAlert : Form
 {
+    // Khởi tạo màn hình cảnh báo tồn kho.
     public FrmStockAlert(UiServices services)
     {
         InitializeComponent();
         WorkflowUi.StyleForm(this);
         Controls.Add(ConnectedPages.Alerts(services));
     }
+    // Khởi tạo màn hình cảnh báo tồn kho.
     public FrmStockAlert()
     {
         InitializeComponent();

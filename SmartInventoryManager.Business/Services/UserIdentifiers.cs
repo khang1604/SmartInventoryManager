@@ -5,6 +5,7 @@ namespace SmartInventoryManager.Business.Services;
 
 internal static class UserIdentifiers
 {
+    // Kiểm tra tên đăng nhập và email không trùng định danh của tài khoản khác.
     internal static async Task EnsureAvailableAsync(InventoryDbContext db, string username, string? email, int exceptUserId, CancellationToken ct)
     {
         var names = new[] { username.Trim().ToUpperInvariant(), email?.Trim().ToUpperInvariant() }

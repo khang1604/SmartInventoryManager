@@ -9,6 +9,7 @@ public sealed class BusinessConflictException(string code, string message, Excep
 
 internal static class DeadlockRetry
 {
+    // Thử lại thao tác bị deadlock trong giới hạn khi giao dịch chưa commit.
     internal static async Task RunAsync(Func<Task> operation, Action resetTracking, Func<bool> hasCommitted, CancellationToken ct)
     {
         for (var attempt = 0; ; attempt++)

@@ -10,6 +10,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public class AuthorizationServiceTests
 {
+    // Kiểm tra điều kiện đăng nhập và vai trò trong các phép kiểm tra quyền.
     [TestMethod]
     public void RoleChecks_RequireAuthenticationAndMatchRole()
     {
@@ -26,6 +27,7 @@ public class AuthorizationServiceTests
         Assert.IsTrue(service.IsStaff(staffSession));
     }
 
+    // Kiểm tra tên các vai trò được loại khoảng trắng trước khi đối chiếu.
     [TestMethod]
     public void RoleChecks_TrimRoleNameForAllSupportedRoles()
     {
@@ -40,6 +42,7 @@ public class AuthorizationServiceTests
         Assert.IsTrue(service.IsStaff(staffSession));
     }
 
+    // Kiểm tra quyền quản lý tuân theo ma trận vai trò.
     [TestMethod]
     public void ManagementPermissions_FollowRoleMatrix()
     {
@@ -52,6 +55,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(service.CanManageUser(CreateSession(RoleNames.WarehouseManager)));
     }
 
+    // Kiểm tra ADMIN được phép quản lý các nhóm dữ liệu hỗ trợ CRUD.
     [TestMethod]
     public void AdminPermissions_AllowManagementOfAllCrudAreas()
     {
@@ -66,6 +70,7 @@ public class AuthorizationServiceTests
         Assert.IsTrue(service.CanManageRole(adminSession));
     }
 
+    // Kiểm tra nhân viên chỉ truy cập phiếu nháp tại kho được phân công.
     [TestMethod]
     public async Task StaffDraftAccess_RequiresAssignedWarehouse()
     {
@@ -86,6 +91,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(canDeleteUnassigned);
     }
 
+    // Kiểm tra chọn và đổi kho làm việc yêu cầu phiên đã đăng nhập.
     [TestMethod]
     public void UserSession_CurrentWarehouseContext_RequiresAuthenticationAndCanBeChanged()
     {
@@ -100,6 +106,7 @@ public class AuthorizationServiceTests
         Assert.AreEqual(8, session.CurrentWarehouseId);
     }
 
+    // Kiểm tra chỉ tự chọn kho khi nhân viên có đúng một kho được phân công.
     [TestMethod]
     public void UserSession_AssignmentInitialization_SelectsOnlySingleStaffWarehouse()
     {
@@ -112,6 +119,7 @@ public class AuthorizationServiceTests
         Assert.IsNull(session.CurrentWarehouseId);
     }
 
+    // Kiểm tra quyền nhân viên cần kho hiện tại và phân công còn hiệu lực trong dữ liệu lưu.
     [TestMethod]
     public async Task StaffScope_RequiresCurrentContextAndPersistedAssignment()
     {
@@ -129,6 +137,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(await service.CanApproveReceiptAsync(session, 7));
     }
 
+    // Kiểm tra thu hồi phân công hoặc ngừng tài khoản, kho đều chặn truy cập an toàn.
     [TestMethod]
     public async Task StaffScope_RevocationAndInactiveAccountsOrWarehousesFailSafely()
     {
@@ -150,6 +159,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(await service.CanCreateDraftReceiptAsync(session, 7));
     }
 
+    // Kiểm tra quyền được đối chiếu lại khi vai trò thay đổi hoặc tài khoản không còn tồn tại.
     [TestMethod]
     public async Task Scope_RevalidatesPersistedRoleAndMissingUser()
     {
@@ -166,6 +176,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(await service.CanApproveReceiptAsync(CreateSession(RoleNames.Admin), 7));
     }
 
+    // Kiểm tra có thể lấy danh sách kho được phân trước khi chọn kho làm việc.
     [TestMethod]
     public async Task WarehouseSelector_ListsAssignmentsBeforeContextIsSelected()
     {
@@ -176,6 +187,7 @@ public class AuthorizationServiceTests
         Assert.AreEqual(0, (await service.GetAllAsync(session)).Count);
     }
 
+    // Kiểm tra quản lý không được truy cập kho ngoài phạm vi hoặc dùng tài khoản đã ngừng.
     [TestMethod]
     public async Task ManagerScope_DeniesOtherWarehouseAndDisabledManager()
     {
@@ -192,6 +204,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(await service.CanApproveReceiptAsync(session, 7));
     }
 
+    // Kiểm tra mô hình EF Core khớp bản chụp migrations đã lưu.
     [TestMethod]
     public void SqlModel_MatchesCommittedMigrationSnapshot()
     {
@@ -200,6 +213,7 @@ public class AuthorizationServiceTests
         Assert.IsFalse(context.Database.HasPendingModelChanges());
     }
 
+    // Tạo dữ liệu kiểm thử gồm người dùng, kho và các phân công liên quan.
     private static InventoryDbContext CreateAssignedContext()
     {
         var context = new InventoryDbContext(new DbContextOptionsBuilder<InventoryDbContext>()
@@ -213,6 +227,7 @@ public class AuthorizationServiceTests
         context.SaveChanges(); return context;
     }
 
+    // Tạo phiên đăng nhập giả lập phục vụ kiểm tra quyền và nghiệp vụ.
     private static UserSession CreateSession(string roleName)
     {
         var session = new UserSession();
@@ -220,6 +235,7 @@ public class AuthorizationServiceTests
         return session;
     }
 
+    // Tạo service phân quyền trên DbContext phục vụ kiểm thử.
     private static AuthorizationService CreateAuthorizationService()
     {
         var options = new DbContextOptionsBuilder<InventoryDbContext>().Options;

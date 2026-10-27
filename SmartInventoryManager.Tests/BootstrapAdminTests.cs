@@ -11,6 +11,7 @@ namespace SmartInventoryManager.Tests;
 [TestClass]
 public sealed class BootstrapAdminTests
 {
+    // Kiểm tra khởi tạo ba vai trò và ADMIN có mật khẩu băm, không ghi đè ADMIN hiện có.
     [TestMethod]
     public async Task Bootstrap_CreatesThreeRolesAndHashedAdmin_WithoutOverwritingExistingAdmin()
     {
@@ -27,6 +28,7 @@ public sealed class BootstrapAdminTests
         Assert.AreEqual(1, await db.SystemLogs.CountAsync());
     }
 
+    // Kiểm tra mật khẩu khởi tạo không hợp lệ bị chặn trước khi ghi dữ liệu.
     [TestMethod]
     public async Task Bootstrap_RejectsInvalidPasswordBeforeWriting()
     {

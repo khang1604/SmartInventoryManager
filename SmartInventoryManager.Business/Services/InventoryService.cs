@@ -19,6 +19,7 @@ public sealed class InventoryService : IInventoryService
     private readonly StockMutationService _stockMutation;
     private readonly StockEventPublisher _publisher;
 
+    // Khởi tạo service tồn kho với phân quyền và bộ phát sự kiện nghiệp vụ.
     public InventoryService(InventoryDbContext dbContext, AuthorizationService authorization, StockEventPublisher? publisher = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
@@ -30,6 +31,7 @@ public sealed class InventoryService : IInventoryService
     public event EventHandler<InventoryChangedEvent>? InventoryChanged
     { add => _publisher.InventoryChanged += value; remove => _publisher.InventoryChanged -= value; }
 
+    // Ghi nhận biến động tồn cho một dòng phiếu trong giao dịch đang xử lý.
     internal async Task<InventoryChangedEvent> PostReceiptLineAsync(UserSession session, int warehouseId, int productId, int quantity,
         bool import, int receiptId, string? note, CancellationToken ct)
     {
@@ -49,6 +51,7 @@ public sealed class InventoryService : IInventoryService
         return new InventoryChangedEvent(productId, warehouseId, before, stock.Quantity, type, session.CurrentUser!.UserId);
     }
 
+    // Lấy tồn kho theo kho và phạm vi truy cập của người dùng.
     public async Task<IReadOnlyList<InventoryDto>> GetByWarehouseAsync(
         UserSession session,
         int warehouseId,
@@ -83,6 +86,7 @@ public sealed class InventoryService : IInventoryService
             .ToListAsync(cancellationToken);
     }
 
+    // Tra cứu lịch sử biến động tồn theo điều kiện lọc và quyền truy cập.
     public async Task<IReadOnlyList<InventoryHistoryDto>> GetHistoryAsync(
         UserSession session,
         int warehouseId,
@@ -143,6 +147,7 @@ public sealed class InventoryService : IInventoryService
             .ToListAsync(cancellationToken);
     }
 
+    // Điều chỉnh tồn có kiểm tra quyền và cơ chế thử lại khi gặp deadlock.
     public Task AdjustAsync(UserSession session, int warehouseId, int productId, int quantityDelta, string reason, CancellationToken cancellationToken = default)
     {
         var committed = false;
@@ -150,6 +155,7 @@ public sealed class InventoryService : IInventoryService
             () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
     }
 
+    // Ghi số tồn sau điều chỉnh cùng lý do, lịch sử và cảnh báo trong giao dịch.
     private async Task AdjustCoreAsync(
         UserSession session,
         int warehouseId,
@@ -216,6 +222,7 @@ public sealed class InventoryService : IInventoryService
             session.CurrentUser!.UserId));
     }
 
+    // Chuyển hàng giữa hai kho với cơ chế thử lại khi gặp deadlock.
     public Task TransferAsync(UserSession session, int sourceWarehouseId, int destinationWarehouseId, int productId, int quantity, string note, CancellationToken cancellationToken = default)
     {
         var committed = false;
@@ -223,6 +230,7 @@ public sealed class InventoryService : IInventoryService
             () => _dbContext.ChangeTracker.Clear(), () => committed, cancellationToken);
     }
 
+    // Giảm tồn kho nguồn và tăng tồn kho đích cùng lịch sử trong một giao dịch.
     private async Task TransferCoreAsync(
         UserSession session,
         int sourceWarehouseId,
@@ -331,6 +339,7 @@ public sealed class InventoryService : IInventoryService
             session.CurrentUser!.UserId));
     }
 
+    // Lấy bản ghi tồn theo sản phẩm và kho hoặc khởi tạo nếu chưa có.
     private async Task<InventoryEntity> GetOrCreateInventoryAsync(int warehouseId, int productId, CancellationToken cancellationToken)
     {
         var inventory = await _dbContext.Inventories
@@ -350,6 +359,7 @@ public sealed class InventoryService : IInventoryService
         return inventory;
     }
 
+    // Kiểm tra mã định danh sản phẩm là số dương.
     private static void ValidateProductId(int productId)
     {
         if (productId <= 0)
@@ -358,6 +368,7 @@ public sealed class InventoryService : IInventoryService
         }
     }
 
+    // Kiểm tra mã định danh kho là số dương.
     private static void ValidateWarehouseId(int warehouseId)
     {
         if (warehouseId <= 0)
@@ -366,6 +377,7 @@ public sealed class InventoryService : IInventoryService
         }
     }
 
+    // Kiểm tra phiên đăng nhập hợp lệ trước khi xử lý yêu cầu.
     private static void ValidateSession(UserSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
