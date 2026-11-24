@@ -30,13 +30,6 @@ ADMIN quản trị hệ thống; WAREHOUSE_MANAGER phụ trách các kho đượ
 
 Cơ sở dữ liệu được quản lý bằng EF Core Migrations. Ứng dụng không tự chạy migrations hay tự tạo tài khoản khi mở. Giá trị tồn trong báo cáo là số lượng nhân giá mua hiện tại; giá vốn bình quân và kiểm kê theo phiên thuộc giai đoạn tiếp theo.
 
-## Thành viên
-
-| Thành viên | Phần phụ trách |
-|---|---|
-| Mai Bảo Anh | Cơ sở dữ liệu và kiến trúc |
-| Nguyễn Võ Nguyên Khang | Backend và nghiệp vụ kho |
-| Đỗ Gia Khiêm | Giao diện, tổng quan và phân tích |
 
 ## Chạy mã nguồn
 
